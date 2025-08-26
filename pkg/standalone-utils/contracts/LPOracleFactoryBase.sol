@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ISequencerUptimeFeed.sol";
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -20,6 +21,11 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
  * oracle, depending on the pool.
  */
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication, Version {
+    // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
+    // accurately reflect the state. These values are passed to the oracle contracts on creation.
+    AggregatorV3Interface internal immutable _sequencerUptimeFeed;
+    uint256 internal immutable _uptimeGracePeriod;
+
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
 
@@ -28,9 +34,14 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
 
     constructor(
         IVault vault,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeGracePeriod,
         string memory factoryVersion,
         uint256 oracleVersion
     ) SingletonAuthentication(vault) Version(factoryVersion) {
+        _sequencerUptimeFeed = sequencerUptimeFeed;
+        _uptimeGracePeriod = uptimeGracePeriod;
+
         _oracleVersion = oracleVersion;
     }
 
@@ -71,6 +82,16 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     /// @inheritdoc ILPOracleFactoryBase
     function isOracleFromFactory(ILPOracleBase oracle) external view returns (bool success) {
         success = _isOracleFromFactory[oracle];
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getSequencerUptimeFeed() external view returns (AggregatorV3Interface sequencerUptimeFeed) {
+        return _sequencerUptimeFeed;
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getUptimeGracePeriod() external view returns (uint256 uptimeGracePeriod) {
+        return _uptimeGracePeriod;
     }
 
     /// @inheritdoc ILPOracleFactoryBase

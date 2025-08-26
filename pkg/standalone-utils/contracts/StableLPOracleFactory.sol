@@ -26,10 +26,13 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
 
     constructor(
         IVault vault,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeGracePeriod,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, factoryVersion, oracleVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeGracePeriod, factoryVersion, oracleVersion) {
+        _sequencerUptimeFeed = sequencerUptimeFeed;
+        _uptimeGracePeriod = uptimeGracePeriod;
     }
 
     function _create(
@@ -37,7 +40,14 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         IBasePool pool,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
-        oracle = new StableLPOracle(vault, IStablePool(address(pool)), feeds, _oracleVersion);
+        oracle = new StableLPOracle(
+            vault,
+            IStablePool(address(pool)),
+            feeds,
+            _sequencerUptimeFeed,
+            _uptimeGracePeriod,
+            _oracleVersion
+        );
         emit StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
     }
 }

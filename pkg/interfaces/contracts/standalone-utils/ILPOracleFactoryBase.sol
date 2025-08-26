@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+import { ISequencerUptimeFeed } from "./ISequencerUptimeFeed.sol";
 import { ILPOracleBase } from "./ILPOracleBase.sol";
 import { IBasePool } from "../vault/IBasePool.sol";
 
 /// @notice Factory contract for deploying and managing pool oracles.
-interface ILPOracleFactoryBase {
+interface ILPOracleFactoryBase is ISequencerUptimeFeed {
     // @notice Emitted when a the factory is disabled.
     event OracleFactoryDisabled();
 
