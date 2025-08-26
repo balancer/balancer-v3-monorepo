@@ -109,9 +109,9 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
                     _buildAddLiquidityParams(
                         pool,
-                        address(this),
-                        _MAX_AMOUNT, // No deadline in query
-                        false, // wethIsEth is false in query
+                        address(this), // Use the router as the sender in the query
+                        _MAX_AMOUNT, // No deadline in the query
+                        false, // wethIsEth is false in the query
                         addLiquidityParams,
                         _buildSwapExactInParams(swapParams)
                     )
@@ -133,9 +133,9 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
                     _buildAddLiquidityParams(
                         pool,
-                        address(this),
-                        _MAX_AMOUNT, // No deadline in query
-                        false, // wethIsEth is false in query
+                        address(this), // Use the router as the sender in the query
+                        _MAX_AMOUNT, // No deadline in the query
+                        false, // wethIsEth is false in the query
                         addLiquidityParams,
                         _buildSwapExactOutParams(swapParams)
                     )
