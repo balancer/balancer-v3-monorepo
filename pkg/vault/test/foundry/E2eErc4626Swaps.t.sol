@@ -8,8 +8,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -214,7 +214,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsDo = _buildExactInPaths(dai, exactDaiAmountIn);
+        SwapPathExactAmountIn[] memory pathsDo = _buildExactInPaths(dai, exactDaiAmountIn);
         vm.prank(bob);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(pathsDo, MAX_UINT256, false, bytes(""));
 
@@ -224,7 +224,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // If we insert only pathAmountsOut, the user WETH balance will go back to where it was before and we won't be
         // able to measure fees. So, we make the user pay the exact WETH fees back. Then, when we compare the DAI
         // balance, we can make sure that it's not paying fees twice.
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(weth, pathAmountsOut[0]);
+        SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(weth, pathAmountsOut[0]);
         vm.prank(bob);
         batchRouter.swapExactIn(pathsUndo, MAX_UINT256, false, bytes(""));
 
@@ -271,7 +271,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        IBatchRouter.SwapPathExactAmountOut[] memory pathsDo = _buildExactOutPaths(weth, exactWethAmountOut);
+        SwapPathExactAmountOut[] memory pathsDo = _buildExactOutPaths(weth, exactWethAmountOut);
         vm.prank(bob);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(pathsDo, MAX_UINT256, false, bytes(""));
 
@@ -281,7 +281,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // If we use only pathAmountsIn, the user DAI balance will go back to where it was before and we won't be
         // able to measure fees. So, we make the user discount the exact DAI fees. Then, when we compare the WETH
         // balance, we can make sure that it's not paying fees twice.
-        IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(dai, pathAmountsIn[0]);
+        SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(dai, pathAmountsIn[0]);
         vm.prank(bob);
         batchRouter.swapExactOut(pathsUndo, MAX_UINT256, false, bytes(""));
 
@@ -386,38 +386,33 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     function _buildExactInPaths(
         IERC20 tokenIn,
         uint256 amountIn
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+    ) private view returns (SwapPathExactAmountIn[] memory paths) {
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
+        paths = new SwapPathExactAmountIn[](1);
 
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waWETH in the yield-bearing pool,
         // and finally post-swap the waWETH through the WETH buffer to calculate the WETH amount out.
         // The only token transfers are DAI in (given) and WETH out (calculated).
         if (tokenIn == dai) {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
+            steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+            steps[1] = SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
+            steps[2] = SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+            steps[0] = SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
+            steps[1] = SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
+            steps[2] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: tokenIn,
-            steps: steps,
-            exactAmountIn: amountIn,
-            minAmountOut: 1
-        });
+        paths[0] = SwapPathExactAmountIn({ tokenIn: tokenIn, steps: steps, exactAmountIn: amountIn, minAmountOut: 1 });
     }
 
     function _buildExactOutPaths(
         IERC20 tokenOut,
         uint256 amountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+    ) private view returns (SwapPathExactAmountOut[] memory paths) {
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
+        paths = new SwapPathExactAmountOut[](1);
         IERC20 tokenIn = tokenOut == dai ? IERC20(address(weth)) : dai;
 
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
@@ -425,18 +420,18 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and WETH out (given).
         if (tokenIn == dai) {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
+            steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+            steps[1] = SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
+            steps[2] = SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+            steps[0] = SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
+            steps[1] = SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
+            steps[2] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
         // We cannot use MAX_UINT128 as maxAmountIn, since the maxAmountIn is paid upfront. We need to use a value that
         // "Bob" can pay.
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: tokenIn,
             steps: steps,
             maxAmountIn: dai.balanceOf(bob) / 10,
