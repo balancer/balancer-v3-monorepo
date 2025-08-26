@@ -5,9 +5,6 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
