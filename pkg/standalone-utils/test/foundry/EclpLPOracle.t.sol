@@ -360,14 +360,23 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         (EclpLPOracleMock oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
 
+        uint256 tvlOracle = oracle.computeTVL(prices);
+        uint256 tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
+            GyroECLPPool(address(pool)),
+            [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
+        );
+
+        // Error tolerance of 0.000001%.
+        assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should be different before swap");
+
         // Big swap, to make sure the pool is very unbalanced when computing the new TVL.
         uint256 swapAmount = _INITIAL_WSTETH_BALANCE / 3;
 
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 tvlOracle = oracle.computeTVL(prices);
-        uint256 tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
+        tvlOracle = oracle.computeTVL(prices);
+        tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
             GyroECLPPool(address(pool)),
             [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
         );
@@ -518,10 +527,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
             uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
 
-            if (
-                (price > oraclePrice && (price - oraclePrice).divDown(oraclePrice) < 1e6) ||
-                (price < oraclePrice && (oraclePrice - price).divDown(oraclePrice) < 1e6)
-            ) {
+            if (_subAbs(price, oraclePrice).divDown(oraclePrice) < 1e6) {
                 return marketPriceBalances;
             }
 
@@ -641,5 +647,13 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
 
         a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
+    }
+
+    function _subAbs(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a > b) {
+            return a - b;
+        } else {
+            return b - a;
+        }
     }
 }
