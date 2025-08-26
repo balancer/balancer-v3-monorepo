@@ -101,7 +101,7 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derived
     ) internal pure {
-        // If tau is not within the range below, the pool math may be messed.
+        // If tau is not within the range below, the pool math may be inaccurate.
         require(derived.tauAlpha.y > 0, DerivedTauAlphaYWrong());
         require(derived.tauBeta.y > 0, DerivedTauBetaYWrong());
         require(derived.tauBeta.x > derived.tauAlpha.x, DerivedTauXWrong());
@@ -166,14 +166,16 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Calculate the multiplication between matrix A and vector t.
-     * @dev This is reversing rotation and scaling of the ellipse mapping back to circle. A is described in Section 2.2
-     * (see https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @notice Multiply matrix A by vector t.
+     * @dev This is reversing the rotation and scaling of the ellipse mapping back to the unit circle. A is described
+     * in Section 2.2 of the ECLP technical paper:
+     * (See https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
      * This function is only used inside calculatePrice(). This is why we can make two simplifications:
      * 1. We don't correct for precision of s, c using d.dSq because that level of precision is not important in
      * this context;
-     * 2. We don't need to check for over/underflow because these are impossible in that context and given the
-     * (checked) assumptions on the various values.
+     * 2. We don't need to check for over/underflow because these are impossible in that context, given the (checked)
+     * assumptions on the various values.
      *
      * @param params ECLP params alpha, beta, c, s and lambda
      * @param tp Point on the ellipse
@@ -190,9 +192,9 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Calculate the multiplication between matrix A^{-1} and vector t.
-     * @dev This is rotating and scaling the circle into the ellipse with the center at the origin. A^{-1} is described
-     * in Section 2.2 (see https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @notice Multiply the inverse of matrix A by vector t (i.e., solve Ax = t for x).
+     * @dev This is rotating and scaling the circle into an ellipse centered at the origin. A^{-1} is described in
+     * Section 2.2 (See https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param params ECLP params alpha, beta, c, s and lambda
      * @param t Point on the circle
@@ -211,8 +213,8 @@ library GyroECLPMath {
      * @dev In contrast to virtual reserve offsets in CPMM, these are *subtracted* from the real reserves, moving the
      * curve to the upper-right. They can be positive or negative, but not both can be negative. Calculates
      * `a = r*(A^{-1}tau(beta))_x` rounding up in signed direction. That error in r is scaled by lambda, and so
-     * rounding direction is important. For more details, see Section 2.1.2 (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * rounding direction is important. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param p ECLP params alpha, beta, c, s and lambda
      * @param d Derived ECLP params u, v, w, z, dSq
@@ -261,10 +263,10 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Maximal value for the real reserves x when the respective other balance is 0 for given invariant.
-     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in signed
-     * direction. For more details, see Section 2.1.2 (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @notice Maximal value for the real reserves x when the other balance is zero, at the given invariant.
+     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in the signed
+     * direction. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param p ECLP params alpha, beta, c, s and lambda
      * @param d Derived ECLP params u, v, w, z, dSq
@@ -288,10 +290,10 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Maximal value for the real reserves y when the respective other balance is 0 for given invariant.
-     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in signed
-     * direction. For more details, see Section 2.1.2 (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @notice Maximal value for the real reserves y when the other balance is zero, at the given invariant.
+     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in the signed
+     * direction. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param p ECLP params alpha, beta, c, s and lambda
      * @param d Derived ECLP params u, v, w, z, dSq
@@ -317,12 +319,12 @@ library GyroECLPMath {
      * are happening with signed ints, too. Computes r according to Prop 13 in 2.2.1 Initialization from Real Reserves.
      * Orders operations to achieve best precision. Returns an underestimate and a bound on error size. Enforces
      * anti-overflow limits on balances and the computed invariant in the process. For more details, see Section 2.2.1
-     * (see https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * in the docs (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param balances Pool balances, scaled with 18 decimals
      * @param params ECLP params alpha, beta, c, s and lambda
      * @param derived Derived ECLP params u, v, w, z, dSq
-     * @return invariant Invariant r, rouded down
+     * @return invariant Invariant r, rounded down
      * @return err Error bound on invariant, required to compute the invariant rounded up
      */
     function calculateInvariantWithError(
@@ -579,8 +581,8 @@ library GyroECLPMath {
 
     /**
      * @notice Spot price of token 0 in units of token 1.
-     * @dev See Prop. 12 in 2.1.6 Computing Prices (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @dev See Prop. 12 in the 2.1.6 Computing Prices section of the ECLP technical document:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param balances Pool balances, scaled with 18 decimals
      * @param params ECLP params alpha, beta, c, s and lambda
@@ -784,7 +786,6 @@ library GyroECLPMath {
     /**
      * @notice Calculates the amount in given the amount out for a swap.
      * @dev This is the inverse of calcOutGivenIn.
-     *
      * @param balances Pool balances, scaled with 18 decimals
      * @param amountOut Amount out, scaled with 18 decimals
      * @param tokenInIsToken0 Whether the token in is token 0
@@ -835,8 +836,8 @@ library GyroECLPMath {
      * @notice Calculates the amount in given the amount out for a swap.
      * @dev Variables are named for calculating y given x. To calculate x given y, change x->y, s->c, c->s, a->b, b->a,
      * tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y. Also, calculates an overestimate of calculated reserve
-     * post-swap. For more details, see Section 2.2.2 Trade Execution (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * post-swap. For more details, see Section 2.2.2 Trade Execution in the ECLP technical document:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param lambda Stretching factor of the ellipse
      * @param x Real reserve x, scaled with 18 decimals
@@ -988,8 +989,8 @@ library GyroECLPMath {
 
     /**
      * @notice Compute y such that (x, y) satisfy the invariant at the given parameters.
-     * @dev We calculate an overestimate of y. See Prop 14 in section 2.2.2 Trade Execution (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @dev We calculate an overestimate of y. See Prop 14 in Section 2.2.2 Trade Execution of the docs:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param x Real reserve x, scaled with 18 decimals
      * @param params ECLP params alpha, beta, c, s and lambda
@@ -1016,8 +1017,8 @@ library GyroECLPMath {
 
     /**
      * @notice Calculate x such that (x, y) satisfy the invariant at the given parameters.
-     * @dev We calculate an overestimate of x. See Prop 14 in section 2.2.2 Trade Execution (see
-     * https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     * @dev We calculate an overestimate of x. See Prop 14 in Section 2.2.2 Trade Execution of the docs:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
      *
      * @param y Real reserve y, scaled with 18 decimals
      * @param params ECLP params alpha, beta, c, s and lambda
