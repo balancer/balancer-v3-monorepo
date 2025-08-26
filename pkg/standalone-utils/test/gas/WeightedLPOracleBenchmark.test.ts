@@ -66,9 +66,14 @@ class WeightedLPOracleBenchmark extends LPOracleBenchmark {
     };
   }
 
-  override async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo> {
+  override async deployOracle(
+    poolAddress: string,
+    feeds: AggregatorV3Interface[],
+    uptimeSequencerFeed: AggregatorV3Interface,
+    uptimeGracePeriod: bigint
+  ): Promise<OracleInfo> {
     const oracle = (await deploy('v3-standalone-utils/WeightedLPOracleMock', {
-      args: [await this.vault.getAddress(), poolAddress, feeds, 1],
+      args: [await this.vault.getAddress(), poolAddress, feeds, uptimeSequencerFeed, uptimeGracePeriod, 1],
     })) as unknown as AggregatorV3Interface;
     return {
       oracle: oracle,
