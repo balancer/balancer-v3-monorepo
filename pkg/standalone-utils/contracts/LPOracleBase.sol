@@ -327,7 +327,6 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
                 revert GracePeriodNotOver();
             }
         } catch {
-            // If sequencer feed fails, err on the side of caution.
             revert SequencerFeedUnavailable();
         }
     }
