@@ -12,9 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { LPOracleFactoryBase } from "./LPOracleFactoryBase.sol";
 import { StableLPOracle } from "./StableLPOracle.sol";
 
-/**
- * @notice Factory for deploying and managing Stable Pool oracles.
- */
+/// @notice Factory for deploying and managing Stable Pool oracles.
 contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Stable Pool oracle was created.
@@ -31,8 +29,7 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         string memory factoryVersion,
         uint256 oracleVersion
     ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeGracePeriod, factoryVersion, oracleVersion) {
-        _sequencerUptimeFeed = sequencerUptimeFeed;
-        _uptimeGracePeriod = uptimeGracePeriod;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function _create(
