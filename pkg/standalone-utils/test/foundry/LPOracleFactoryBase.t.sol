@@ -139,11 +139,19 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     }
 
     function testGetUptimeFeed() public view {
-        assertEq(address(ISequencerUptimeFeed(address(_factory)).getSequencerUptimeFeed()), address(_uptimeFeed), "Wrong uptime feed");
+        assertEq(
+            address(ISequencerUptimeFeed(address(_factory)).getSequencerUptimeFeed()),
+            address(_uptimeFeed),
+            "Wrong uptime feed"
+        );
     }
 
     function testGetUptimeGracePeriod() public view {
-        assertEq(ISequencerUptimeFeed(address(_factory)).getUptimeGracePeriod(), UPTIME_GRACE_PERIOD, "Wrong uptime grace period");
+        assertEq(
+            ISequencerUptimeFeed(address(_factory)).getUptimeGracePeriod(),
+            UPTIME_GRACE_PERIOD,
+            "Wrong uptime grace period"
+        );
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {
