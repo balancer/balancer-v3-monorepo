@@ -22,9 +22,9 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
-import { FeedMock } from "@balancer-labs/v3-standalone-utils/contracts/test/FeedMock.sol";
 
 import { StableLPOracleMock } from "../../contracts/test/StableLPOracleMock.sol";
+import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     using FixedPoint for uint256;

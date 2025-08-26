@@ -23,10 +23,10 @@ import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RatePro
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
-import { FeedMock } from "@balancer-labs/v3-standalone-utils/contracts/test/FeedMock.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { EclpLPOracleMock } from "../../contracts/test/EclpLPOracleMock.sol";
+import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
     using SignedFixedPoint for int256;

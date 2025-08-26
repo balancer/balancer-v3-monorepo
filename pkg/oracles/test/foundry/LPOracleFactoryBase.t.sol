@@ -13,9 +13,9 @@ import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { FeedMock } from "@balancer-labs/v3-standalone-utils/contracts/test/FeedMock.sol";
 
 import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
+import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     string constant ORACLE_FACTORY_VERSION = "Factory v1";
