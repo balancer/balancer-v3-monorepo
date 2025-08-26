@@ -89,6 +89,17 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
     }
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
-        return ILPOracleFactoryBase(address(new StableLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
+        return
+            ILPOracleFactoryBase(
+                address(
+                    new StableLPOracleFactory(
+                        vault,
+                        _uptimeFeed,
+                        UPTIME_GRACE_PERIOD,
+                        ORACLE_FACTORY_VERSION,
+                        ORACLE_VERSION
+                    )
+                )
+            );
     }
 }
