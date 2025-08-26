@@ -35,8 +35,10 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         IVault vault_,
         IWeightedPool pool_,
         AggregatorV3Interface[] memory feeds,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeGracePeriod,
         uint256 version_
-    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, version_) {
+    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, sequencerUptimeFeed, uptimeGracePeriod, version_) {
         uint256[] memory weights = pool_.getNormalizedWeights();
 
         // prettier-ignore

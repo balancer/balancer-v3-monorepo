@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ISequencerUptimeFeed.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -26,7 +27,14 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
 
     uint256 internal constant _WAD_DECIMALS = 18;
 
+    int256 internal constant _SEQUENCER_STATUS_DOWN = 1;
+
     IBasePool public immutable pool;
+
+    // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
+    // accurately reflect the state. These values are stored in and passed down from the associated factory.
+    AggregatorV3Interface internal immutable _sequencerUptimeFeed;
+    uint256 internal immutable _uptimeGracePeriod;
 
     IVault internal immutable _vault;
     uint256 internal immutable _version;
@@ -51,10 +59,20 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     uint256 internal immutable _feedToken6DecimalScalingFactor;
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
-    constructor(IVault vault_, IBasePool pool_, AggregatorV3Interface[] memory feeds, uint256 version_) {
+    constructor(
+        IVault vault_,
+        IBasePool pool_,
+        AggregatorV3Interface[] memory feeds,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeGracePeriod,
+        uint256 version_
+    ) {
         _version = version_;
         _vault = vault_;
         pool = pool_;
+
+        _sequencerUptimeFeed = sequencerUptimeFeed;
+        _uptimeGracePeriod = uptimeGracePeriod;
 
         IERC20[] memory tokens = vault_.getPoolTokens(address(pool_));
         uint totalTokens = tokens.length;
@@ -190,6 +208,8 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         view
         returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt)
     {
+        _ensureSequencerUptime();
+
         uint256 totalTokens = _totalTokens;
         AggregatorV3Interface[] memory feeds = _getFeeds(totalTokens);
         uint256[] memory feedDecimalScalingFactors = _getFeedTokenDecimalScalingFactors(totalTokens);
@@ -223,6 +243,16 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     /// @inheritdoc ILPOracleBase
     function getPoolTokens() external view returns (IERC20[] memory) {
         return _vault.getPoolTokens(address(pool));
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getSequencerUptimeFeed() external view returns (AggregatorV3Interface sequencerUptimeFeed) {
+        return _sequencerUptimeFeed;
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getUptimeGracePeriod() external view returns (uint256 uptimeGracePeriod) {
+        return _uptimeGracePeriod;
     }
 
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
@@ -274,6 +304,32 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         }
 
         return feedTokenDecimalScalingFactors;
+    }
+
+    /**
+     * @notice Ensure that the sequencer is up and, if there was a recent outage, that the grace period has passed.
+     * @dev Reverts if the sequencer is down or the grace period has not expired.
+     */
+    function _ensureSequencerUptime() internal view {
+        if (address(_sequencerUptimeFeed) == address(0)) {
+            return; // No sequencer check needed (L1 or other networks)
+        }
+
+        // Check the status of the uptime feed.
+        try _sequencerUptimeFeed.latestRoundData() returns (uint80, int256 answer, uint256 startedAt, uint256, uint80) {
+            // Check whether the sequencer is down.
+            if (answer == _SEQUENCER_STATUS_DOWN) {
+                revert SequencerDown();
+            }
+
+            // solhint-disable-next-line not-rely-on-time
+            if (block.timestamp - startedAt < _uptimeGracePeriod) {
+                revert GracePeriodNotOver();
+            }
+        } catch {
+            // If sequencer feed fails, err on the side of caution.
+            revert SequencerFeedUnavailable();
+        }
     }
 
     /**
