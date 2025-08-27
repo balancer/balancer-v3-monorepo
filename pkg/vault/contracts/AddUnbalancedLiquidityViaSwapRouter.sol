@@ -85,9 +85,9 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                     AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
                     _buildAddLiquidityParams(
                         pool,
-                        address(this), // Use the router as the sender in the query
-                        _MAX_AMOUNT, // No deadline in the query
-                        false, // wethIsEth is false in the query
+                        address(this), // Queries use the router as the sender
+                        _MAX_AMOUNT, // Queries do not have deadlines
+                        false, // wethIsEth is false for queries
                         addLiquidityParams,
                         swapParams
                     )
