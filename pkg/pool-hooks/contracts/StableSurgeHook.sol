@@ -102,11 +102,20 @@ contract StableSurgeHook is SurgeHookCommon {
                                   Legacy Functions
     ***************************************************************************/
 
+    /**
+     * @notice Computes the surge fee percentage for a given swap.
+     * @dev This function is deprecated and `computeSwapSurgeFeePercentage` should be used instead. Since there are
+     * solutions already using this function, we should keep it.
+     * @param params The parameters of the swap
+     * @param pool The pool on which the swap is being performed
+     * @param staticSwapFeePercentage The static swap fee percentage
+     * @return surgeFeePercentage The surge fee percentage
+     */
     function getSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view returns (uint256) {
+    ) public view returns (uint256 surgeFeePercentage) {
         return computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage);
     }
 }
