@@ -25,7 +25,6 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    uint256 constant WEIGHTED_SWAP_FEE = 1e16;
     string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant DELTA_RATIO = 1e15; // 0.1% delta
