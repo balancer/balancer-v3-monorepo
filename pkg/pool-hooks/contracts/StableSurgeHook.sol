@@ -2,18 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
 import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 import { SurgeHookCommon } from "./SurgeHookCommon.sol";
@@ -23,9 +17,6 @@ import { SurgeHookCommon } from "./SurgeHookCommon.sol";
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
 contract StableSurgeHook is SurgeHookCommon {
-    using FixedPoint for uint256;
-    using SafeCast for *;
-
     /**
      * @notice A new `StableSurgeHook` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
@@ -111,11 +102,20 @@ contract StableSurgeHook is SurgeHookCommon {
                                   Legacy Functions
     ***************************************************************************/
 
+    /**
+     * @notice Computes the surge fee percentage for a given swap.
+     * @dev This function is deprecated and `computeSwapSurgeFeePercentage` should be used instead. Since there are
+     * solutions already using this function, we should keep it.
+     * @param params The parameters of the swap
+     * @param pool The pool on which the swap is being performed
+     * @param staticSwapFeePercentage The static swap fee percentage
+     * @return surgeFeePercentage The surge fee percentage
+     */
     function getSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view returns (uint256) {
+    ) public view returns (uint256 surgeFeePercentage) {
         return computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage);
     }
 }
