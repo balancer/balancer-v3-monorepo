@@ -9,13 +9,13 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 import {
     BufferWrapOrUnwrapParams,
     SwapKind,
     WrappingDirection
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
@@ -60,7 +60,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function testUnderlyingImbalanceOfWrappedBalance() public {
         // Unbalances buffer so that buffer has less underlying than wrapped.
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+        SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
             IERC20(address(wDaiInitialized)),
@@ -86,7 +86,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function testUnderlyingImbalanceOfUnderlyingBalance() public {
         // Unbalances buffer so that buffer has more underlying than wrapped.
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+        SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
             dai,
@@ -129,7 +129,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function testWrappedImbalanceOfUnderlyingBalance() public {
         // Unbalances buffer so that buffer has more underlying than wrapped.
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+        SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
             dai,
@@ -156,7 +156,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function testWrappedImbalanceOfWrappedBalance() public {
         // Unbalances buffer so that buffer has less underlying than wrapped (so it has an imbalance of wrapped).
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+        SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
             IERC20(address(wDaiInitialized)),
@@ -608,13 +608,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         IERC20 tokenFrom,
         IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private pure returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+    ) private pure returns (SwapPathExactAmountIn[] memory paths) {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        paths = new SwapPathExactAmountIn[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenTo, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenTo, isBuffer: true });
 
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: tokenFrom,
             steps: steps,
             exactAmountIn: exactAmountIn,
