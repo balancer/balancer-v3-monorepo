@@ -21,13 +21,6 @@ All oracles inherit from `LPOracleBase.sol`, which provides:
 - Token price feed integration
 - Standard oracle interface methods
 
-### Key Components
-
-- **LPOracleBase.sol** - Abstract base contract that all pool oracles inherit from
-- **LPOracleFactoryBase.sol** - Base factory contract for creating oracle instances
-- **StableLPOracleFactory.sol** - Factory for deploying Stable pool oracles
-- **WeightedLPOracleFactory.sol** - Factory for deploying Weighted pool oracles
-
 ## Features
 
 - **Chainlink Compatible**: All oracles implement the AggregatorV3Interface
@@ -52,9 +45,6 @@ StableLPOracle oracle = factory.create(pool, feeds, 1);
 ```solidity
 // Get the latest BPT price
 (int256 price, uint256 timestamp) = oracle.latestRoundData();
-
-// Get historical price data
-(int256 price, uint256 timestamp) = oracle.getRoundData(roundId);
 ```
 
 ## Testing
@@ -95,12 +85,6 @@ yarn slither       # Run security analysis
 yarn coverage      # Run coverage for Foundry tests
 yarn coverage:all  # Run coverage for all test suites
 ```
-
-## Dependencies
-
-- `@balancer-labs/v3-interfaces` - Core Balancer V3 interfaces
-- `@balancer-labs/v3-solidity-utils` - Utility functions and math libraries
-- `@balancer-labs/v3-standalone-utils` - Standalone utility contracts
 
 ## Licensing
 
