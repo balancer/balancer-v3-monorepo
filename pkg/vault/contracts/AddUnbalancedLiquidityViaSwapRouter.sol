@@ -10,7 +10,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import {
     IAddUnbalancedLiquidityViaSwapRouter
 } from "@balancer-labs/v3-interfaces/contracts/vault/IAddUnbalancedLiquidityViaSwapRouter.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterQueries } from "./RouterQueries.sol";
