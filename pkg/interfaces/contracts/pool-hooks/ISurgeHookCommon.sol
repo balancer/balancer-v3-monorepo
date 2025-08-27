@@ -4,14 +4,15 @@ pragma solidity ^0.8.24;
 
 import { PoolSwapParams } from "../vault/VaultTypes.sol";
 
-interface IECLPSurgeHook {
-    /**
-     * @notice A new `ECLPSurgeHook` contract has been registered successfully.
-     * @dev If the registration fails the call will revert, so there will be no event.
-     * @param pool The pool on which the hook was registered
-     * @param factory The factory that registered the pool
-     */
-    event ECLPSurgeHookRegistered(address indexed pool, address indexed factory);
+interface ISurgeHookCommon {
+    /// @notice The max surge fee and threshold values must be valid percentages.
+    error InvalidPercentage();
+
+    // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
+    struct SurgeFeeData {
+        uint64 thresholdPercentage;
+        uint64 maxSurgeFeePercentage;
+    }
 
     /**
      * @notice The threshold percentage has been changed for a pool in a `ECLPSurgeHook` contract.
@@ -28,9 +29,6 @@ interface IECLPSurgeHook {
      * @param newMaxSurgeFeePercentage The new max surge fee percentage
      */
     event MaxSurgeFeePercentageChanged(address indexed pool, uint256 newMaxSurgeFeePercentage);
-
-    /// @notice The max surge fee and threshold values must be valid percentages.
-    error InvalidPercentage();
 
     /**
      * @notice Getter for the default maximum surge surge fee percentage.
