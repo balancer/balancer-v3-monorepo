@@ -49,16 +49,12 @@ contract GyroECLPMathTest is Test {
         // Price computed offchain.
         uint256 expectedPrice = 3663201029819534758509;
 
-        uint256 actualPrice = _computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(
+            _balancesScaled18,
+            _eclpParams,
+            _derivedECLPParams
+        );
+        uint256 actualPrice = GyroECLPMath.computePrice(_balancesScaled18, _eclpParams, a, b);
         assertEq(actualPrice, expectedPrice, "Prices do not match");
-    }
-
-    function _computePriceFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) private pure returns (uint256) {
-        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
     }
 }
