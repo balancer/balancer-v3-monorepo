@@ -15,6 +15,11 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
+/**
+ * @notice This is a base contract for surge hook implementations (e.g. E-CLP, Stable).
+ * @dev Surge hooks compute a dynamic fee based on the imbalance of the pool. Contracts that inherit from this
+ * contract must implement the _isSurgingSwap and _isSurgingUnbalancedLiquidity functions.
+ */
 abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, SingletonAuthentication, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
