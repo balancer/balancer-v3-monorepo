@@ -203,10 +203,4 @@ contract ECLPSurgeHook is SurgeHookCommon {
             return (currentPrice - peakPrice).divDown(eclpParams.beta.toUint256() - peakPrice);
         }
     }
-
-    function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
-            revert InvalidPercentage();
-        }
-    }
 }
