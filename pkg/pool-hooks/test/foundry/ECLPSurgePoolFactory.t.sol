@@ -9,7 +9,6 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -51,7 +50,7 @@ contract ECLPSurgePoolFactoryTest is BaseVaultTest, ECLPSurgeHookDeployer, ECLPS
             "Test"
         );
 
-        eclpPoolFactory = deployECLPSurgePoolFactory(eclpSurgeHook, 365 days, FACTORY_VERSION, POOL_VERSION);
+        eclpPoolFactory = deployECLPSurgePoolFactory(address(eclpSurgeHook), 365 days, FACTORY_VERSION, POOL_VERSION);
         vm.label(address(eclpPoolFactory), "eclp pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

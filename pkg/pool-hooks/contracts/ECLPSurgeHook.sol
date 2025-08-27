@@ -4,62 +4,42 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+
+import { SurgeHookCommon } from "./SurgeHookCommon.sol";
 
 /**
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthentication, Version {
+contract ECLPSurgeHook is SurgeHookCommon {
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
-    struct SurgeFeeData {
-        uint64 thresholdPercentage;
-        uint64 maxSurgeFeePercentage;
-    }
-
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultMaxSurgeFeePercentage;
-
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultSurgeThresholdPercentage;
-
-    // Store the current threshold and max fee for each pool.
-    mapping(address pool => SurgeFeeData data) internal _surgeFeePoolData;
-
-    modifier withValidPercentage(uint256 percentageValue) {
-        _ensureValidPercentage(percentageValue);
-        _;
-    }
+    /**
+     * @notice A new `ECLPSurgeHook` contract has been registered successfully.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param pool The pool on which the hook was registered
+     * @param factory The factory that registered the pool
+     */
+    event ECLPSurgeHookRegistered(address indexed pool, address indexed factory);
 
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage,
         string memory version
-    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
-        _ensureValidPercentage(defaultMaxSurgeFeePercentage);
-        _ensureValidPercentage(defaultSurgeThresholdPercentage);
-
-        _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
-        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
+    ) SurgeHookCommon(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage, version) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /***************************************************************************
@@ -67,181 +47,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     ***************************************************************************/
 
     /// @inheritdoc IHooks
-    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        hookFlags.shouldCallComputeDynamicSwapFee = true;
-        hookFlags.shouldCallAfterAddLiquidity = true;
-        hookFlags.shouldCallAfterRemoveLiquidity = true;
-    }
-
-    /// @inheritdoc IHooks
     function onRegister(
         address factory,
         address pool,
-        TokenConfig[] memory,
-        LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
-        // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
-        // in the future).
-        _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);
-
-        // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
-        _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
+        TokenConfig[] memory tokenConfig,
+        LiquidityManagement calldata liquidityManagement
+    ) public override onlyVault returns (bool success) {
+        success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         emit ECLPSurgeHookRegistered(pool, factory);
-
-        return true;
-    }
-
-    /// @inheritdoc IHooks
-    function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view override returns (bool, uint256) {
-        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
-    }
-
-    /// @inheritdoc IHooks
-    function onAfterAddLiquidity(
-        address,
-        address pool,
-        AddLiquidityKind kind,
-        uint256[] memory amountsInScaled18,
-        uint256[] memory amountsInRaw,
-        uint256,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
-        // Proportional add is always fine.
-        if (kind == AddLiquidityKind.PROPORTIONAL) {
-            return (true, amountsInRaw);
-        }
-
-        // Rebuild old balances before adding liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsInRaw);
-    }
-
-    /// @inheritdoc IHooks
-    function onAfterRemoveLiquidity(
-        address,
-        address pool,
-        RemoveLiquidityKind kind,
-        uint256,
-        uint256[] memory amountsOutScaled18,
-        uint256[] memory amountsOutRaw,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Proportional remove is always fine.
-        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
-            return (true, amountsOutRaw);
-        }
-
-        // Rebuild old balances before removing liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsOutRaw);
-    }
-
-    /***************************************************************************
-                          ECLP Surge Hook Functions
-    ***************************************************************************/
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
-        return _defaultMaxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
-        return _defaultSurgeThresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].maxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].thresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function setMaxSurgeFeePercentage(
-        address pool,
-        uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function setSurgeThresholdPercentage(
-        address pool,
-        uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view returns (uint256 surgeFeePercentage) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (bool isSurging, uint256 newTotalImbalance) = _isSurgingSwap(
-            params,
-            pool,
-            staticSwapFeePercentage,
-            surgeFeeData
-        );
-
-        // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
-        //
-        // As you can see from the formula, if it’s unbalanced exactly at the threshold, the last term is 0,
-        // and the fee is just: static + 0 = static fee.
-        // As the unbalanced proportion term approaches 1, the fee surge approaches: static + max - static ~= max fee.
-        // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
-        // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
-        // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
-        if (isSurging) {
-            surgeFeePercentage =
-                staticSwapFeePercentage +
-                (surgeFeeData.maxSurgeFeePercentage - staticSwapFeePercentage).mulDown(
-                    (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
-                        uint256(surgeFeeData.thresholdPercentage).complement()
-                    )
-                );
-        } else {
-            surgeFeePercentage = staticSwapFeePercentage;
-        }
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function isSurgingSwap(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) external view returns (bool isSurging) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (isSurging, ) = _isSurgingSwap(params, pool, staticSwapFeePercentage, surgeFeeData);
     }
 
     /***************************************************************************
@@ -253,7 +67,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256 staticSwapFeePercentage,
         SurgeFeeData memory surgeFeeData
-    ) internal view returns (bool isSurging, uint256 newTotalImbalance) {
+    ) internal view override returns (bool isSurging, uint256 newTotalImbalance) {
         // If the max surge fee percentage is less than the static fee percentage, return false.
         // No matter where the imbalance is, surge is never lower than the static fee.
         if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
@@ -288,7 +102,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256[] memory oldBalancesScaled18,
         uint256[] memory balancesScaled18
-    ) internal view returns (bool isSurging) {
+    ) internal view override returns (bool isSurging) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
         (
@@ -307,36 +121,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
-    }
-
-    function _isSurging(
-        uint64 thresholdPercentage,
-        uint256 oldTotalImbalance,
-        uint256 newTotalImbalance
-    ) internal pure returns (bool isSurging) {
-        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
-        if (newTotalImbalance == 0) {
-            return false;
-        }
-
-        // Surging if imbalance grows and we're currently above the threshold.
-        return (newTotalImbalance > oldTotalImbalance && newTotalImbalance > thresholdPercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setMaxSurgeFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].maxSurgeFeePercentage = newMaxSurgeFeePercentage.toUint64();
-
-        emit MaxSurgeFeePercentageChanged(pool, newMaxSurgeFeePercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].thresholdPercentage = newSurgeThresholdPercentage.toUint64();
-
-        emit ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
     }
 
     /**
@@ -504,11 +288,5 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             return eclpParams.beta.toUint256();
         }
         return price;
-    }
-
-    function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
-            revert InvalidPercentage();
-        }
     }
 }
