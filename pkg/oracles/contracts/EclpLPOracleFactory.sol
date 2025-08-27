@@ -12,9 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { LPOracleFactoryBase } from "./LPOracleFactoryBase.sol";
 import { EclpLPOracle } from "./EclpLPOracle.sol";
 
-/**
- * @notice Factory for deploying and managing ECLP Pool oracles.
- */
+/// @notice Factory for deploying and managing ECLP Pool oracles.
 contract EclpLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new ECLP Pool oracle was created.
