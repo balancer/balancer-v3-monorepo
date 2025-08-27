@@ -39,6 +39,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
         string memory factoryVersion,
         uint256 oracleVersion
     ) SingletonAuthentication(vault) Version(factoryVersion) {
+        // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
         _uptimeGracePeriod = uptimeGracePeriod;
 

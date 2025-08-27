@@ -71,6 +71,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         _vault = vault_;
         pool = pool_;
 
+        // The uptime feed address will be zero for L1, and for L2. networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
         _uptimeGracePeriod = uptimeGracePeriod;
 
