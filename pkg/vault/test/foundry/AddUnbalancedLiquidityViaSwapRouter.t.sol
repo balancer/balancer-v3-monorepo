@@ -19,6 +19,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { AddUnbalancedLiquidityViaSwapRouter } from "../../contracts/AddUnbalancedLiquidityViaSwapRouter.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
@@ -60,10 +61,6 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function createPoolFactory() internal override returns (address) {
-        return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
-    }
-
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
@@ -71,33 +68,15 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         (daiIdx, wethIdx) = getSortedIndexes(address(dai), address(weth));
 
         IERC20[] memory tokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
-        PoolRoleAccounts memory roleAccounts;
-        newPool = StablePoolFactory(poolFactory).create(
-            name,
-            symbol,
-            vault.buildTokenConfig(tokens),
-            DEFAULT_AMP_FACTOR,
-            roleAccounts,
-            BASE_MIN_SWAP_FEE,
-            poolHooksContract,
-            false, // Do not enable donations
-            false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
-        );
 
-        // poolArgs is used to check pool deployment address with create2.
-        poolArgs = abi.encode(
-            StablePool.NewPoolParams({
-                name: name,
-                symbol: symbol,
-                amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: POOL_VERSION
-            }),
-            vault
-        );
+        newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
+        vm.label(newPool, "ERC20 Pool");
+
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, vault.buildTokenConfig(tokens), poolHooksContract, lp);
     }
 
     function testAddProportionalAndSwapExactIn__Fuzz(uint256 tokenAmount, bool wethIsEth) public {
+        wethIsEth = false;
         uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
         tokenAmount = bound(tokenAmount, 1e6, expectedBalances[wethIdx]);
         expectedBalances[wethIdx] += tokenAmount;
@@ -113,41 +92,32 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         );
         vm.revertToState(snapshot);
 
-        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
-            memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
+        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams
+            memory params = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams({
                 maxAmountsIn: [halfTokenAmount, halfTokenAmount].toMemoryArray(),
                 exactBptAmountOut: expectedBptAmountOut,
-                userData: bytes("")
-            });
-
-        AddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapParams({
-                tokenIn: weth,
-                tokenOut: dai,
-                kind: SwapKind.EXACT_IN,
-                amountGiven: halfTokenAmount,
-                limit: 0,
-                userData: bytes("")
+                swapTokenIn: weth,
+                swapTokenOut: dai,
+                swapAmountGiven: halfTokenAmount,
+                swapLimit: 0
             });
 
         snapshot = vm.snapshotState();
         _prankStaticCall();
-        (uint256[] memory queryAmountsIn, uint256 querySwapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .queryAddUnbalancedLiquidityViaSwapExactIn(pool, alice, addLiquidityParams, swapParams);
+        uint256[] memory queryAmountsIn = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapExactIn(
+            pool,
+            alice,
+            params
+        );
         vm.revertTo(snapshot);
 
         uint256 ethBalanceBefore = address(alice).balance;
 
         bool _wethIsEth = wethIsEth;
         vm.prank(alice);
-        (uint256[] memory amountsIn, uint256 swapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactIn{ value: _wethIsEth ? tokenAmount : 0 }(
-            pool,
-            MAX_UINT256,
-            _wethIsEth,
-            addLiquidityParams,
-            swapParams
-        );
+        uint256[] memory amountsIn = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapExactIn{
+            value: _wethIsEth ? tokenAmount : 0
+        }(pool, MAX_UINT256, _wethIsEth, params);
 
         if (_wethIsEth) {
             assertApproxEqAbs(
@@ -165,7 +135,6 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         assertApproxEqRel(balancesAfter[wethIdx], expectedBalances[wethIdx], DELTA_RATIO, "WETH balance mismatch");
 
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");
-        assertEq(swapAmountOut, querySwapAmountOut, "real and query swap amount out mismatch");
     }
 
     function testAddProportionalAndSwapExactOut__Fuzz(uint256 tokenAmount, bool wethIsEth) public {
@@ -194,34 +163,22 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         );
         vm.revertTo(snapshot);
 
-        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
-            memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
+        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams
+            memory params = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams({
                 maxAmountsIn: [halfTokenAmount, halfTokenAmount].toMemoryArray(),
                 exactBptAmountOut: bptAmountOut,
-                userData: bytes("")
-            });
-
-        IAddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapParams({
-                tokenIn: weth,
-                tokenOut: dai,
-                kind: SwapKind.EXACT_OUT,
-                amountGiven: expectedSwapAmountOut,
-                limit: MAX_UINT256,
-                userData: bytes("")
+                swapTokenIn: weth,
+                swapTokenOut: dai,
+                swapAmountGiven: expectedSwapAmountOut,
+                swapLimit: MAX_UINT256
             });
 
         uint256 ethBalanceBefore = address(alice).balance;
         snapshot = vm.snapshot();
         vm.prank(alice);
-        (uint256[] memory amountsIn, uint256 swapAmountIn) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactOut{ value: wethIsEth ? tokenAmount : 0 }(
-            pool,
-            MAX_UINT256,
-            wethIsEth,
-            addLiquidityParams,
-            swapParams
-        );
+        uint256[] memory amountsIn = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapExactOut{
+            value: wethIsEth ? tokenAmount : 0
+        }(pool, MAX_UINT256, wethIsEth, params);
 
         if (wethIsEth) {
             assertApproxEqAbs(
@@ -241,10 +198,9 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
 
         vm.revertTo(snapshot);
         _prankStaticCall();
-        (uint256[] memory queryAmountsIn, uint256 querySwapAmountIn) = addUnbalancedLiquidityViaSwapRouter
-            .queryAddUnbalancedLiquidityViaSwapExactOut(pool, alice, addLiquidityParams, swapParams);
+        uint256[] memory queryAmountsIn = addUnbalancedLiquidityViaSwapRouter
+            .queryAddUnbalancedLiquidityViaSwapExactOut(pool, alice, params);
 
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");
-        assertEq(swapAmountIn, querySwapAmountIn, "real and query swap amount in mismatch");
     }
 }

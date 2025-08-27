@@ -377,7 +377,7 @@ abstract contract RouterHooks is RouterCommon {
     }
 
     function _swapHook(
-        SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams memory params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
