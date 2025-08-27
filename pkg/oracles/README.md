@@ -2,15 +2,17 @@
 
 # Balancer V3 Oracles
 
-This package contains oracle implementations for Balancer V3 pool types that determine the Balancer Pool Token (BPT) price of each pool. These oracles provide price feeds that are compatible with Chainlink's AggregatorV3Interface, making them suitable for use in DeFi protocols that require reliable price data.
+This package contains oracle implementations for Balancer V3 pool types that determine the Balancer Pool Token (BPT)
+price of each pool. These oracles provide price feeds that are compatible with Chainlink's AggregatorV3Interface,
+making them suitable for use in DeFi protocols that require reliable price data.
 
 ## Overview
 
 The oracles package provides three main oracle implementations:
 
-- **E-CLP Oracle** (`EclpLPOracle.sol`) - For Elliptical Curve Liquidity Provider pools
-- **Stable Oracle** (`StableLPOracle.sol`) - For Stable pools (like Curve-style pools)
-- **Weighted Oracle** (`WeightedLPOracle.sol`) - For Weighted pools (like Uniswap V2-style pools)
+- **E-CLP Oracle** (`EclpLPOracle.sol`) - For [Gyro E-CLP Pools](../pool-gyro/contracts/GyroECLPPool.sol)
+- **Stable Oracle** (`StableLPOracle.sol`) - For [V3 Stable pools](../pool-stable/contracts/StablePool.sol)
+- **Weighted Oracle** (`WeightedLPOracle.sol`) - For [V3 Weighted pools](../pool-weighted/contracts/WeightedPool.sol)
 
 ## Architecture
 
