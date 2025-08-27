@@ -121,12 +121,13 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
-        AddUnbalancedLiquidityViaSwapRouter.SwapExactInParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapExactInParams({
+        AddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
+            .SwapParams({
                 tokenIn: weth,
                 tokenOut: dai,
-                exactAmountIn: halfTokenAmount,
-                minAmountOut: 0,
+                kind: SwapKind.EXACT_IN,
+                amountGiven: halfTokenAmount,
+                limit: 0,
                 userData: bytes("")
             });
 
@@ -201,12 +202,13 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
-        IAddUnbalancedLiquidityViaSwapRouter.SwapExactOutParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapExactOutParams({
+        IAddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
+            .SwapParams({
                 tokenIn: weth,
                 tokenOut: dai,
-                exactAmountOut: expectedSwapAmountOut,
-                maxAmountIn: MAX_UINT256,
+                kind: SwapKind.EXACT_OUT,
+                amountGiven: expectedSwapAmountOut,
+                limit: MAX_UINT256,
                 userData: bytes("")
             });
 

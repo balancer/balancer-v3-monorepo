@@ -10,25 +10,18 @@ import "./RouterTypes.sol";
 
 /// @notice Router interface for adding unbalanced liquidity via a combination of a proportional add and a swap.
 interface IAddUnbalancedLiquidityViaSwapRouter {
+    struct SwapParams {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        SwapKind kind;
+        uint256 amountGiven;
+        uint256 limit;
+        bytes userData;
+    }
+
     struct AddLiquidityProportionalParams {
         uint256[] maxAmountsIn;
         uint256 exactBptAmountOut;
-        bytes userData;
-    }
-
-    struct SwapExactInParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-        bytes userData;
-    }
-
-    struct SwapExactOutParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountOut;
-        uint256 maxAmountIn;
         bytes userData;
     }
 
@@ -52,7 +45,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         uint256 deadline,
         bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactInParams calldata swapParams
+        SwapParams calldata swapParams
     ) external payable returns (uint256[] memory amountsIn, uint256 swapAmountOut);
 
     /**
@@ -70,7 +63,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         uint256 deadline,
         bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactOutParams calldata swapParams
+        SwapParams calldata swapParams
     ) external payable returns (uint256[] memory amountsIn, uint256 swapAmountIn);
 
     /**
@@ -86,7 +79,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactInParams calldata swapParams
+        SwapParams calldata swapParams
     ) external returns (uint256[] memory amountsIn, uint256 swapAmountOut);
 
     /**
@@ -102,6 +95,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactOutParams calldata swapParams
+        SwapParams calldata swapParams
     ) external returns (uint256[] memory amountsIn, uint256 swapAmountIn);
 }
