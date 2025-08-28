@@ -251,6 +251,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
         return imbalance;
     }
+
     function _setImbalanceSlopeBelowPeak(address pool, uint128 newImbalanceSlopeBelowPeak) internal {
         if (newImbalanceSlopeBelowPeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeBelowPeak < MIN_IMBALANCE_SLOPE) {
             revert InvalidImbalanceSlope();
