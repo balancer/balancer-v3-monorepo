@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -200,17 +199,14 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         }
 
         uint256 swapAmountIn;
-        (, swapAmountIn, swapAmountOut) = _swapHook(
-            SwapSingleTokenHookParams({
-                sender: hookParams.sender,
+        (, swapAmountIn, swapAmountOut) = _vault.swap(
+            VaultSwapParams({
                 kind: hookParams.swapKind,
                 pool: hookParams.pool,
                 tokenIn: hookParams.params.swapTokenIn,
                 tokenOut: hookParams.params.swapTokenOut,
-                amountGiven: hookParams.params.swapAmountGiven,
-                limit: hookParams.params.swapLimit,
-                deadline: hookParams.deadline,
-                wethIsEth: hookParams.wethIsEth,
+                amountGivenRaw: hookParams.params.swapAmountGiven,
+                limitRaw: hookParams.params.swapLimit,
                 userData: bytes("")
             })
         );
