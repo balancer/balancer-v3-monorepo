@@ -263,14 +263,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
 
-        // Since the test is not using the `pool` parameters, we cannot use `computeImbalanceFromBalances`.
-        uint256 imbalanceAlpha = _computeImbalanceFromBalancesAndParams(
+        uint256 imbalanceAlpha = hookMock.computeImbalanceFromBalancesAndParams(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
 
-        uint256 priceNearAlpha = _computePriceFromBalances(
+        uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
@@ -282,14 +281,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
 
-        // Since the test is not using the `pool` parameters, we cannot use `computeImbalanceFromBalances`.
-        uint256 imbalanceBeta = _computeImbalanceFromBalancesAndParams(
+        uint256 imbalanceBeta = hookMock.computeImbalanceFromBalancesAndParams(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
 
-        uint256 priceNearBeta = _computePriceFromBalances(
+        uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
@@ -333,13 +331,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         });
 
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
-        // Since the test is not using the `pool` parameters, we cannot use `computeImbalanceFromBalances`.
-        uint256 imbalanceAlpha = _computeImbalanceFromBalancesAndParams(
+        uint256 imbalanceAlpha = hookMock.computeImbalanceFromBalancesAndParams(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 priceNearAlpha = _computePriceFromBalances(
+        uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
@@ -351,13 +348,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
 
-        // Since the test is not using the `pool` parameters, we cannot use `computeImbalanceFromBalances`.
-        uint256 imbalanceBeta = _computeImbalanceFromBalancesAndParams(
+        uint256 imbalanceBeta = hookMock.computeImbalanceFromBalancesAndParams(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 priceNearBeta = _computePriceFromBalances(
+        uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
@@ -533,7 +529,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Execute series of swaps in one direction.
         for (uint i = 0; i < NUM_SIMULATED_SWAPS; i++) {
-            prices[i] = _computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
+            prices[i] = hookMock.computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
 
             // Simulate swap.
             _balancesScaled18[1] += swapAmount;
@@ -554,7 +550,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 beta = uint256(_eclpParams.beta);
 
         // Should not revert.
-        uint256 price = _computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
+        uint256 price = hookMock.computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
 
         // Price should be within bounds.
         assertGe(price, alpha, "Large balance price below alpha");
@@ -562,19 +558,19 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Test with asymmetric large balances.
         largeBalances = [maxTotalBalance / 10, (maxTotalBalance * 9) / 10].toMemoryArray();
-        price = _computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
+        price = hookMock.computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Asymmetric large balance price below alpha");
         assertLe(price, beta, "Asymmetric large balance price above beta");
 
         // Test with very small balances.
         uint256[] memory smallBalances = [uint256(1e6), uint256(1e6)].toMemoryArray();
-        price = _computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
+        price = hookMock.computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Small balance price below alpha");
         assertLe(price, beta, "Small balance price above beta");
 
         // Test with extreme price ratios at small scale.
         smallBalances = [uint256(1e6), uint256(1e12)].toMemoryArray();
-        price = _computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
+        price = hookMock.computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Extreme ratio small balance price below alpha");
         assertLe(price, beta, "Extreme ratio small balance price above beta");
     }
@@ -636,23 +632,5 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
             abi.encode(poolRoleAccounts)
         );
-    }
-
-    function _computePriceFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) private pure returns (uint256) {
-        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
-    }
-
-    function _computeImbalanceFromBalancesAndParams(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) private view returns (uint256) {
-        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
     }
 }
