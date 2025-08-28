@@ -16,11 +16,11 @@ interface ISequencerUptimeFeed {
     error SequencerDown();
 
     /**
-     * @notice A price feed was accessed after a sequencer outage, and before the grace period expired.
-     * @dev Since outages result in a queue of delayed transactions which must be processed, the grace period allows
-     * sufficient time for the L2 network to "catch up," so that the price feed is accurate.
+     * @notice A price feed was accessed after a sequencer outage, but still within the resync window.
+     * @dev Since outages result in a queue of delayed transactions which must be processed, the stabilization period
+     * (or resync window) allows sufficient time for the L2 network to "catch up," so that the price feed is accurate.
      */
-    error GracePeriodNotOver();
+    error SequencerResyncIncomplete();
 
     /**
      * @notice Return the address of the sequencer uptime feed.

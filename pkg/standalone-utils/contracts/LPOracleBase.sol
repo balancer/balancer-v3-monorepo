@@ -325,7 +325,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp - startedAt < _uptimeGracePeriod) {
-            revert GracePeriodNotOver();
+            revert SequencerResyncIncomplete();
         }
     }
 

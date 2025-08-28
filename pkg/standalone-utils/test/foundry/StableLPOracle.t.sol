@@ -275,12 +275,12 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         oracle.latestRoundData();
     }
 
-    function testGracePeriodNotOver() public {
+    function testSequencerResyncIncomplete() public {
         IStablePool pool = createAndInitPool();
         (StableLPOracleMock oracle, ) = deployOracle(pool);
         uptimeFeed.setStartedAt(block.timestamp - 100);
 
-        vm.expectRevert(ISequencerUptimeFeed.GracePeriodNotOver.selector);
+        vm.expectRevert(ISequencerUptimeFeed.SequencerResyncIncomplete.selector);
         oracle.latestRoundData();
     }
 

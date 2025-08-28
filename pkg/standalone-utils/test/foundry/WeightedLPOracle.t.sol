@@ -280,12 +280,12 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         oracle.latestRoundData();
     }
 
-    function testGracePeriodNotOver() public {
+    function testSequencerResyncIncomplete() public {
         (IWeightedPool pool, ) = createAndInitPool(2);
         (WeightedLPOracleMock oracle, ) = deployOracle(pool);
         uptimeFeed.setStartedAt(block.timestamp - 100);
 
-        vm.expectRevert(ISequencerUptimeFeed.GracePeriodNotOver.selector);
+        vm.expectRevert(ISequencerUptimeFeed.SequencerResyncIncomplete.selector);
         oracle.latestRoundData();
     }
 
