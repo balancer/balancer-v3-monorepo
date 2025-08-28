@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -150,11 +149,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        (int256 a, int256 b) = _computeOffsetFromBalances(oldBalancesScaled18, eclpParams, derivedECLPParams);
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(
+            oldBalancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
         oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b, imbalanceSlopeData);
 
         // Since the invariant is not the same after the liquidity change, we need to recompute the offset.
-        (a, b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        (a, b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
         newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
@@ -221,12 +224,12 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         // - currentPrice > peakPrice, imbalance = abovePeakSlope * (currentPrice - peakPrice) / (beta - peakPrice)
 
         // Compute current price
-        uint256 currentPrice = _computePrice(balancesScaled18, eclpParams, a, b);
+        uint256 currentPrice = GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
 
         // Compute peak price, defined by `sine / cosine`, which is the price where the pool has the largest liquidity.
         uint256 peakPrice = eclpParams.s.divDownMag(eclpParams.c).toUint256();
         // The price cannot be outside of pool range.
-        peakPrice = _clampPriceToPoolRange(peakPrice, eclpParams);
+        peakPrice = GyroECLPMath.clampPriceToPoolRange(peakPrice, eclpParams);
 
         if (currentPrice == peakPrice) {
             // If the currentPrice equals the peak price, the pool is perfectly balanced.
@@ -247,78 +250,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
         return imbalance;
     }
-
-    function _computePrice(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) internal pure returns (uint256 price) {
-        // To compute the price, first we need to transform the real balances into balances of a circle centered at
-        // (0,0).
-        //
-        // The transformation is:
-        //
-        //     --   --    --           --   --     --
-        //     | x'' |    |  c/λ  -s/λ  | * | x - a |
-        //     | y'' | =  |   s     c   |   | y - b |
-        //     --   --    --           --   --     --
-        //
-        // With x'' and y'', we can compute the price as:
-        //
-        //                          --            --   --   --
-        //             [xll, yll] o |  c/λ   -s/λ  | * |  1  |
-        //                          |   s      c   |   |  0  |
-        //                          --            --   --   --
-        //    price =  -------------------------------------------
-        //                          --            --   --   --
-        //             [xll, yll] o |  c/λ   -s/λ  | * |  0  |
-        //                          |   s      c   |   |  1  |
-        //                          --            --   --   --
-
-        // Balances in the rotated ellipse centered at (0,0)
-        int256 xl = int256(balancesScaled18[0]) - a;
-        int256 yl = int256(balancesScaled18[1]) - b;
-
-        // Balances in the circle centered at (0,0)
-        int256 xll = (xl * eclpParams.c - yl * eclpParams.s) / eclpParams.lambda;
-        int256 yll = (xl * eclpParams.s + yl * eclpParams.c) / 1e18;
-
-        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
-        int256 numerator = yll.mulDownMag(eclpParams.s) + ((xll * eclpParams.c) / eclpParams.lambda);
-        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
-        int256 denominator = yll.mulDownMag(eclpParams.c) - ((xll * eclpParams.s) / eclpParams.lambda);
-
-        price = numerator.divDownMag(denominator).toUint256();
-        // The price cannot be outside of pool range.
-        price = _clampPriceToPoolRange(price, eclpParams);
-
-        return price;
-    }
-
-    function _computeOffsetFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal pure returns (int256 a, int256 b) {
-        IGyroECLPPool.Vector2 memory invariant;
-
-        {
-            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
-            // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
-        }
-
-        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
-        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
-    }
-
     function _setImbalanceSlopeBelowPeak(address pool, uint128 newImbalanceSlopeBelowPeak) internal {
         if (newImbalanceSlopeBelowPeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeBelowPeak < MIN_IMBALANCE_SLOPE) {
             revert InvalidImbalanceSlope();
@@ -335,24 +266,5 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
         _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak = newImbalanceSlopeAbovePeak;
         emit ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
-    }
-
-    /**
-     * @notice Clamps the price to the pool range.
-     * @dev The pool price cannot be lower than alpha or higher than beta. So, we clamp it to the interval.
-     * @param price The price to clamp
-     * @param eclpParams The E-CLP parameters
-     * @return The clamped price
-     */
-    function _clampPriceToPoolRange(
-        uint256 price,
-        IGyroECLPPool.EclpParams memory eclpParams
-    ) internal pure returns (uint256) {
-        if (price < eclpParams.alpha.toUint256()) {
-            return eclpParams.alpha.toUint256();
-        } else if (price > eclpParams.beta.toUint256()) {
-            return eclpParams.beta.toUint256();
-        }
-        return price;
     }
 }

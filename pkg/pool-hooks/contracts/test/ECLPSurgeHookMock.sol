@@ -6,6 +6,7 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { ECLPSurgeHook } from "./../ECLPSurgeHook.sol";
@@ -78,7 +79,7 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
             IGyroECLPPool.EclpParams memory eclpParams,
             IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
         ) = GyroECLPPool(pool).getECLPParams();
-        (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
 
         ImbalanceSlopeData memory imbalanceSlopeData = ImbalanceSlopeData({
             imbalanceSlopeBelowPeak: 1e18,
@@ -104,5 +105,23 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
 
     function manualSetSurgeMaxFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) external {
         _setMaxSurgeFeePercentage(pool, newMaxSurgeFeePercentage);
+    }
+
+    function computePriceFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) external pure returns (uint256) {
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
+    }
+
+    function computeImbalanceFromBalancesAndParams(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) external pure returns (uint256) {
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return _computeImbalance(balancesScaled18, eclpParams, a, b);
     }
 }
