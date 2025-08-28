@@ -5,9 +5,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
+import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -656,7 +655,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
 
-        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        vm.expectRevert(ECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
         GyroECLPPoolFactory(poolFactory).create(
             "Gyro E-CLP Pool",
             "ECLP-POOL",
@@ -701,7 +700,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
 
-        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        vm.expectRevert(ECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
         GyroECLPPoolFactory(poolFactory).create(
             "Gyro E-CLP Pool",
             "ECLP-POOL",

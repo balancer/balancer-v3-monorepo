@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -21,10 +20,17 @@ import { SurgeHookCommon } from "./SurgeHookCommon.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
+contract ECLPSurgeHook is SurgeHookCommon {
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using SafeCast for *;
+
+    /**
+     * @notice The rotation angle is too small or too large for the surge hook to be used.
+     * @dev The surge hook accept angles from 30 to 60 degrees. Outside of this range, the computation of the peak
+     * price cannot be approximated by sine/cosine.
+     */
+    error InvalidRotationAngleForSurgeHook();
 
     /**
      * @notice A new `ECLPSurgeHook` contract has been registered successfully.
