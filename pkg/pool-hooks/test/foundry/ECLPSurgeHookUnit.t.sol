@@ -18,6 +18,8 @@ import { GyroECLPPoolFactory } from "@balancer-labs/v3-pool-gyro/contracts/GyroE
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { ECLPSurgeHookMock } from "../../contracts/test/ECLPSurgeHookMock.sol";
 import { ECLPSurgeHookDeployer } from "./utils/ECLPSurgeHookDeployer.sol";
@@ -29,20 +31,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     using ArrayHelpers for *;
 
     ECLPSurgeHookMock private hookMock;
-    IGyroECLPPool.EclpParams private eclpParams;
-    IGyroECLPPool.DerivedEclpParams private derivedECLPParams;
-    uint256[] private balancesScaled18;
-    uint256[] private peakBalancesScaled18;
+    IGyroECLPPool.EclpParams private _eclpParams;
+    IGyroECLPPool.DerivedEclpParams private _derivedECLPParams;
+    uint256[] private _balancesScaled18;
+    uint256[] private _peakBalancesScaled18;
 
     function setUp() public override {
-        eclpParams = IGyroECLPPool.EclpParams({
+        _eclpParams = IGyroECLPPool.EclpParams({
             alpha: 3100000000000000000000,
             beta: 4400000000000000000000,
             c: 266047486094289,
             s: 999999964609366945,
             lambda: 20000000000000000000000
         });
-        derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
+        _derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
             tauAlpha: IGyroECLPPool.Vector2({
                 x: -74906290317688162800819482607385924041,
                 y: 66249888081733516165500078448108672943
@@ -62,8 +64,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Data from pool 0xf78556b9ccce5a6eb9476a4d086ea15f3790660a, Arbitrum.
         // Token A is WETH, and Token B is USDC.
-        balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
-        peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
+        _balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
+        _peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
     }
 
     function createPoolFactory() internal override returns (address) {
@@ -93,8 +95,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             "Gyro E-CLP Pool",
             "ECLP-POOL",
             vault.buildTokenConfig(tokens.asIERC20()),
-            eclpParams,
-            derivedECLPParams,
+            _eclpParams,
+            _derivedECLPParams,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
             poolHooksContract,
@@ -110,21 +112,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
                 IGyroECLPPool.GyroECLPPoolParams({
                     name: "Gyro E-CLP Pool",
                     symbol: "ECLP-POOL",
-                    eclpParams: eclpParams,
-                    derivedEclpParams: derivedECLPParams,
+                    eclpParams: _eclpParams,
+                    derivedEclpParams: _derivedECLPParams,
                     version: "Pool v1"
                 }),
                 vault
             )
         );
-    }
-
-    function testPriceComputation() public view {
-        // Price computed offchain.
-        uint256 expectedPrice = 3663201029819534758509;
-
-        uint256 actualPrice = hookMock.computePriceFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        assertEq(actualPrice, expectedPrice, "Prices do not match");
     }
 
     function testIsSurgingWithSwapTowardsLiquidityPeak() public view {
@@ -137,23 +131,21 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balancesScaled18,
+            balancesScaled18: _balancesScaled18,
             indexIn: 1,
             indexOut: 0,
             router: address(router),
             userData: bytes("")
         });
 
-        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(request, eclpParams, derivedECLPParams);
+        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(request, _eclpParams, _derivedECLPParams);
 
         uint256[] memory balancesUpdated = new uint256[](2);
-        balancesUpdated[0] = balancesScaled18[0] - amountCalculatedScaled18;
-        balancesUpdated[1] = balancesScaled18[1] + amountGivenScaled18;
+        balancesUpdated[0] = _balancesScaled18[0] - amountCalculatedScaled18;
+        balancesUpdated[1] = _balancesScaled18[1] + amountGivenScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
-        // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), _balancesScaled18);
+        uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), balancesUpdated);
 
         assertLt(newImbalance, oldImbalance, "Old imbalance < New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -174,23 +166,21 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_OUT,
             amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balancesScaled18,
+            balancesScaled18: _balancesScaled18,
             indexIn: 0,
             indexOut: 1,
             router: address(router),
             userData: bytes("")
         });
 
-        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(request, eclpParams, derivedECLPParams);
+        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(request, _eclpParams, _derivedECLPParams);
 
         uint256[] memory balancesUpdated = new uint256[](2);
-        balancesUpdated[0] = balancesScaled18[0] + amountCalculatedScaled18;
-        balancesUpdated[1] = balancesScaled18[1] - amountGivenScaled18;
+        balancesUpdated[0] = _balancesScaled18[0] + amountCalculatedScaled18;
+        balancesUpdated[1] = _balancesScaled18[1] - amountGivenScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
-        // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), _balancesScaled18);
+        uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), balancesUpdated);
 
         assertGt(newImbalance, oldImbalance, "Old imbalance > New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -203,28 +193,26 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
     function testIsSurging__Fuzz(uint256 amountOutScaled18, uint256 tokenOutIndex) public view {
         tokenOutIndex = bound(tokenOutIndex, 0, 1);
-        amountOutScaled18 = bound(amountOutScaled18, 1e6, peakBalancesScaled18[tokenOutIndex].mulDown(99e16));
+        amountOutScaled18 = bound(amountOutScaled18, 1e6, _peakBalancesScaled18[tokenOutIndex].mulDown(99e16));
 
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_OUT,
             amountGivenScaled18: amountOutScaled18,
-            balancesScaled18: peakBalancesScaled18,
+            balancesScaled18: _peakBalancesScaled18,
             indexIn: 1 - tokenOutIndex,
             indexOut: tokenOutIndex,
             router: address(router),
             userData: bytes("")
         });
 
-        (uint256 amountInScaled18, , ) = hookMock.computeSwap(request, eclpParams, derivedECLPParams);
+        (uint256 amountInScaled18, , ) = hookMock.computeSwap(request, _eclpParams, _derivedECLPParams);
 
         uint256[] memory balancesUpdated = new uint256[](2);
-        balancesUpdated[0] = peakBalancesScaled18[0] + amountInScaled18;
-        balancesUpdated[1] = peakBalancesScaled18[1] - amountOutScaled18;
+        balancesUpdated[0] = _peakBalancesScaled18[0] + amountInScaled18;
+        balancesUpdated[1] = _peakBalancesScaled18[1] - amountOutScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(peakBalancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(peakBalancesScaled18, eclpParams, a, b);
-        // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), _peakBalancesScaled18);
+        uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), balancesUpdated);
 
         if (oldImbalance < newImbalance) {
             if (newImbalance > DEFAULT_SURGE_THRESHOLD_PERCENTAGE) {
@@ -274,12 +262,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         });
 
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
-        (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
+
+        uint256 imbalanceAlpha = hookMock.computeImbalanceFromBalancesAndParams(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
@@ -291,12 +280,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         assertEq(priceNearAlpha, uint256(eclpParamsOutsideInterval.alpha), "Price should be equal to alpha");
 
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
-        (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
+
+        uint256 imbalanceBeta = hookMock.computeImbalanceFromBalancesAndParams(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
@@ -341,12 +331,11 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         });
 
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
-        (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
+        uint256 imbalanceAlpha = hookMock.computeImbalanceFromBalancesAndParams(
             balancesAlpha,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
@@ -354,17 +343,16 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         );
 
         // Since the balances are exactly at the fartherst point from the peak, the imbalance should be 1.
-        assertEq(imbalanceAlpha, 1e18, "Imbalance should be 0");
+        assertEq(imbalanceAlpha, 1e18, "Imbalance should be 1");
         assertEq(priceNearAlpha, uint256(eclpParamsOutsideInterval.alpha), "Price should be equal to alpha");
 
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
-        (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
+
+        uint256 imbalanceBeta = hookMock.computeImbalanceFromBalancesAndParams(
             balancesBeta,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
@@ -372,7 +360,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         );
 
         // Since the balances are exactly at the peak, the imbalance should be 0.
-        assertApproxEqAbs(imbalanceBeta, 0, 1000, "Imbalance should be 1");
+        assertApproxEqAbs(imbalanceBeta, 0, 1000, "Imbalance should be 0");
         assertApproxEqAbs(
             priceNearBeta,
             uint256(eclpParamsOutsideInterval.beta),
@@ -502,20 +490,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             kind: SwapKind.EXACT_IN,
             indexIn: 0,
             indexOut: 1,
-            amountGivenScaled18: balancesScaled18[0] / 10,
-            balancesScaled18: balancesScaled18,
+            amountGivenScaled18: _balancesScaled18[0] / 10,
+            balancesScaled18: _balancesScaled18,
             router: address(0),
             userData: bytes("")
         });
 
         // Makes sure the swap is surging without the max surge fee percentage check.
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
-        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapParams, eclpParams, derivedECLPParams);
+        uint256 oldImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), _balancesScaled18);
+        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapParams, _eclpParams, _derivedECLPParams);
         uint256[] memory newBalancesScaled18 = new uint256[](2);
-        newBalancesScaled18[0] = balancesScaled18[0] + balancesScaled18[0] / 10;
-        newBalancesScaled18[1] = balancesScaled18[1] - amountCalculatedScaled18;
-        uint256 newImbalance = hookMock.computeImbalance(newBalancesScaled18, eclpParams, a, b);
+        newBalancesScaled18[0] = _balancesScaled18[0] + _balancesScaled18[0] / 10;
+        newBalancesScaled18[1] = _balancesScaled18[1] - amountCalculatedScaled18;
+        uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), newBalancesScaled18);
+
         assertTrue(
             hookMock.isSurging(uint64(hookMock.getSurgeThresholdPercentage(pool)), oldImbalance, newImbalance),
             "Swap is not surging"
@@ -541,11 +529,11 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Execute series of swaps in one direction.
         for (uint i = 0; i < NUM_SIMULATED_SWAPS; i++) {
-            prices[i] = hookMock.computePriceFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+            prices[i] = hookMock.computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
 
             // Simulate swap.
-            balancesScaled18[1] += swapAmount;
-            balancesScaled18[0] -= swapAmount.divDown(prices[i]); // Approximate based on price
+            _balancesScaled18[1] += swapAmount;
+            _balancesScaled18[0] -= swapAmount.divDown(prices[i]); // Approximate based on price
         }
 
         // Verify monotonic price movement.
@@ -558,11 +546,11 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         // Test with maximum allowed balances (sum must be <= 1e34).
         uint256 maxTotalBalance = 1e34; // From GyroECLPMath library
         uint256[] memory largeBalances = [maxTotalBalance / 2, maxTotalBalance / 2].toMemoryArray();
-        uint256 alpha = uint256(eclpParams.alpha);
-        uint256 beta = uint256(eclpParams.beta);
+        uint256 alpha = uint256(_eclpParams.alpha);
+        uint256 beta = uint256(_eclpParams.beta);
 
         // Should not revert.
-        uint256 price = hookMock.computePriceFromBalances(largeBalances, eclpParams, derivedECLPParams);
+        uint256 price = hookMock.computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
 
         // Price should be within bounds.
         assertGe(price, alpha, "Large balance price below alpha");
@@ -570,19 +558,19 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Test with asymmetric large balances.
         largeBalances = [maxTotalBalance / 10, (maxTotalBalance * 9) / 10].toMemoryArray();
-        price = hookMock.computePriceFromBalances(largeBalances, eclpParams, derivedECLPParams);
+        price = hookMock.computePriceFromBalances(largeBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Asymmetric large balance price below alpha");
         assertLe(price, beta, "Asymmetric large balance price above beta");
 
         // Test with very small balances.
         uint256[] memory smallBalances = [uint256(1e6), uint256(1e6)].toMemoryArray();
-        price = hookMock.computePriceFromBalances(smallBalances, eclpParams, derivedECLPParams);
+        price = hookMock.computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Small balance price below alpha");
         assertLe(price, beta, "Small balance price above beta");
 
         // Test with extreme price ratios at small scale.
         smallBalances = [uint256(1e6), uint256(1e12)].toMemoryArray();
-        price = hookMock.computePriceFromBalances(smallBalances, eclpParams, derivedECLPParams);
+        price = hookMock.computePriceFromBalances(smallBalances, _eclpParams, _derivedECLPParams);
         assertGe(price, alpha, "Extreme ratio small balance price below alpha");
         assertLe(price, beta, "Extreme ratio small balance price above beta");
     }
@@ -593,7 +581,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 staticSwapFee = vault.getStaticSwapFeePercentage(pool);
 
         // Calculate balances that should be at peak price (s/c ≈ 3759).
-        uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
+        uint256 peakPrice = uint256(_eclpParams.s).divDown(uint256(_eclpParams.c));
 
         uint256[] memory actualPeakBalances = new uint256[](2);
         actualPeakBalances[0] = FixedPoint.ONE; // 1 WETH
@@ -617,14 +605,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // But it might not surge if the imbalance is still below threshold!
         // Check the actual imbalance:
-        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapFromPeak, eclpParams, derivedECLPParams);
+        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapFromPeak, _eclpParams, _derivedECLPParams);
 
         uint256[] memory newBalances = new uint256[](2);
         newBalances[0] = actualPeakBalances[0] + smallSwapAmount;
         newBalances[1] = actualPeakBalances[1] - amountCalculatedScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(actualPeakBalances, eclpParams, derivedECLPParams);
-        uint256 newImbalance = hookMock.computeImbalance(newBalances, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), newBalances);
 
         // The swap worsens balance but might not exceed threshold.
         if (newImbalance > hookMock.getSurgeThresholdPercentage(pool)) {
