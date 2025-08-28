@@ -337,7 +337,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 imbalanceAlpha = _computeImbalanceFromBalancesAndParams(
             balancesAlpha,
             eclpParamsOutsideInterval,
-            derivedECLPParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
         );
         uint256 priceNearAlpha = _computePriceFromBalances(
             balancesAlpha,
@@ -651,7 +651,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) private pure returns (uint256) {
+    ) private view returns (uint256) {
         (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
         return hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
     }
