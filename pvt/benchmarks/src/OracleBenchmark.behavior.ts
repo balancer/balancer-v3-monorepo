@@ -8,7 +8,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { saveMinMaxAvgSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
@@ -128,9 +128,7 @@ export class LPOracleBenchmark {
         feedMocks.push(feedMock);
       }
 
-      const uptimeSequencer: AggregatorV3Interface = ZERO_ADDRESS as unknown as AggregatorV3Interface;
-
-      return this.deployOracle(poolAddress, feeds, uptimeSequencer, 0n);
+      return this.deployOracle(poolAddress, feeds);
     };
 
     function itMeasuresGas(numberOfTokens: number) {

@@ -52,14 +52,9 @@ class StableLPOracleBenchmark extends LPOracleBenchmark {
     };
   }
 
-  override async deployOracle(
-    poolAddress: string,
-    feeds: AggregatorV3Interface[],
-    uptimeSequencerFeed: AggregatorV3Interface,
-    uptimeGracePeriod: bigint
-  ): Promise<OracleInfo> {
+  override async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo> {
     const oracle = (await deploy('v3-standalone-utils/StableLPOracleMock', {
-      args: [await this.vault.getAddress(), poolAddress, feeds, ZERO_ADDRESS, uptimeGracePeriod, 1],
+      args: [await this.vault.getAddress(), poolAddress, feeds, ZERO_ADDRESS, 0, 1],
     })) as unknown as AggregatorV3Interface;
     return {
       oracle: oracle,
