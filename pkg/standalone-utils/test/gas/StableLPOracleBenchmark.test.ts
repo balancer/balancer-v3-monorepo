@@ -59,7 +59,7 @@ class StableLPOracleBenchmark extends LPOracleBenchmark {
     uptimeGracePeriod: bigint
   ): Promise<OracleInfo> {
     const oracle = (await deploy('v3-standalone-utils/StableLPOracleMock', {
-      args: [await this.vault.getAddress(), poolAddress, feeds, uptimeSequencerFeed, uptimeGracePeriod, 1],
+      args: [await this.vault.getAddress(), poolAddress, feeds, ZERO_ADDRESS, uptimeGracePeriod, 1],
     })) as unknown as AggregatorV3Interface;
     return {
       oracle: oracle,
