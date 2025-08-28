@@ -317,17 +317,15 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         }
 
         // Check the status of the uptime feed.
-        try _sequencerUptimeFeed.latestRoundData() returns (uint80, int256 answer, uint256 startedAt, uint256, uint80) {
-            if (answer == _SEQUENCER_STATUS_DOWN) {
-                revert SequencerDown();
-            }
+        (, int256 answer, uint256 startedAt, ,) = _sequencerUptimeFeed.latestRoundData();
 
-            // solhint-disable-next-line not-rely-on-time
-            if (block.timestamp - startedAt < _uptimeGracePeriod) {
-                revert GracePeriodNotOver();
-            }
-        } catch {
-            revert SequencerFeedUnavailable();
+        if (answer == _SEQUENCER_STATUS_DOWN) {
+            revert SequencerDown();
+        }
+
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp - startedAt < _uptimeGracePeriod) {
+            revert GracePeriodNotOver();
         }
     }
 

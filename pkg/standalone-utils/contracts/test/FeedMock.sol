@@ -9,7 +9,6 @@ contract FeedMock is AggregatorV3Interface {
     uint256 internal _lastAnswer;
     uint256 internal _lastUpdatedAt;
     uint256 internal _startedAt;
-    bool internal _revertLatestRoundData;
 
     constructor(uint256 decimals_) {
         _decimals = decimals_;
@@ -26,10 +25,6 @@ contract FeedMock is AggregatorV3Interface {
 
     function setStartedAt(uint256 startedAt) external {
         _startedAt = startedAt;
-    }
-
-    function setRevertLatestRoundData(bool shouldRevert) external {
-        _revertLatestRoundData = shouldRevert;
     }
 
     function decimals() external view returns (uint8) {
@@ -59,10 +54,6 @@ contract FeedMock is AggregatorV3Interface {
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        if (_revertLatestRoundData) {
-            revert();
-        }
-
         return (0, int256(_lastAnswer), _startedAt, _lastUpdatedAt, 0);
     }
 }

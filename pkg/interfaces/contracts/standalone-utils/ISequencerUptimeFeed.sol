@@ -15,9 +15,6 @@ interface ISequencerUptimeFeed {
     /// @notice The uptime sequencer has returned a status of "down".
     error SequencerDown();
 
-    /// @notice The sequencer feed itself is unavailable.
-    error SequencerFeedUnavailable();
-
     /**
      * @notice A price feed was accessed after a sequencer outage, and before the grace period expired.
      * @dev Since outages result in a queue of delayed transactions which must be processed, the grace period allows
