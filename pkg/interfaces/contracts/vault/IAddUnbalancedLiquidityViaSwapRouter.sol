@@ -23,7 +23,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         uint256 deadline;
         bool wethIsEth;
         SwapKind swapKind;
-        AddLiquidityAndSwapParams params;
+        AddLiquidityAndSwapParams operationParams;
     }
 
     /**

@@ -48,7 +48,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             swapKind: SwapKind.EXACT_IN,
-                            params: params
+                            operationParams: params
                         })
                     )
                 ),
@@ -74,7 +74,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             swapKind: SwapKind.EXACT_OUT,
-                            params: params
+                            operationParams: params
                         })
                     )
                 ),
@@ -102,7 +102,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                             deadline: _MAX_AMOUNT, // Queries do not have deadlines
                             wethIsEth: false, // wethIsEth is false for queries
                             swapKind: SwapKind.EXACT_IN,
-                            params: params
+                            operationParams: params
                         })
                     )
                 ),
@@ -126,7 +126,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                             deadline: _MAX_AMOUNT, // Queries do not have deadlines
                             wethIsEth: false, // wethIsEth is false for queries
                             swapKind: SwapKind.EXACT_OUT,
-                            params: params
+                            operationParams: params
                         })
                     )
                 ),
@@ -157,10 +157,10 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                 continue;
             }
 
+            console.log("takeTokenIn", address(tokens[i]), amountIn);
             _takeTokenIn(hookParams.sender, tokens[i], amountIn, hookParams.wethIsEth);
         }
 
-        //  _sendTokenOut(hookParams.sender, hookParams.params.swapTokenOut, swapAmountOut, hookParams.wethIsEth);
         _returnEth(hookParams.sender);
     }
 
@@ -177,8 +177,8 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
             AddLiquidityParams({
                 pool: hookParams.pool,
                 to: hookParams.sender,
-                maxAmountsIn: hookParams.params.maxAmountsIn,
-                minBptAmountOut: hookParams.params.exactBptAmountOut,
+                maxAmountsIn: hookParams.operationParams.maxAmountsIn,
+                minBptAmountOut: hookParams.operationParams.exactBptAmountOut,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: bytes("")
             })
@@ -191,9 +191,9 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         uint256 tokenInIndex;
         uint256 tokenOutIndex;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (address(tokens[i]) == address(hookParams.params.swapTokenIn)) {
+            if (address(tokens[i]) == address(hookParams.operationParams.swapTokenIn)) {
                 tokenInIndex = i;
-            } else if (address(tokens[i]) == address(hookParams.params.swapTokenOut)) {
+            } else if (address(tokens[i]) == address(hookParams.operationParams.swapTokenOut)) {
                 tokenOutIndex = i;
             }
         }
@@ -203,12 +203,15 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
             VaultSwapParams({
                 kind: hookParams.swapKind,
                 pool: hookParams.pool,
-                tokenIn: hookParams.params.swapTokenIn,
-                tokenOut: hookParams.params.swapTokenOut,
-                amountGivenRaw: hookParams.params.swapAmountGiven,
-                limitRaw: hookParams.params.swapLimit,
+                tokenIn: hookParams.operationParams.swapTokenIn,
+                tokenOut: hookParams.operationParams.swapTokenOut,
+                amountGivenRaw: hookParams.operationParams.swapAmountGiven,
+                limitRaw: hookParams.operationParams.swapLimit,
                 userData: bytes("")
             })
         );
+
+        amountsIn[tokenInIndex] += swapAmountIn;
+        amountsIn[tokenOutIndex] -= swapAmountOut;
     }
 }
