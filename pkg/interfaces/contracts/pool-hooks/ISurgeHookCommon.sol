@@ -2,17 +2,26 @@
 
 pragma solidity ^0.8.24;
 
-interface IStableSurgeHook {
-    /**
-     * @notice A new `StableSurgeHook` contract has been registered successfully.
-     * @dev If the registration fails the call will revert, so there will be no event.
-     * @param pool The pool on which the hook was registered
-     * @param factory The factory that registered the pool
+import { PoolSwapParams } from "../vault/VaultTypes.sol";
+
+interface ISurgeHookCommon {
+    /// @notice The max surge fee and threshold values must be valid percentages.
+    error InvalidPercentage();
+    /***
+     * @notice The rotation angle is too small or too large for the surge hook to be used.
+     * @dev The surge hook accept angles from 30 to 60 degrees. Outside of this range, the computation of the peak
+     * price cannot be approximated by sine/cosine.
      */
-    event StableSurgeHookRegistered(address indexed pool, address indexed factory);
+    error InvalidRotationAngleForSurgeHook();
+
+    // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
+    struct SurgeFeeData {
+        uint64 thresholdPercentage;
+        uint64 maxSurgeFeePercentage;
+    }
 
     /**
-     * @notice The threshold percentage has been changed for a pool in a `StableSurgeHook` contract.
+     * @notice The threshold percentage has been changed for a pool in a `ECLPSurgeHook` contract.
      * @dev Note, the initial threshold percentage is set on deployment, and an event is emitted.
      * @param pool The pool for which the threshold percentage has been changed
      * @param newSurgeThresholdPercentage The new threshold percentage
@@ -20,15 +29,12 @@ interface IStableSurgeHook {
     event ThresholdSurgePercentageChanged(address indexed pool, uint256 newSurgeThresholdPercentage);
 
     /**
-     * @notice The maximum surge fee percentage has been changed for a pool in a `StableSurgeHook` contract.
+     * @notice The maximum surge fee percentage has been changed for a pool in a `ECLPSurgeHook` contract.
      * @dev Note, the initial max surge fee percentage is set on deployment, and an event is emitted.
      * @param pool The pool for which the max surge fee percentage has been changed
      * @param newMaxSurgeFeePercentage The new max surge fee percentage
      */
     event MaxSurgeFeePercentageChanged(address indexed pool, uint256 newMaxSurgeFeePercentage);
-
-    /// @notice The max surge fee and threshold values must be valid percentages.
-    error InvalidPercentage();
 
     /**
      * @notice Getter for the default maximum surge surge fee percentage.
@@ -69,4 +75,34 @@ interface IStableSurgeHook {
      * threshold can only be changed by governance. It is initially set to the default threshold for this hook contract.
      */
     function setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) external;
+
+    /**
+     * @notice Compute the surge fee percentage for a swap.
+     * @dev If below threshold, return the standard static swap fee percentage. It is public to allow it to be called
+     * off-chain.
+     *
+     * @param params Input parameters for the swap (balances needed)
+     * @param pool The pool we are computing the fee for
+     * @param staticSwapFeePercentage The static fee percentage for the pool (default if there is no surge)
+     * @return surgeFeePercentage The surge fee percentage to be charged in the swap
+     */
+    function computeSwapSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) external view returns (uint256 surgeFeePercentage);
+
+    /**
+     * @notice Compute whether a swap will surge.
+     * @dev If max surge fee is less than static fee, return false.
+     * @param params Input parameters for the swap (balances needed)
+     * @param pool The pool we are computing the surge flag for
+     * @param staticSwapFeePercentage The static fee percentage for the pool (default if there is no surge)
+     * @return isSurging True if the swap will surge, false otherwise
+     */
+    function isSurgingSwap(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) external view returns (bool isSurging);
 }

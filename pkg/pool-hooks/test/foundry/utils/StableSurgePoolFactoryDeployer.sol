@@ -8,7 +8,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
-import { StableSurgeHook } from "../../../contracts/StableSurgeHook.sol";
 import { StableSurgePoolFactory } from "../../../contracts/StableSurgePoolFactory.sol";
 
 /**
@@ -26,7 +25,7 @@ contract StableSurgePoolFactoryDeployer is BaseContractsDeployer {
     }
 
     function deployStableSurgePoolFactory(
-        StableSurgeHook stableSurgeHook,
+        address stableSurgeHook,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion

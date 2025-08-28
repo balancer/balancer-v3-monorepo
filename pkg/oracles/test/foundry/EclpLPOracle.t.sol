@@ -11,8 +11,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
@@ -604,8 +604,12 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256 limitTokenBBalance = uint256(0);
 
         for (uint256 i = 0; i < 255; i++) {
-            (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
-            uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
+            (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(
+                marketPriceBalances,
+                eclpParams,
+                derivedEclpParams
+            );
+            uint256 price = GyroECLPMath.computePrice(marketPriceBalances, eclpParams, a, b);
 
             if (uint256((int256(price) - int256(oraclePrice)).abs()).divDown(oraclePrice) < 1e6) {
                 return marketPriceBalances;
@@ -651,81 +655,5 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         }
 
         revert("Could not find market balances");
-    }
-
-    function _computePrice(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) internal pure returns (uint256 price) {
-        // To compute the price, first we need to transform the real balances into balances of a circle centered at
-        // (0,0).
-        //
-        // The transformation is:
-        //
-        //     --   --    --                     --   --     --
-        //     | x'' |    |  c/lambda  -s/lambda  | * | x - a |
-        //     | y'' | =  |     s          c      |   | y - b |
-        //     --   --    --                     --   --     --
-        //
-        // With x'' and y'', we can compute the price as:
-        //
-        //                          --              --   --   --
-        //             [xll, yll] o |  c/lambda   s  | * |  1  |
-        //                          | -s/lambda   c  |   |  0  |
-        //                          --              --   --   --
-        //    price =  -------------------------------------------
-        //                          --              --   --   --
-        //             [xll, yll] o |  c/lambda   s  | * |  0  |
-        //                          | -s/lambda   c  |   |  1  |
-        //                          --              --   --   --
-
-        // Balances in the rotated ellipse centered at (0,0)
-        int256 xl = int256(balancesScaled18[0]) - a;
-        int256 yl = int256(balancesScaled18[1]) - b;
-
-        // Balances in the circle centered at (0,0)
-        int256 xll = xl.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) -
-            yl.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
-        int256 yll = xl.mulDownMag(eclpParams.s) + yl.mulDownMag(eclpParams.c);
-
-        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
-        int256 numerator = xll.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s);
-        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
-        int256 denominator = yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
-
-        price = numerator.divDownMag(denominator).toUint256();
-
-        // The price cannot be outside of pool range.
-        if (price < eclpParams.alpha.toUint256()) {
-            price = eclpParams.alpha.toUint256();
-        } else if (price > eclpParams.beta.toUint256()) {
-            price = eclpParams.beta.toUint256();
-        }
-
-        return price;
-    }
-
-    function _computeOffsetFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal pure returns (int256 a, int256 b) {
-        IGyroECLPPool.Vector2 memory invariant;
-
-        {
-            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
-        }
-
-        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
-        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
     }
 }

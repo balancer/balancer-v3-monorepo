@@ -20,6 +20,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { ECLPSurgeHookMock } from "../../contracts/test/ECLPSurgeHookMock.sol";
 import { ECLPSurgeHookDeployer } from "./utils/ECLPSurgeHookDeployer.sol";
@@ -161,26 +162,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         ECLPSurgeHook.SurgeFeeData memory surgeFeeData = eclpSurgeHookMock.getSurgeFeeData(pool);
 
         // Add USDC --> more unbalanced.
-        uint256 oldTotalImbalance;
-        uint256 newTotalImbalance;
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                initialBalancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-        }
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                expectedBalancesAfterAddScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterAddScaled18, eclpParams, a, b);
-        }
+        uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            initialBalancesScaled18
+        );
+        uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            expectedBalancesAfterAddScaled18
+        );
 
         assertTrue(
             eclpSurgeHookMock.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
@@ -211,26 +200,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
 
         ECLPSurgeHook.SurgeFeeData memory surgeFeeData = eclpSurgeHookMock.getSurgeFeeData(pool);
 
-        uint256 oldTotalImbalance;
-        uint256 newTotalImbalance;
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                initialBalancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-        }
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                expectedBalancesAfterAddScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterAddScaled18, eclpParams, a, b);
-        }
+        uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            initialBalancesScaled18
+        );
+        uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            expectedBalancesAfterAddScaled18
+        );
 
         assertFalse(
             eclpSurgeHookMock.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
@@ -261,19 +238,11 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-            initialBalancesScaled18,
-            eclpParams,
-            derivedECLPParams
+        oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesScaled18);
+        newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            expectedBalancesAfterRemoveScaled18
         );
-        oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-
-        (a, b) = eclpSurgeHookMock.computeOffsetFromBalances(
-            expectedBalancesAfterRemoveScaled18,
-            eclpParams,
-            derivedECLPParams
-        );
-        newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterRemoveScaled18, eclpParams, a, b);
 
         // Pool needs to be surging after remove, so the unbalanced liquidity operation reverts.
         assertTrue(
@@ -316,31 +285,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         ECLPSurgeHook.SurgeFeeData memory surgeFeeData = eclpSurgeHookMock.getSurgeFeeData(pool);
 
         // Should not surge, close to balance.
-        uint256 oldTotalImbalance;
-        uint256 newTotalImbalance;
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                initialBalancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-        }
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                a,
-                b
-            );
-        }
+        uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            initialBalancesScaled18
+        );
+        uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            GyroECLPPool(pool),
+            expectedBalancesAfterRemoveScaled18
+        );
 
         assertFalse(
             eclpSurgeHookMock.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
