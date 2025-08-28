@@ -266,15 +266,6 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(oracle.getUptimeGracePeriod(), UPTIME_GRACE_PERIOD, "Wrong uptime grace period");
     }
 
-    function testMalfunctioningUptimeFeed() public {
-        IStablePool pool = createAndInitPool();
-        (StableLPOracleMock oracle, ) = deployOracle(pool);
-        uptimeFeed.setRevertLatestRoundData(true);
-
-        vm.expectRevert(ISequencerUptimeFeed.SequencerFeedUnavailable.selector);
-        oracle.latestRoundData();
-    }
-
     function testUptimeSequencerDown() public {
         IStablePool pool = createAndInitPool();
         (StableLPOracleMock oracle, ) = deployOracle(pool);

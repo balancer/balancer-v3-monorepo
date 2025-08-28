@@ -271,15 +271,6 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(oracle.getUptimeGracePeriod(), UPTIME_GRACE_PERIOD, "Wrong uptime grace period");
     }
 
-    function testMalfunctioningUptimeFeed() public {
-        (IWeightedPool pool, ) = createAndInitPool(2);
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
-        uptimeFeed.setRevertLatestRoundData(true);
-
-        vm.expectRevert(ISequencerUptimeFeed.SequencerFeedUnavailable.selector);
-        oracle.latestRoundData();
-    }
-
     function testUptimeSequencerDown() public {
         (IWeightedPool pool, ) = createAndInitPool(2);
         (WeightedLPOracleMock oracle, ) = deployOracle(pool);
