@@ -157,7 +157,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                 continue;
             }
 
-            console.log("takeTokenIn", address(tokens[i]), amountIn);
             _takeTokenIn(hookParams.sender, tokens[i], amountIn, hookParams.wethIsEth);
         }
 
