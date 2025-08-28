@@ -17,7 +17,7 @@ import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidit
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { AggregatorV3Interface, IERC20Metadata } from '@balancer-labs/v3-interfaces/typechain-types';
-import { FeedMock } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/test';
+import { FeedMock } from '@balancer-labs/v3-oracles/typechain-types/contracts/test';
 
 export type PoolInfo = {
   pool: BaseContract;
@@ -127,7 +127,7 @@ export class LPOracleBenchmark {
       for (let i = 0; i < poolInfo.poolTokens.length; i++) {
         const token = poolInfo.poolTokens[i];
         const tokenMetadata = (await deployedAt('v3-interfaces/IERC20Metadata', token)) as unknown as IERC20Metadata;
-        const feedMock = (await deploy('v3-standalone-utils/FeedMock', {
+        const feedMock = (await deploy('v3-oracles/FeedMock', {
           args: [tokenMetadata.decimals()],
         })) as unknown as FeedMock;
         const feed = (await deployedAt(

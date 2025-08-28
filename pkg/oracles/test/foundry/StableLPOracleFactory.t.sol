@@ -3,38 +3,36 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IWeightedLPOracle.sol";
-import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
+import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
+import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import {
-    WeightedPoolContractsDeployer
-} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
+    StablePoolContractsDeployer
+} from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 
-import { WeightedLPOracleFactory } from "../../contracts/WeightedLPOracleFactory.sol";
-import { FeedMock } from "../../contracts/test/FeedMock.sol";
+import { StableLPOracleFactory } from "../../contracts/StableLPOracleFactory.sol";
 import { LPOracleFactoryBaseTest } from "./LPOracleFactoryBase.t.sol";
 
-contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleFactoryBaseTest {
+contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFactoryBaseTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
-    WeightedPoolFactory _weightedPoolFactory;
+    uint256 constant AMPLIFICATION_PARAMETER = 100;
+
+    StablePoolFactory _stablePoolFactory;
 
     function setUp() public virtual override {
         super.setUp();
 
-        _weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        _stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
     function testCreateEmitsEvent() external {
@@ -47,11 +45,7 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         vm.revertToState(snapshot);
 
         vm.expectEmit();
-        emit WeightedLPOracleFactory.WeightedLPOracleCreated(
-            IWeightedPool(address(pool)),
-            feeds,
-            IWeightedLPOracle(address(oracle))
-        );
+        emit StableLPOracleFactory.StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
         _factory.create(pool, feeds);
     }
 
@@ -59,26 +53,24 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         return
             _createAndInitPool(
                 [poolInitAmount, poolInitAmount].toMemoryArray(),
-                [50e16, uint256(50e16)].toMemoryArray(),
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
             );
     }
 
     function _createAndInitPool(
         uint256[] memory initAmounts,
-        uint256[] memory weights,
         TokenConfig[] memory tokenConfigs
     ) internal returns (IBasePool) {
-        string memory name = "Weighted Pool Test";
-        string memory symbol = "WEIGHTED-TEST";
+        string memory name = "Stable Pool Test";
+        string memory symbol = "STABLE-TEST";
 
         PoolRoleAccounts memory roleAccounts;
 
-        address newPool = _weightedPoolFactory.create(
+        address newPool = _stablePoolFactory.create(
             name,
             symbol,
             tokenConfigs,
-            weights,
+            AMPLIFICATION_PARAMETER,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
             address(0),
@@ -97,7 +89,6 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
     }
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
-        return
-            ILPOracleFactoryBase(address(new WeightedLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
+        return ILPOracleFactoryBase(address(new StableLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
     }
 }
