@@ -39,7 +39,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     function setUp() public override {
         // The pool has a price interval of [0.98, 1.052]. The peak price is around 1.003.
         // It was copied from pool 0x2044afef1268100918f88de66a3532eab3d8f3ef, Mainnet.
-        eclpParams = IGyroECLPPool.EclpParams({
+        _eclpParams = IGyroECLPPool.EclpParams({
             alpha: 980392156862745098,
             beta: 1052631578947368421,
             c: 706043730947421854,
@@ -66,10 +66,10 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Data from pool 0x2044afef1268100918f88de66a3532eab3d8f3ef, Mainnet.
         // Token A is EURA, and Token B is PAR.
-        balancesScaled18 = [uint256(59430e18), uint256(21120e18)].toMemoryArray();
+        _balancesScaled18 = [uint256(59430e18), uint256(21120e18)].toMemoryArray();
 
         // Peak price is 1.003e18
-        peakBalancesScaled18 = [uint256(48878.9e18), uint256(31667.9e18)].toMemoryArray();
+        _peakBalancesScaled18 = [uint256(48878.9e18), uint256(31667.9e18)].toMemoryArray();
     }
 
     function createPoolFactory() internal override returns (address) {
@@ -129,7 +129,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         // Price computed offchain.
         uint256 expectedPrice = 0.996345430278835844e18;
 
-        uint256 actualPrice = hookMock.computePriceFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        uint256 actualPrice = hookMock.computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
         assertEq(actualPrice, expectedPrice, "Prices do not match");
     }
 
@@ -594,12 +594,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 staticSwapFee = vault.getStaticSwapFeePercentage(pool);
 
         // Test with balanced pool (at actual peak).
-        uint256 smallSwapAmount = peakBalancesScaled18[0].mulDown(swapAmountPercentage);
+        uint256 smallSwapAmount = _peakBalancesScaled18[0].mulDown(swapAmountPercentage);
 
         PoolSwapParams memory swapFromPeak = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: smallSwapAmount,
-            balancesScaled18: peakBalancesScaled18,
+            balancesScaled18: _peakBalancesScaled18,
             indexIn: 0, // Add EURA
             indexOut: 1, // Remove PAR
             router: address(router),
@@ -614,8 +614,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapFromPeak, _eclpParams, _derivedECLPParams);
 
         uint256[] memory newBalances = new uint256[](2);
-        newBalances[0] = peakBalancesScaled18[0] + smallSwapAmount;
-        newBalances[1] = peakBalancesScaled18[1] - amountCalculatedScaled18;
+        newBalances[0] = _peakBalancesScaled18[0] + smallSwapAmount;
+        newBalances[1] = _peakBalancesScaled18[1] - amountCalculatedScaled18;
 
         uint256 newImbalance = hookMock.computeImbalanceFromBalances(GyroECLPPool(pool), newBalances);
 
@@ -628,14 +628,14 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     }
 
     function testSmallSine() public {
-        eclpParams = IGyroECLPPool.EclpParams({
+        _eclpParams = IGyroECLPPool.EclpParams({
             alpha: 0.98e18,
             beta: 1.052e18,
             s: 499999999999999999,
             c: 866025403784439000,
             lambda: 5e18
         });
-        derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
+        _derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
             tauAlpha: IGyroECLPPool.Vector2({
                 x: 78960952556362824682142154432201097216,
                 y: 61360964557215219997269893819219836928
@@ -661,8 +661,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             "Gyro E-CLP Pool",
             "ECLP-POOL",
             tokenConfig,
-            eclpParams,
-            derivedECLPParams,
+            _eclpParams,
+            _derivedECLPParams,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
             poolHooksContract,
@@ -673,14 +673,14 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     }
 
     function testSmallCosine() public {
-        eclpParams = IGyroECLPPool.EclpParams({
+        _eclpParams = IGyroECLPPool.EclpParams({
             alpha: 0.98e18,
             beta: 1.052e18,
             s: 866025403784439000,
             c: 499999999999999999,
             lambda: 5e18
         });
-        derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
+        _derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
             tauAlpha: IGyroECLPPool.Vector2({
                 x: -81234142751744859759636680989990715392,
                 y: 58318213719121622877520104685557514240
@@ -706,8 +706,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             "Gyro E-CLP Pool",
             "ECLP-POOL",
             tokenConfig,
-            eclpParams,
-            derivedECLPParams,
+            _eclpParams,
+            _derivedECLPParams,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
             poolHooksContract,

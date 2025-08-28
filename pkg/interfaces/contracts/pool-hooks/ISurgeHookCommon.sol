@@ -7,12 +7,6 @@ import { PoolSwapParams } from "../vault/VaultTypes.sol";
 interface ISurgeHookCommon {
     /// @notice The max surge fee and threshold values must be valid percentages.
     error InvalidPercentage();
-    /***
-     * @notice The rotation angle is too small or too large for the surge hook to be used.
-     * @dev The surge hook accept angles from 30 to 60 degrees. Outside of this range, the computation of the peak
-     * price cannot be approximated by sine/cosine.
-     */
-    error InvalidRotationAngleForSurgeHook();
 
     // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
     struct SurgeFeeData {
