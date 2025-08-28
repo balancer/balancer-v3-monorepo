@@ -16,6 +16,7 @@ remappings = [
     'solidity-utils/=../solidity-utils/',
     'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
     'forge-std/=../../node_modules/forge-std/src/',
+    '@chainlink/=../../node_modules/@chainlink/',
     '@openzeppelin/=../../node_modules/@openzeppelin/',
     'permit2/=../../node_modules/permit2/',
     '@balancer-labs/=../../node_modules/@balancer-labs/',

@@ -693,17 +693,15 @@ library GyroECLPMath {
     ) internal pure returns (int256 a, int256 b) {
         IGyroECLPPool.Vector2 memory invariant;
 
-        {
-            (int256 currentInvariant, int256 invErr) = calculateInvariantWithError(
-                balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
-            // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
-        }
+        (int256 currentInvariant, int256 invErr) = calculateInvariantWithError(
+            balancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        // invariant = overestimate in x-component, underestimate in y-component
+        // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
+        // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
+        invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
 
         a = virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = virtualOffset1(eclpParams, derivedECLPParams, invariant);
