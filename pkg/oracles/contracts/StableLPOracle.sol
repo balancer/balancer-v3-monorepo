@@ -40,13 +40,8 @@ contract StableLPOracle is LPOracleBase {
 
     /// @inheritdoc LPOracleBase
     function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
-        // `computeInvariant` and `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot
-        // defer this check until the final tvl calculation loop.
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            if (prices[i] <= 0) {
-                revert InvalidOraclePrice();
-            }
-        }
+        // Check if prices are in an acceptable range.
+        _validatePrices(prices);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
@@ -235,5 +230,31 @@ contract StableLPOracle is LPOracleBase {
 
     function _mulDownInt(int256 a, int256 b) internal pure returns (int256) {
         return (a * b) / _POSITIVE_ONE_INT;
+    }
+
+    function _validatePrices(int256[] memory prices) internal view {
+        // `computeInvariant` and `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot
+        // defer this check until the final tvl calculation loop.
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            if (prices[i] <= 0) {
+                revert InvalidOraclePrice();
+            }
+        }
+
+        int256 minPrice = prices[0];
+        int256 maxPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
+            if (prices[i] > maxPrice) {
+                maxPrice = prices[i];
+            }
+        }
+
+        // If this ratio is greater than 1e8,
+        if (maxPrice / minPrice > 1e8) {
+            revert PriceDeltaIsTooHigh();
+        }
     }
 }
