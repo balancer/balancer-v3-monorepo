@@ -619,6 +619,17 @@ library GyroECLPMath {
         px = pgx.divDownMag(scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(0, _ONE)))).toUint256();
     }
 
+    /**
+     * @notice Computes the spot price of token 0 in units of token 1.
+     * @dev This version of price computation does not require the invariant, only the virtual offsets. So, for
+     * certain cases, it is more gas efficient.
+     *
+     * @param balancesScaled18 Pool balances, scaled with 18 decimals
+     * @param eclpParams ECLP params alpha, beta, c, s and lambda
+     * @param a Virtual offset of token at position 0
+     * @param b Virtual offset of token at position 1
+     * @return price Spot price of token 0 in units of token 1
+     */
     function computePrice(
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
@@ -667,6 +678,14 @@ library GyroECLPMath {
         return price;
     }
 
+    /**
+     * @notice Computes the virtual offsets of token at position 0 and 1 given the pool balances.
+     * @param balancesScaled18 Pool balances, scaled with 18 decimals
+     * @param eclpParams ECLP params alpha, beta, c, s and lambda
+     * @param derivedECLPParams Derived ECLP params u, v, w, z, dSq
+     * @return a Virtual offset of token at position 0
+     * @return b Virtual offset of token at position 1
+     */
     function computeOffsetFromBalances(
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
