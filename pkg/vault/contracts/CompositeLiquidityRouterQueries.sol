@@ -11,6 +11,7 @@ import {
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/CompositeLiquidityRouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.sol";
@@ -230,5 +231,57 @@ abstract contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQu
                 wethIsEth: false, // Always false for queries
                 userData: userData
             });
+    }
+
+    /***************************************************************************
+                                Combined operations
+    ***************************************************************************/
+
+    function queryAddUnbalancedLiquidityViaSwapExactIn(
+        address pool,
+        address sender,
+        AddLiquidityAndSwapParams calldata params
+    ) external saveSender(sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        CompositeLiquidityRouterHooks.queryAddUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: address(this), // Queries use the router as the sender
+                            deadline: _MAX_AMOUNT, // Queries do not have deadlines
+                            wethIsEth: false, // wethIsEth is false for queries
+                            swapKind: SwapKind.EXACT_IN,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    function queryAddUnbalancedLiquidityViaSwapExactOut(
+        address pool,
+        address sender,
+        AddLiquidityAndSwapParams calldata params
+    ) external saveSender(sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        CompositeLiquidityRouterHooks.queryAddUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: address(this), // Queries use the router as the sender
+                            deadline: _MAX_AMOUNT, // Queries do not have deadlines
+                            wethIsEth: false, // wethIsEth is false for queries
+                            swapKind: SwapKind.EXACT_OUT,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
     }
 }

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { ICompositeLiquidityRouterErrors } from "./ICompositeLiquidityRouterErrors.sol";
+import "./CompositeLiquidityRouterTypes.sol";
 
 /// @notice User-friendly interface for querying expected results of composite liquidity operations.
 interface ICompositeLiquidityRouterQueries is ICompositeLiquidityRouterErrors {
@@ -105,4 +106,34 @@ interface ICompositeLiquidityRouterQueries is ICompositeLiquidityRouterErrors {
         address sender,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
+
+    /***************************************************************************
+                                Combined operations
+    ***************************************************************************/
+
+    /**
+     * @notice Queries an `addUnbalancedLiquidityViaSwapExactIn` operation without actually executing it.
+     * @param pool Address of the liquidity pool
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
+     * @param params Parameters for the add liquidity and swap operation
+     * @return amountsIn Array of amounts in for each token added to the pool, sorted in token registration order.
+     */
+    function queryAddUnbalancedLiquidityViaSwapExactIn(
+        address pool,
+        address sender,
+        AddLiquidityAndSwapParams calldata params
+    ) external returns (uint256[] memory amountsIn);
+
+    /**
+     * @notice Queries an `addUnbalancedLiquidityViaSwapExactOut` operation without actually executing it.
+     * @param pool Address of the liquidity pool
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
+     * @param params Parameters for the add liquidity and swap operation
+     * @return amountsIn Array of amounts in for each token added to the pool, sorted in token registration order.
+     */
+    function queryAddUnbalancedLiquidityViaSwapExactOut(
+        address pool,
+        address sender,
+        AddLiquidityAndSwapParams calldata params
+    ) external returns (uint256[] memory amountsIn);
 }

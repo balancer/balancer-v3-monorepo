@@ -7,6 +7,7 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/CompositeLiquidityRouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.sol";
@@ -196,5 +197,61 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
             ),
             (uint256[])
         );
+    }
+
+    /***************************************************************************
+                                Combined operations
+    ***************************************************************************/
+
+    /// @inheritdoc ICompositeLiquidityRouter
+    function addUnbalancedLiquidityViaSwapExactIn(
+        address pool,
+        uint256 deadline,
+        bool wethIsEth,
+        AddLiquidityAndSwapParams calldata params
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        CompositeLiquidityRouterHooks.addUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: msg.sender,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            swapKind: SwapKind.EXACT_IN,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    /// @inheritdoc ICompositeLiquidityRouter
+    function addUnbalancedLiquidityViaSwapExactOut(
+        address pool,
+        uint256 deadline,
+        bool wethIsEth,
+        AddLiquidityAndSwapParams calldata params
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        CompositeLiquidityRouterHooks.addUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: msg.sender,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            swapKind: SwapKind.EXACT_OUT,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
     }
 }

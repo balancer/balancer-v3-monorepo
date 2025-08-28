@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { ICompositeLiquidityRouterQueries } from "./ICompositeLiquidityRouterQueries.sol";
+import "./CompositeLiquidityRouterTypes.sol";
 
 /**
  * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
@@ -144,4 +145,38 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
+
+    /***************************************************************************
+                                Combined operations
+    ***************************************************************************/
+
+    /**
+     * @notice Adds liquidity to a pool with proportional token amounts and an ExactIn swap in the same transaction.
+     * @param pool Address of the liquidity pool
+     * @param deadline Timestamp after which the transaction will revert
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param params Parameters for the add liquidity and swap operation
+     * @return amountsIn Array of amounts in for each token added to the pool, sorted in token registration order.
+     */
+    function addUnbalancedLiquidityViaSwapExactIn(
+        address pool,
+        uint256 deadline,
+        bool wethIsEth,
+        AddLiquidityAndSwapParams calldata params
+    ) external payable returns (uint256[] memory amountsIn);
+
+    /**
+     * @notice Adds liquidity to a pool with proportional token amounts and an ExactOut swap in the same transaction.
+     * @param pool Address of the liquidity pool
+     * @param deadline Timestamp after which the transaction will revert
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param params Parameters for the add liquidity and swap operation
+     * @return amountsIn Array of amounts in for each token added to the pool, sorted in token registration order.
+     */
+    function addUnbalancedLiquidityViaSwapExactOut(
+        address pool,
+        uint256 deadline,
+        bool wethIsEth,
+        AddLiquidityAndSwapParams calldata params
+    ) external payable returns (uint256[] memory amountsIn);
 }

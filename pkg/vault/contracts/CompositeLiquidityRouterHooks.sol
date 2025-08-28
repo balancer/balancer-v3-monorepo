@@ -11,6 +11,7 @@ import {
     ICompositeLiquidityRouterErrors
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/CompositeLiquidityRouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -45,7 +46,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    // ERC4626 Pool Hooks
+    /*******************************************************************************
+                                ERC4626 Pools
+    *******************************************************************************/
 
     function addLiquidityERC4626PoolUnbalancedHook(
         AddLiquidityHookParams calldata params,
@@ -405,7 +408,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         _updateSwapTokensOut(_vault.getERC4626BufferAsset(wrappedToken), underlyingAmount);
     }
 
-    // Nested Pool Hooks
+    /***************************************************************************
+                                   Nested pools
+    ***************************************************************************/
 
     function addLiquidityUnbalancedNestedPoolHook(
         AddLiquidityHookParams calldata params,
@@ -765,5 +770,85 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         return false;
+    }
+
+    /***************************************************************************
+                                Combined operations
+    ***************************************************************************/
+
+    function addUnbalancedLiquidityViaSwapHook(
+        AddLiquidityAndSwapHookParams calldata hookParams
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > hookParams.deadline) {
+            revert SwapDeadline();
+        }
+
+        IERC20[] memory tokens;
+        uint256 swapAmountOut;
+        (tokens, amountsIn, swapAmountOut) = _computeAddUnbalancedLiquidityViaSwap(hookParams);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+            if (amountIn == 0) {
+                continue;
+            }
+
+            _takeTokenIn(hookParams.sender, tokens[i], amountIn, hookParams.wethIsEth);
+        }
+
+        _returnEth(hookParams.sender);
+    }
+
+    function queryAddUnbalancedLiquidityViaSwapHook(
+        AddLiquidityAndSwapHookParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+        (, amountsIn, ) = _computeAddUnbalancedLiquidityViaSwap(params);
+    }
+
+    function _computeAddUnbalancedLiquidityViaSwap(
+        AddLiquidityAndSwapHookParams calldata hookParams
+    ) private returns (IERC20[] memory tokens, uint256[] memory amountsIn, uint256 swapAmountOut) {
+        (amountsIn, , ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: hookParams.pool,
+                to: hookParams.sender,
+                maxAmountsIn: hookParams.operationParams.maxAmountsIn,
+                minBptAmountOut: hookParams.operationParams.exactBptAmountOut,
+                kind: AddLiquidityKind.PROPORTIONAL,
+                userData: bytes("")
+            })
+        );
+
+        // maxAmountsIn length is checked against tokens length at the Vault.
+        tokens = _vault.getPoolTokens(hookParams.pool);
+
+        // Find token index
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(hookParams.operationParams.swapTokenIn)) {
+                tokenInIndex = i;
+            } else if (address(tokens[i]) == address(hookParams.operationParams.swapTokenOut)) {
+                tokenOutIndex = i;
+            }
+        }
+
+        uint256 swapAmountIn;
+        (, swapAmountIn, swapAmountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: hookParams.swapKind,
+                pool: hookParams.pool,
+                tokenIn: hookParams.operationParams.swapTokenIn,
+                tokenOut: hookParams.operationParams.swapTokenOut,
+                amountGivenRaw: hookParams.operationParams.swapAmountGiven,
+                limitRaw: hookParams.operationParams.swapLimit,
+                userData: bytes("")
+            })
+        );
+
+        amountsIn[tokenInIndex] += swapAmountIn;
+        amountsIn[tokenOutIndex] -= swapAmountOut;
     }
 }
