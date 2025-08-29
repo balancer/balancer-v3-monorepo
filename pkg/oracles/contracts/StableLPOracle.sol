@@ -42,7 +42,7 @@ contract StableLPOracle is LPOracleBase {
     int256 private constant _POSITIVE_ONE_INT = 1e18;
     uint256 private constant _K_MAX_ERROR = 1e4;
     int256 private constant _PRICE_RATIO_LIMIT = 1e7;
-    int256 private constant _MIN_PRICE_LIMIT = 1e15;
+    int256 private constant _MIN_PRICE_LIMIT = 1e10;
 
     constructor(
         IVault vault_,
@@ -108,20 +108,23 @@ contract StableLPOracle is LPOracleBase {
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
 
+        // Normalize prices to avoid distortions in the balances computation.
+        int256[] memory normalizedPrices = _normalizePrices(prices);
+
         // First, we need to compute the constant k that will be used as a multiplier on all the prices.
         // This factor adjusts the input prices to find the correct balance amounts that respect both the pool
         // invariant and the desired token price ratios.
-        int256 k = _computeK(a, b, prices);
+        int256 k = _computeK(a, b, normalizedPrices);
 
         int256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += _divDownInt(a, _mulDownInt(k, prices[i]) - a);
+            sumPriceDivision += _divDownInt(a, _mulDownInt(k, normalizedPrices[i]) - a);
         }
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
             balancesForPrices[i] = ((b * int256(invariant)) /
-                _mulDownInt(a - _mulDownInt(k, prices[i]), _POSITIVE_ONE_INT - sumPriceDivision)).toUint256();
+                _mulDownInt(a - _mulDownInt(k, normalizedPrices[i]), _POSITIVE_ONE_INT - sumPriceDivision)).toUint256();
         }
     }
 
@@ -277,5 +280,21 @@ contract StableLPOracle is LPOracleBase {
         if (maxPrice / minPrice > _PRICE_RATIO_LIMIT) {
             revert PriceRatioIsTooHigh();
         }
+    }
+
+    function _normalizePrices(int256[] memory prices) internal view returns (int256[] memory normalizedPrices) {
+        int256 minPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
+        }
+
+        normalizedPrices = new int256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            normalizedPrices[i] = _divDownInt(prices[i], minPrice);
+        }
+
+        return normalizedPrices;
     }
 }

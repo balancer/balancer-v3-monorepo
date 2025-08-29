@@ -37,7 +37,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     uint256 constant MAX_TOKENS = 5;
     uint256 constant MIN_TOKENS = 2;
     uint256 constant MAX_PRICE = 1e30;
-    uint256 constant MIN_PRICE = 1e15;
+    uint256 constant MIN_PRICE = 1e10;
     uint256 constant PRICE_RATIO_LIMIT = 1e7;
 
     event Log(address indexed value);
