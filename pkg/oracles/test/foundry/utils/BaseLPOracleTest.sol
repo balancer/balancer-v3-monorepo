@@ -7,7 +7,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
-import { ILPOracleBaseMock } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBaseMock.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -17,6 +16,12 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { LPOracleBase } from "../../../contracts/LPOracleBase.sol";
 import { FeedMock } from "../../../contracts/test/FeedMock.sol";
 
+// This is a function shared between multiple mocks; adding the interface allows more tests to be factored out.
+interface ILPOracleBaseMock {
+    function computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) external view returns (uint256);
+}
+
+// Common test contract for LP Oracles, encompassing the sequencer uptime feed and related tests.
 abstract contract BaseLPOracleTest is BaseVaultTest {
     uint256 constant MIN_TOKENS = 2;
     uint256 constant VERSION = 123;
