@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StableLPOracle } from "../StableLPOracle.sol";
 
@@ -28,5 +28,10 @@ contract StableLPOracleMock is StableLPOracle {
         int256[] memory prices
     ) public view returns (uint256[] memory) {
         return _computeMarketPriceBalances(invariant, prices);
+    }
+
+    function computeK(int256[] memory prices) public view returns (int256) {
+        (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
+        return _computeK(a, b, prices);
     }
 }

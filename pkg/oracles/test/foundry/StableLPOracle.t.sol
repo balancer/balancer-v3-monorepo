@@ -15,6 +15,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -24,17 +25,20 @@ import {
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 
 import { StableLPOracleMock } from "../../contracts/test/StableLPOracleMock.sol";
+import { StableLPOracle } from "../../contracts/StableLPOracle.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
+    using ArrayHelpers for *;
     using FixedPoint for uint256;
     using CastingHelpers for address[];
 
     uint256 constant VERSION = 123;
     uint256 constant MAX_TOKENS = 5;
     uint256 constant MIN_TOKENS = 2;
-    uint256 constant MAX_PRICE = 1000e18;
-    uint256 constant MIN_PRICE = 0.001e18;
+    uint256 constant MAX_PRICE = 1e30;
+    uint256 constant MIN_PRICE = 1e10;
+    uint256 constant PRICE_RATIO_LIMIT = 1e7;
 
     event Log(address indexed value);
     event LogUint(uint256 indexed value);
@@ -244,7 +248,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         oracle.computeTVLGivenPrices(prices);
     }
 
-    function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
+    function testComputeFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         IStablePool pool = createAndInitPool(totalTokens, 100);
@@ -345,7 +349,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(tvl, tvlWithPrices, "Alternate TVL computations don't match");
     }
 
-    function testCalculateTVL2Tokens() public {
+    function testComputeTVL2Tokens() public {
         // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000.
         uint256 expectedTVL = 2000e18;
 
@@ -384,6 +388,55 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertApproxEqRel(invariantForPrices, invariant, 1e4, "Invariant does not match");
     }
 
+    function testComputeTVLHighPriceRatio() public {
+        uint256 totalTokens = 2;
+        uint256 amplificationParameter = 100;
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - tokenDecimals));
+            int256 rawPrice = i == 0 ? int256(1e24) : int256(1e10);
+            prices[i] = rawPrice / int256(10 ** (18 - tokenDecimals));
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+
+        vm.expectRevert(StableLPOracle.PriceRatioIsTooHigh.selector);
+        oracle.computeTVLGivenPrices(pricesInt);
+    }
+
+    function testComputeKNotConverging() public {
+        uint256 amplificationParameter = 1;
+
+        IStablePool pool;
+        StableLPOracleMock oracle;
+
+        uint256[] memory poolInitAmounts = [uint256(563_360_193e18), uint256(10_000_000e18)].toMemoryArray();
+        address[] memory _tokens = [address(sortedTokens[0]), address(sortedTokens[1])].toMemoryArray();
+
+        pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (oracle, ) = deployOracle(pool);
+
+        int256[] memory pricesInt = new int256[](2);
+        pricesInt[0] = int256(55_529_888e18);
+        pricesInt[1] = int256(1e9);
+
+        vm.expectRevert(StableLPOracle.KDidNotConverge.selector);
+        oracle.computeK(pricesInt);
+    }
+
     function testComputeMarketPriceBalances__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
@@ -401,13 +454,16 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             uint256[] memory poolInitAmounts = new uint256[](totalTokens);
             address[] memory _tokens = new address[](totalTokens);
 
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                prices[i] =
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    (10 ** (18 - tokenDecimals));
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
                 pricesInt[i] = int256(price);
             }
@@ -420,6 +476,49 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, pricesInt);
         _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
+    }
+
+    function testLatestRoundDataMinPriceTooSmall() public {
+        uint256 totalTokens = 2;
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        uint256[] memory prices = new uint256[](totalTokens);
+        uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        uint256 amplificationParameter = 100;
+
+        uint256 minUpdateTimestamp = MAX_UINT256;
+        {
+            // The minimum price will be lower than limit, so the latest round data will revert.
+            uint256 priceBase = MIN_PRICE - 1;
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] = 1e18 / (10 ** (18 - tokenDecimals));
+                prices[i] = priceBase / (10 ** (18 - tokenDecimals));
+                updateTimestamps[i] = block.timestamp;
+
+                if (updateTimestamps[i] < minUpdateTimestamp) {
+                    minUpdateTimestamp = updateTimestamps[i];
+                }
+            }
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(prices[i], updateTimestamps[i]);
+        }
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+
+        vm.expectRevert(StableLPOracle.MinPriceTooSmall.selector);
+        oracle.latestRoundData();
     }
 
     function testLatestRoundData__Fuzz(
@@ -439,13 +538,16 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256 minUpdateTimestamp = MAX_UINT256;
         {
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                prices[i] =
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    (10 ** (18 - tokenDecimals));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {

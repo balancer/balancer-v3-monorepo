@@ -23,11 +23,26 @@ contract StableLPOracle is LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // The `k` parameter did not converge to the positive root.
+    /// @notice The `k` parameter did not converge to the positive root.
     error KDidNotConverge();
+
+    /**
+     * @notice The minimum price of the feed array is too small.
+     * @dev When the minimum price of the feed array is too small, `k` computation fails with divisions by zero.
+     */
+    error MinPriceTooSmall();
+
+    /**
+     * @notice The ratio between the maximum and minimum prices are too high.
+     * @dev When the ratio between the maximum and minimum prices is too high, `k` and invariant computations have a
+     * high risk of not converging.
+     */
+    error PriceRatioIsTooHigh();
 
     int256 private constant _POSITIVE_ONE_INT = 1e18;
     uint256 private constant _K_MAX_ERROR = 1e4;
+    int256 private constant _PRICE_RATIO_LIMIT = 1e7;
+    int256 private constant _MIN_PRICE_LIMIT = 1e10;
 
     constructor(
         IVault vault_,
@@ -40,13 +55,8 @@ contract StableLPOracle is LPOracleBase {
 
     /// @inheritdoc LPOracleBase
     function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
-        // `computeInvariant` and `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot
-        // defer this check until the final tvl calculation loop.
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            if (prices[i] <= 0) {
-                revert InvalidOraclePrice();
-            }
-        }
+        // Check if prices are in an acceptable range.
+        _validatePrices(prices);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
@@ -98,20 +108,23 @@ contract StableLPOracle is LPOracleBase {
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
 
+        // Normalize prices to avoid distortions in the balances computation.
+        int256[] memory normalizedPrices = _normalizePrices(prices);
+
         // First, we need to compute the constant k that will be used as a multiplier on all the prices.
         // This factor adjusts the input prices to find the correct balance amounts that respect both the pool
         // invariant and the desired token price ratios.
-        int256 k = _computeK(a, b, prices);
+        int256 k = _computeK(a, b, normalizedPrices);
 
         int256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += _divDownInt(a, _mulDownInt(k, prices[i]) - a);
+            sumPriceDivision += _divDownInt(a, _mulDownInt(k, normalizedPrices[i]) - a);
         }
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
             balancesForPrices[i] = ((b * int256(invariant)) /
-                _mulDownInt(a - _mulDownInt(k, prices[i]), _POSITIVE_ONE_INT - sumPriceDivision)).toUint256();
+                _mulDownInt(a - _mulDownInt(k, normalizedPrices[i]), _POSITIVE_ONE_INT - sumPriceDivision)).toUint256();
         }
     }
 
@@ -235,5 +248,53 @@ contract StableLPOracle is LPOracleBase {
 
     function _mulDownInt(int256 a, int256 b) internal pure returns (int256) {
         return (a * b) / _POSITIVE_ONE_INT;
+    }
+
+    function _validatePrices(int256[] memory prices) internal view {
+        // `computeInvariant` and `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot
+        // defer this check until the final tvl calculation loop.
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            if (prices[i] <= 0) {
+                revert InvalidOraclePrice();
+            }
+        }
+
+        int256 minPrice = prices[0];
+        int256 maxPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
+            if (prices[i] > maxPrice) {
+                maxPrice = prices[i];
+            }
+        }
+
+        // The invariant of the pool gets distorted if the minimum price of the price feed arrayis too small.
+        if (minPrice < _MIN_PRICE_LIMIT) {
+            revert MinPriceTooSmall();
+        }
+
+        // The `k` parameter has a high risk of not converging if the ratio between the maximum and minimum prices is
+        // too high.
+        if (maxPrice / minPrice > _PRICE_RATIO_LIMIT) {
+            revert PriceRatioIsTooHigh();
+        }
+    }
+
+    function _normalizePrices(int256[] memory prices) internal view returns (int256[] memory normalizedPrices) {
+        int256 minPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
+        }
+
+        normalizedPrices = new int256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            normalizedPrices[i] = _divDownInt(prices[i], minPrice);
+        }
+
+        return normalizedPrices;
     }
 }
