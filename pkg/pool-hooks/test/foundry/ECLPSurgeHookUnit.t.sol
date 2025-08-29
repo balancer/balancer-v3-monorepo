@@ -633,4 +633,13 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             abi.encode(poolRoleAccounts)
         );
     }
+
+    function _computePriceFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) private pure returns (uint256) {
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
+    }
 }

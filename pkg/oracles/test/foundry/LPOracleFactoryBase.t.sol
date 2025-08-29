@@ -6,12 +6,12 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ISequencerUptimeFeed.sol";
-import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
+import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
+import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
-
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -22,7 +22,7 @@ import { FeedMock } from "../../contracts/test/FeedMock.sol";
 abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     string constant ORACLE_FACTORY_VERSION = "Factory v1";
     uint256 constant ORACLE_VERSION = 1;
-    uint256 constant UPTIME_GRACE_PERIOD = 1 hours;
+    uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
 
     ILPOracleFactoryBase internal _factory;
     FeedMock internal _uptimeFeed;
@@ -148,9 +148,9 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testGetUptimeGracePeriod() public view {
         assertEq(
-            ISequencerUptimeFeed(address(_factory)).getUptimeGracePeriod(),
-            UPTIME_GRACE_PERIOD,
-            "Wrong uptime grace period"
+            ISequencerUptimeFeed(address(_factory)).getUptimeResyncWindow(),
+            UPTIME_RESYNC_WINDOW,
+            "Wrong uptime resync window"
         );
     }
 

@@ -30,9 +30,9 @@ interface ISequencerUptimeFeed {
     function getSequencerUptimeFeed() external view returns (AggregatorV3Interface sequencerUptimeFeed);
 
     /**
-     * @notice Return the length of the sequencer uptime grace period.
+     * @notice Return the length of the sequencer uptime resync window.
      * @dev After an outage, the sequencer requires some time to "catch up" and ensure the L2 state matches L1.
-     * @return uptimeGracePeriod The length of the uptime grace period, in seconds
+     * @return uptimeResyncWindow The length of the uptime resync window, in seconds
      */
-    function getUptimeGracePeriod() external view returns (uint256 uptimeGracePeriod);
+    function getUptimeResyncWindow() external view returns (uint256 uptimeResyncWindow);
 }
