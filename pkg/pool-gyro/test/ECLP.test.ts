@@ -41,9 +41,6 @@ describe('E-CLP', function () {
 
   const SWAP_FEE = fp(0.01);
 
-  const SQRT_ALPHA = fp(0.8);
-  const SQRT_BETA = fp(0.9);
-
   // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.
   const PARAMS_ALPHA = 998502246630054917n;
   const PARAMS_BETA = 1000200040008001600n;
@@ -85,7 +82,7 @@ describe('E-CLP', function () {
 
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, false, ROUTER_VERSION] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });

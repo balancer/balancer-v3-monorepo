@@ -25,9 +25,8 @@ abstract contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQu
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        bool isAggregator,
         string memory routerVersion
-    ) CompositeLiquidityRouterHooks(vault, weth, permit2, isAggregator, routerVersion) {
+    ) CompositeLiquidityRouterHooks(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
