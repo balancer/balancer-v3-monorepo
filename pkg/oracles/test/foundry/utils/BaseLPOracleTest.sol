@@ -282,7 +282,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         oracle.latestRoundData();
     }
 
-    function testGracePeriodNotOver() public {
+    function testUptimeResyncIncomplete() public {
         createOracle();
         uptimeFeed.setStartedAt(block.timestamp - 100);
 

@@ -145,7 +145,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         );
     }
 
-    function testGetUptimeGracePeriod() public view {
+    function testGetUptimeResyncWindow() public view {
         assertEq(
             ISequencerUptimeFeed(address(_factory)).getUptimeResyncWindow(),
             UPTIME_RESYNC_WINDOW,

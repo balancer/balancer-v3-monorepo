@@ -15,9 +15,9 @@ contract WeightedLPOracleMock is WeightedLPOracle {
         IWeightedPool pool_,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
-        uint256 uptimeGracePeriod,
+        uint256 uptimeResyncWindow,
         uint256 version_
-    ) WeightedLPOracle(vault_, pool_, feeds, sequencerUptimeFeed, uptimeGracePeriod, version_) {
+    ) WeightedLPOracle(vault_, pool_, feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

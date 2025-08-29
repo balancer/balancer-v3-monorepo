@@ -28,10 +28,10 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
     constructor(
         IVault vault,
         AggregatorV3Interface sequencerUptimeFeed,
-        uint256 uptimeGracePeriod,
+        uint256 uptimeResyncWindow,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeGracePeriod, factoryVersion, oracleVersion) {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeResyncWindow, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
