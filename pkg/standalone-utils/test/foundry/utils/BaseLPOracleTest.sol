@@ -22,7 +22,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     uint256 constant VERSION = 123;
 
     uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
-    
+
     LPOracleBase internal oracle;
     AggregatorV3Interface[] internal feeds;
 

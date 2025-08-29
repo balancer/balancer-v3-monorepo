@@ -81,7 +81,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
 
         return pool;
     }
-    
+
     function deployOracle(
         IStablePool pool
     ) internal returns (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
