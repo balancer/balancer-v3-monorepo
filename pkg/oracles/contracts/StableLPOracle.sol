@@ -23,8 +23,15 @@ contract StableLPOracle is LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // The `k` parameter did not converge to the positive root.
+    /// @notice The `k` parameter did not converge to the positive root.
     error KDidNotConverge();
+
+    /**
+     * @notice The ratio between the maximum and minimum prices are too high.
+     * @dev When the ratio between the maximum and minimum prices is too high, `k` and invariant computations have a
+     * high risk of not converging.
+     */
+    error PriceRatioIsTooHigh();
 
     int256 private constant _POSITIVE_ONE_INT = 1e18;
     uint256 private constant _K_MAX_ERROR = 1e4;
@@ -252,9 +259,9 @@ contract StableLPOracle is LPOracleBase {
             }
         }
 
-        // If this ratio is greater than 1e8,
+        // If this ratio is greater than 1e8, the `k` parameter has a high risk of not converging.
         if (maxPrice / minPrice > 1e8) {
-            revert PriceDeltaIsTooHigh();
+            revert PriceRatioIsTooHigh();
         }
     }
 }
