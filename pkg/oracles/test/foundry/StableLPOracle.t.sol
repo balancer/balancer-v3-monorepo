@@ -478,6 +478,49 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
     }
 
+    function testLatestRoundDataMinPriceTooSmall() public {
+        uint256 totalTokens = 2;
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        uint256[] memory prices = new uint256[](totalTokens);
+        uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        uint256 amplificationParameter = 100;
+
+        uint256 minUpdateTimestamp = MAX_UINT256;
+        {
+            // The minimum price will be lower than limit, so the latest round data will revert.
+            uint256 priceBase = MIN_PRICE - 1;
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] = 1e18 / (10 ** (18 - tokenDecimals));
+                prices[i] = priceBase / (10 ** (18 - tokenDecimals));
+                updateTimestamps[i] = block.timestamp;
+
+                if (updateTimestamps[i] < minUpdateTimestamp) {
+                    minUpdateTimestamp = updateTimestamps[i];
+                }
+            }
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(prices[i], updateTimestamps[i]);
+        }
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+
+        vm.expectRevert(StableLPOracle.MinPriceTooSmall.selector);
+        oracle.latestRoundData();
+    }
+
     function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
