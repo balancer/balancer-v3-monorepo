@@ -36,8 +36,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     uint256 constant VERSION = 123;
     uint256 constant MAX_TOKENS = 5;
     uint256 constant MIN_TOKENS = 2;
-    uint256 constant MAX_PRICE = 10000e18;
-    uint256 constant MIN_PRICE = 0.0001e18;
+    uint256 constant MAX_PRICE = 1e30;
+    uint256 constant MIN_PRICE = 1e15;
+    uint256 constant PRICE_RATIO_LIMIT = 1e7;
 
     event Log(address indexed value);
     event LogUint(uint256 indexed value);
@@ -453,13 +454,16 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             uint256[] memory poolInitAmounts = new uint256[](totalTokens);
             address[] memory _tokens = new address[](totalTokens);
 
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                prices[i] =
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    (10 ** (18 - tokenDecimals));
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
                 pricesInt[i] = int256(price);
             }
@@ -491,13 +495,16 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256 minUpdateTimestamp = MAX_UINT256;
         {
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                prices[i] =
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    (10 ** (18 - tokenDecimals));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
