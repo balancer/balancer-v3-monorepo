@@ -575,15 +575,15 @@ contract BatchRouterHooks is BatchRouterCommon {
             if (amountIn < stepMaxAmountIn && sender != address(this)) {
                 stepTokenIn.safeTransfer(address(sender), stepMaxAmountIn - amountIn);
             }
-        } else if (amountIn < stepMaxAmountIn) {
-            // Refund unused portion of BPT flashloan to the Vault.
-            uint256 refundAmount = stepMaxAmountIn - amountIn;
-            stepTokenIn.safeTransfer(address(_vault), refundAmount);
-            _vault.settle(stepTokenIn, refundAmount);
-        }
 
-        if (isLastStep) {
             _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
+        } else {
+            if (amountIn < stepMaxAmountIn) {
+                // Refund unused portion of BPT flashloan to the Vault.
+                uint256 refundAmount = stepMaxAmountIn - amountIn;
+                stepTokenIn.safeTransfer(address(_vault), refundAmount);
+                _vault.settle(stepTokenIn, refundAmount);
+            }
         }
     }
 
@@ -619,20 +619,20 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         amountIn = stepAmountsIn[tokenIndex];
 
-        uint256 amountOut = isLastStep ? stepExactAmountOut : amountIn;
+        if (isLastStep) {
+            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+        } else {
+            stepExactAmountOut = amountIn;
+        }
 
         // The first step executed determines the outputs for the path, since this is given out.
         if (isFirstStep) {
             // Instead of sending tokens back to the Vault, we can just discount it from whatever
             // the Vault owes the sender to make one less transfer.
-            _currentSwapTokenOutAmounts().tSub(address(tokenOut), amountOut);
+            _currentSwapTokenOutAmounts().tSub(address(tokenOut), stepExactAmountOut);
         } else {
             // If it's not the first step, BPT is minted to the Vault so we just get the credit.
-            _vault.settle(IERC20(pool), amountOut);
-        }
-
-        if (isLastStep) {
-            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+            _vault.settle(IERC20(pool), stepExactAmountOut);
         }
     }
 
