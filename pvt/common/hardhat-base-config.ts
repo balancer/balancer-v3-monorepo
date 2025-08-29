@@ -70,7 +70,6 @@ type ContractSettings = Record<
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 const COMPILER_0_8_26 = compilers.find((compiler) => compiler.version === '0.8.26')!;
-const COMPILER_0_8_27 = compilers.find((compiler) => compiler.version === '0.8.27')!;
 
 /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
@@ -88,16 +87,6 @@ const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
     version: COMPILER_0_8_26.version,
     runs: 500,
-    viaIR,
-  },
-  '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
-    version: COMPILER_0_8_27.version,
-    runs: COMPILER_0_8_27.settings.optimizer.runs,
-    viaIR,
-  },
-  '@balancer-labs/v3-pool-gyro/contracts': {
-    version: COMPILER_0_8_27.version,
-    runs: COMPILER_0_8_27.settings.optimizer.runs,
     viaIR,
   },
 };

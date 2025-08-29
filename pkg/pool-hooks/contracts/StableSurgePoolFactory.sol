@@ -2,16 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenConfig,
-    PoolRoleAccounts,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
@@ -21,17 +16,21 @@ import { StableSurgeHook } from "./StableSurgeHook.sol";
 
 /// @notice Stable Pool factory that deploys a standard StablePool with a StableSurgeHook.
 contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
-    IStableSurgeHook private immutable _stableSurgeHook;
+    address private immutable _stableSurgeHook;
 
     string private _poolVersion;
 
     constructor(
-        StableSurgeHook stableSurgeHook,
+        address stableSurgeHook,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
     )
-        BasePoolFactory(stableSurgeHook.getVault(), pauseWindowDuration, type(StablePool).creationCode)
+        BasePoolFactory(
+            SingletonAuthentication(stableSurgeHook).getVault(),
+            pauseWindowDuration,
+            type(StablePool).creationCode
+        )
         Version(factoryVersion)
     {
         _stableSurgeHook = stableSurgeHook;
@@ -46,9 +45,9 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
     /**
      * @notice Getter for the internally deployed stable surge hook contract.
      * @dev This hook will be registered to every pool created by this factory.
-     * @return address stableSurgeHook Address of the deployed StableSurgeHook
+     * @return stableSurgeHook Address of the deployed StableSurgeHook
      */
-    function getStableSurgeHook() external view returns (IStableSurgeHook) {
+    function getStableSurgeHook() external view returns (address) {
         return _stableSurgeHook;
     }
 

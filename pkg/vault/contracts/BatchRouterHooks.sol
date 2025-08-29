@@ -24,10 +24,7 @@ import {
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /**
- * @notice Entrypoint for batch swaps, and batch swap queries.
- * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
- * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
- * settle with the Vault, and handle wrapping and unwrapping ETH.
+ * @notice Base BatchRouter contract with hooks for swaps and liquidity operations via the Vault.
  */
 contract BatchRouterHooks is BatchRouterCommon {
     using CastingHelpers for *;

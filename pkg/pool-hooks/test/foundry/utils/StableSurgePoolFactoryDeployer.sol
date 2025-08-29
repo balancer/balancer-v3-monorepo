@@ -8,11 +8,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
-import { StableSurgeHook } from "../../../contracts/StableSurgeHook.sol";
 import { StableSurgePoolFactory } from "../../../contracts/StableSurgePoolFactory.sol";
 
 /**
- * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions should have support for reusing artifacts from the hardhat compilation.
+ * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions
+ * should have support for reusing artifacts from the hardhat compilation.
  */
 contract StableSurgePoolFactoryDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
@@ -25,7 +25,7 @@ contract StableSurgePoolFactoryDeployer is BaseContractsDeployer {
     }
 
     function deployStableSurgePoolFactory(
-        StableSurgeHook stableSurgeHook,
+        address stableSurgeHook,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion

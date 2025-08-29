@@ -2,8 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
-import "./BatchRouterTypes.sol";
+import { SwapPathExactAmountIn, SwapPathExactAmountOut } from "./BatchRouterTypes.sol";
 
 /// @notice Interface for the `BatchRouter`, supporting multi-hop swaps.
 interface IBatchRouterQueries {
