@@ -26,6 +26,13 @@ contract ECLPSurgeHook is SurgeHookCommon {
     using SafeCast for *;
 
     /**
+     * @notice The rotation angle is too small or too large for the surge hook to be used.
+     * @dev The surge hook accept angles from 30 to 60 degrees. Outside of this range, the computation of the peak
+     * price cannot be approximated by sine/cosine.
+     */
+    error InvalidRotationAngleForSurgeHook();
+
+    /**
      * @notice A new `ECLPSurgeHook` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
      * @param pool The pool on which the hook was registered
@@ -53,6 +60,14 @@ contract ECLPSurgeHook is SurgeHookCommon {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
     ) public override onlyVault returns (bool success) {
+        (IGyroECLPPool.EclpParams memory eclpParams, ) = IGyroECLPPool(pool).getECLPParams();
+
+        // The surge hook only works for pools with a rotation angle between 30 and 60 degrees. Outside of this range,
+        // the computation of the peak price cannot be approximated by sine/cosine.
+        if (eclpParams.s < 50e16 || eclpParams.c < 50e16) {
+            revert InvalidRotationAngleForSurgeHook();
+        }
+
         success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         emit ECLPSurgeHookRegistered(pool, factory);
