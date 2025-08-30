@@ -35,18 +35,25 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         address pool,
         uint256 deadline,
         bool wethIsEth,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapParams calldata swapParams
-    ) external payable saveSenderAndManageEth returns (uint256[] memory amountsIn, uint256 swapAmountOut) {
-        (amountsIn, swapAmountOut) = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
-                    _buildAddLiquidityParams(pool, msg.sender, deadline, wethIsEth, addLiquidityParams, swapParams)
-                )
-            ),
-            (uint256[], uint256)
-        );
+        AddLiquidityAndSwapParams calldata params
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: msg.sender,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            swapKind: SwapKind.EXACT_IN,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
     }
 
     /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
@@ -54,18 +61,25 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         address pool,
         uint256 deadline,
         bool wethIsEth,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapParams calldata swapParams
-    ) external payable saveSenderAndManageEth returns (uint256[] memory amountsIn, uint256 swapAmountIn) {
-        (amountsIn, swapAmountIn) = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
-                    _buildAddLiquidityParams(pool, msg.sender, deadline, wethIsEth, addLiquidityParams, swapParams)
-                )
-            ),
-            (uint256[], uint256)
-        );
+        AddLiquidityAndSwapParams calldata params
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: msg.sender,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            swapKind: SwapKind.EXACT_OUT,
+                            operationParams: params
+                        })
+                    )
+                ),
+                (uint256[])
+            );
     }
 
     /***************************************************************************
@@ -75,49 +89,49 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
     function queryAddUnbalancedLiquidityViaSwapExactIn(
         address pool,
         address sender,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapParams calldata swapParams
-    ) external saveSender(sender) returns (uint256[] memory amountsIn, uint256 swapAmountOut) {
-        (amountsIn, swapAmountOut) = abi.decode(
-            _vault.quote(
-                abi.encodeCall(
-                    AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
-                    _buildAddLiquidityParams(
-                        pool,
-                        address(this), // Queries use the router as the sender
-                        _MAX_AMOUNT, // Queries do not have deadlines
-                        false, // wethIsEth is false for queries
-                        addLiquidityParams,
-                        swapParams
+        AddLiquidityAndSwapParams calldata params
+    ) external saveSender(sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: address(this), // Queries use the router as the sender
+                            deadline: _MAX_AMOUNT, // Queries do not have deadlines
+                            wethIsEth: false, // wethIsEth is false for queries
+                            swapKind: SwapKind.EXACT_IN,
+                            operationParams: params
+                        })
                     )
-                )
-            ),
-            (uint256[], uint256)
-        );
+                ),
+                (uint256[])
+            );
     }
 
     function queryAddUnbalancedLiquidityViaSwapExactOut(
         address pool,
         address sender,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapParams calldata swapParams
-    ) external saveSender(sender) returns (uint256[] memory amountsIn, uint256 swapAmountIn) {
-        (amountsIn, swapAmountIn) = abi.decode(
-            _vault.quote(
-                abi.encodeCall(
-                    AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
-                    _buildAddLiquidityParams(
-                        pool,
-                        address(this), // Use the router as the sender in the query
-                        _MAX_AMOUNT, // No deadline in the query
-                        false, // wethIsEth is false in the query
-                        addLiquidityParams,
-                        swapParams
+        AddLiquidityAndSwapParams calldata params
+    ) external saveSender(sender) returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
+                        AddLiquidityAndSwapHookParams({
+                            pool: pool,
+                            sender: address(this), // Queries use the router as the sender
+                            deadline: _MAX_AMOUNT, // Queries do not have deadlines
+                            wethIsEth: false, // wethIsEth is false for queries
+                            swapKind: SwapKind.EXACT_OUT,
+                            operationParams: params
+                        })
                     )
-                )
-            ),
-            (uint256[], uint256)
-        );
+                ),
+                (uint256[])
+            );
     }
 
     /***************************************************************************
@@ -125,55 +139,78 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
     ***************************************************************************/
 
     function addUnbalancedLiquidityViaSwapHook(
-        AddLiquidityAndSwapHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 swapAmountCalculated) {
-        (amountsIn, , ) = _addLiquidityHook(params.addLiquidityParams);
-        swapAmountCalculated = _swapSingleTokenHook(params.swapParams);
+        AddLiquidityAndSwapHookParams calldata hookParams
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > hookParams.deadline) {
+            revert SwapDeadline();
+        }
+
+        IERC20[] memory tokens;
+        uint256 swapAmountOut;
+        (tokens, amountsIn, swapAmountOut) = _computeAddUnbalancedLiquidityViaSwap(hookParams);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+            if (amountIn == 0) {
+                continue;
+            }
+
+            _takeTokenIn(hookParams.sender, tokens[i], amountIn, hookParams.wethIsEth);
+        }
+
+        _returnEth(hookParams.sender);
     }
 
     function queryAddUnbalancedLiquidityViaSwapHook(
         AddLiquidityAndSwapHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 swapAmountCalculated) {
-        (amountsIn, , ) = _queryAddLiquidityHook(params.addLiquidityParams);
-        swapAmountCalculated = _querySwapHook(params.swapParams);
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+        (, amountsIn, ) = _computeAddUnbalancedLiquidityViaSwap(params);
     }
 
-    /***************************************************************************
-                                   Helper functions
-    ***************************************************************************/
+    function _computeAddUnbalancedLiquidityViaSwap(
+        AddLiquidityAndSwapHookParams calldata hookParams
+    ) private returns (IERC20[] memory tokens, uint256[] memory amountsIn, uint256 swapAmountOut) {
+        (amountsIn, , ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: hookParams.pool,
+                to: hookParams.sender,
+                maxAmountsIn: hookParams.operationParams.maxAmountsIn,
+                minBptAmountOut: hookParams.operationParams.exactBptAmountOut,
+                kind: AddLiquidityKind.PROPORTIONAL,
+                userData: bytes("")
+            })
+        );
 
-    // Required to avoid stack-too-deep in the caller.
-    function _buildAddLiquidityParams(
-        address pool,
-        address sender,
-        uint256 deadline,
-        bool wethIsEth,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapParams memory swapParams
-    ) private pure returns (AddLiquidityAndSwapHookParams memory params) {
-        return
-            AddLiquidityAndSwapHookParams({
-                addLiquidityParams: AddLiquidityHookParams({
-                    sender: sender,
-                    pool: pool,
-                    maxAmountsIn: addLiquidityParams.maxAmountsIn,
-                    minBptAmountOut: addLiquidityParams.exactBptAmountOut,
-                    kind: AddLiquidityKind.PROPORTIONAL,
-                    wethIsEth: wethIsEth,
-                    userData: addLiquidityParams.userData
-                }),
-                swapParams: SwapSingleTokenHookParams({
-                    sender: sender,
-                    kind: swapParams.kind,
-                    pool: pool,
-                    tokenIn: swapParams.tokenIn,
-                    tokenOut: swapParams.tokenOut,
-                    amountGiven: swapParams.amountGiven,
-                    limit: swapParams.limit,
-                    deadline: deadline,
-                    wethIsEth: wethIsEth,
-                    userData: swapParams.userData
-                })
-            });
+        // maxAmountsIn length is checked against tokens length at the Vault.
+        tokens = _vault.getPoolTokens(hookParams.pool);
+
+        // Find token index
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(hookParams.operationParams.swapTokenIn)) {
+                tokenInIndex = i;
+            } else if (address(tokens[i]) == address(hookParams.operationParams.swapTokenOut)) {
+                tokenOutIndex = i;
+            }
+        }
+
+        uint256 swapAmountIn;
+        (, swapAmountIn, swapAmountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: hookParams.swapKind,
+                pool: hookParams.pool,
+                tokenIn: hookParams.operationParams.swapTokenIn,
+                tokenOut: hookParams.operationParams.swapTokenOut,
+                amountGivenRaw: hookParams.operationParams.swapAmountGiven,
+                limitRaw: hookParams.operationParams.swapLimit,
+                userData: bytes("")
+            })
+        );
+
+        amountsIn[tokenInIndex] += swapAmountIn;
+        amountsIn[tokenOutIndex] -= swapAmountOut;
     }
 }
