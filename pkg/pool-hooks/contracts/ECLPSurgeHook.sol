@@ -33,9 +33,9 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
     uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = uint128(FixedPoint.ONE);
 
-    // These limits are arbitrary. However, slopes smaller than 0.01 would mean a static fee charged for almost all swaps,
-    // while slopes larger than 100 would mean the max surge fee charged for almost all swaps. Therefore, values outside
-    // of these limits are unlikely to be useful.
+    // These limits are arbitrary. However, slopes smaller than 0.01 would mean a static fee charged for almost all
+    // swaps, while slopes larger than 100 would mean the max surge fee charged for almost all swaps. Therefore, values
+    // outside of these limits are unlikely to be useful.
     uint128 public constant MIN_IMBALANCE_SLOPE = 0.01e18;
     uint128 public constant MAX_IMBALANCE_SLOPE = 100e18;
 
