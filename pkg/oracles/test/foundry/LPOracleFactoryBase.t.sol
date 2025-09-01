@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
@@ -20,11 +21,17 @@ import { FeedMock } from "../../contracts/test/FeedMock.sol";
 abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     string constant ORACLE_FACTORY_VERSION = "Factory v1";
     uint256 constant ORACLE_VERSION = 1;
+    uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
 
     ILPOracleFactoryBase internal _factory;
+    FeedMock internal _uptimeFeed;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        _uptimeFeed = new FeedMock(18);
+        // Default to indicating the feed has been up for a day.
+        _uptimeFeed.setLastRoundData(0, block.timestamp - 1 days);
 
         _factory = _createOracleFactory();
 
@@ -128,6 +135,22 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         assertEq(startedAt, 0, "startedAt not zero");
         assertEq(updatedAt, 0, "updatedAt not zero");
         assertEq(answeredInRound, 0, "answeredInRound not zero");
+    }
+
+    function testGetUptimeFeed() public view {
+        assertEq(
+            address(ISequencerUptimeFeed(address(_factory)).getSequencerUptimeFeed()),
+            address(_uptimeFeed),
+            "Wrong uptime feed"
+        );
+    }
+
+    function testGetUptimeResyncWindow() public view {
+        assertEq(
+            ISequencerUptimeFeed(address(_factory)).getUptimeResyncWindow(),
+            UPTIME_RESYNC_WINDOW,
+            "Wrong uptime resync window"
+        );
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {

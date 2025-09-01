@@ -48,8 +48,10 @@ contract StableLPOracle is LPOracleBase {
         IVault vault_,
         IStablePool pool_,
         AggregatorV3Interface[] memory feeds,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeResyncWindow,
         uint256 version_
-    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, version_) {
+    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

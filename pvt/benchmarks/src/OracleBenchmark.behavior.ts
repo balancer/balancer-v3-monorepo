@@ -49,16 +49,6 @@ export class LPOracleBenchmark {
     this._maxTokens = maxTokens;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async deployPool(poolTokens: string[]): Promise<PoolInfo | null> {
-    return null;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo | null> {
-    return null;
-  }
-
   itBenchmarks = () => {
     const ROUTER_VERSION = 'Router v9';
     const TOKEN_AMOUNT = fp(100);

@@ -12,9 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { LPOracleFactoryBase } from "./LPOracleFactoryBase.sol";
 import { StableLPOracle } from "./StableLPOracle.sol";
 
-/**
- * @notice Factory for deploying and managing Stable Pool oracles.
- */
+/// @notice Factory for deploying and managing Stable Pool oracles.
 contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Stable Pool oracle was created.
@@ -26,9 +24,11 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
 
     constructor(
         IVault vault,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeResyncWindow,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, factoryVersion, oracleVersion) {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeResyncWindow, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -37,7 +37,14 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         IBasePool pool,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
-        oracle = new StableLPOracle(vault, IStablePool(address(pool)), feeds, _oracleVersion);
+        oracle = new StableLPOracle(
+            vault,
+            IStablePool(address(pool)),
+            feeds,
+            _sequencerUptimeFeed,
+            _uptimeResyncWindow,
+            _oracleVersion
+        );
         emit StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
     }
 }

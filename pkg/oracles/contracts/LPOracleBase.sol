@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -20,13 +21,20 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
  * oracle that inherits this contract, and it must return the total value locked (TVL) of the pool. The rest of
  * this contract are standard functions that makes the oracle compatible with Chainlink's AggregatorV3Interface.
  */
-abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
+abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, AggregatorV3Interface {
     using FixedPoint for uint256;
     using SafeCast for *;
 
     uint256 internal constant _WAD_DECIMALS = 18;
 
+    int256 internal constant _SEQUENCER_STATUS_DOWN = 1;
+
     IBasePool public immutable pool;
+
+    // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
+    // accurately reflect the state. These values are stored in and passed down from the associated factory.
+    AggregatorV3Interface internal immutable _sequencerUptimeFeed;
+    uint256 internal immutable _uptimeResyncWindow;
 
     IVault internal immutable _vault;
     uint256 internal immutable _version;
@@ -51,10 +59,21 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     uint256 internal immutable _feedToken6DecimalScalingFactor;
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
-    constructor(IVault vault_, IBasePool pool_, AggregatorV3Interface[] memory feeds, uint256 version_) {
+    constructor(
+        IVault vault_,
+        IBasePool pool_,
+        AggregatorV3Interface[] memory feeds,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeResyncWindow,
+        uint256 version_
+    ) {
         _version = version_;
         _vault = vault_;
         pool = pool_;
+
+        // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
+        _sequencerUptimeFeed = sequencerUptimeFeed;
+        _uptimeResyncWindow = uptimeResyncWindow;
 
         IERC20[] memory tokens = vault_.getPoolTokens(address(pool_));
         uint totalTokens = tokens.length;
@@ -190,6 +209,8 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         view
         returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt)
     {
+        _ensureSequencerUptime();
+
         uint256 totalTokens = _totalTokens;
         AggregatorV3Interface[] memory feeds = _getFeeds(totalTokens);
         uint256[] memory feedDecimalScalingFactors = _getFeedTokenDecimalScalingFactors(totalTokens);
@@ -223,6 +244,16 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     /// @inheritdoc ILPOracleBase
     function getPoolTokens() external view returns (IERC20[] memory) {
         return _vault.getPoolTokens(address(pool));
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getSequencerUptimeFeed() external view returns (AggregatorV3Interface sequencerUptimeFeed) {
+        return _sequencerUptimeFeed;
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getUptimeResyncWindow() external view returns (uint256 uptimeResyncWindow) {
+        return _uptimeResyncWindow;
     }
 
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
@@ -274,6 +305,28 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         }
 
         return feedTokenDecimalScalingFactors;
+    }
+
+    /**
+     * @notice Ensure that the sequencer is up, and the current time is outside the resync window.
+     * @dev Reverts if the sequencer is down or the current time is still within the resync window.
+     */
+    function _ensureSequencerUptime() internal view {
+        if (address(_sequencerUptimeFeed) == address(0)) {
+            return; // No sequencer check needed (L1 or other networks)
+        }
+
+        // Check the status of the uptime feed.
+        (, int256 answer, uint256 startedAt, , ) = _sequencerUptimeFeed.latestRoundData();
+
+        if (answer == _SEQUENCER_STATUS_DOWN) {
+            revert SequencerDown();
+        }
+
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp - startedAt < _uptimeResyncWindow) {
+            revert SequencerResyncIncomplete();
+        }
     }
 
     /**

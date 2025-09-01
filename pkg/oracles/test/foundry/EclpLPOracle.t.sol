@@ -577,12 +577,12 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         GyroECLPPool pool,
         uint256[] memory oraclePricesScaled18
     ) private returns (uint256 expectedTVL) {
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         uint256[] memory marketPriceBalances = _findBalancesForPrices(
             GyroECLPPool(address(pool)),
             oraclePricesScaled18[0].divDown(oraclePricesScaled18[1])
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         return
             marketPriceBalances[0].mulDown(oraclePricesScaled18[0]) +
