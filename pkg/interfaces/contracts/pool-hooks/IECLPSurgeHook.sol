@@ -2,14 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolSwapParams } from "../vault/VaultTypes.sol";
-
 interface IECLPSurgeHook {
-    struct ImbalanceSlopeData {
-        uint128 imbalanceSlopeBelowPeak;
-        uint128 imbalanceSlopeAbovePeak;
-    }
-
     /// @notice Thrown when an invalid imbalance slope is provided.
     error InvalidImbalanceSlope();
 
@@ -41,15 +34,11 @@ interface IECLPSurgeHook {
      * @notice Getter for the imbalance slope below peak for a pool.
      * @param pool The pool for which the imbalance slope below peak is requested
      * @return imbalanceSlopeBelowPeak The imbalance slope below peak for the pool
-     */
-    function getImbalanceSlopeBelowPeak(address pool) external view returns (uint128);
-
-    /**
-     * @notice Getter for the imbalance slope above peak for a pool.
-     * @param pool The pool for which the imbalance slope above peak is requested
      * @return imbalanceSlopeAbovePeak The imbalance slope above peak for the pool
      */
-    function getImbalanceSlopeAbovePeak(address pool) external view returns (uint128);
+    function getImbalanceSlopes(
+        address pool
+    ) external view returns (uint256 imbalanceSlopeBelowPeak, uint256 imbalanceSlopeAbovePeak);
 
     /**
      * @notice Sets the imbalance slope below peak for a pool.
@@ -60,7 +49,7 @@ interface IECLPSurgeHook {
      * @param pool The pool for which the imbalance slope below peak is being set
      * @param newImbalanceSlopeBelowPeak The new imbalance slope below peak
      */
-    function setImbalanceSlopeBelowPeak(address pool, uint128 newImbalanceSlopeBelowPeak) external;
+    function setImbalanceSlopeBelowPeak(address pool, uint256 newImbalanceSlopeBelowPeak) external;
 
     /**
      * @notice Sets the imbalance slope above peak for a pool.
@@ -71,5 +60,5 @@ interface IECLPSurgeHook {
      * @param pool The pool for which the imbalance slope above peak is being set
      * @param newImbalanceSlopeAbovePeak The new imbalance slope above peak
      */
-    function setImbalanceSlopeAbovePeak(address pool, uint128 newImbalanceSlopeAbovePeak) external;
+    function setImbalanceSlopeAbovePeak(address pool, uint256 newImbalanceSlopeAbovePeak) external;
 }

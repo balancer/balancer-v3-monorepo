@@ -45,8 +45,8 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
     IRateProvider[] private rateProviders;
 
     uint128 private constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
-    IECLPSurgeHook.ImbalanceSlopeData internal _DEFAULT_SLOPE =
-        IECLPSurgeHook.ImbalanceSlopeData({
+    ECLPSurgeHook.ImbalanceSlopeData internal _DEFAULT_SLOPE =
+        ECLPSurgeHook.ImbalanceSlopeData({
             imbalanceSlopeBelowPeak: _DEFAULT_IMBALANCE_SLOPE,
             imbalanceSlopeAbovePeak: _DEFAULT_IMBALANCE_SLOPE
         });

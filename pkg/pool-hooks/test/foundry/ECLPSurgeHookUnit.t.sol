@@ -36,8 +36,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
     uint128 private constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
 
-    IECLPSurgeHook.ImbalanceSlopeData private _DEFAULT_SLOPE =
-        IECLPSurgeHook.ImbalanceSlopeData({
+    ECLPSurgeHook.ImbalanceSlopeData private _DEFAULT_SLOPE =
+        ECLPSurgeHook.ImbalanceSlopeData({
             imbalanceSlopeBelowPeak: _DEFAULT_IMBALANCE_SLOPE,
             imbalanceSlopeAbovePeak: _DEFAULT_IMBALANCE_SLOPE
         });
@@ -138,16 +138,18 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     }
 
     function testGetImbalanceSlopeBelowPeakAfterRegister() public view {
+        (uint256 imbalanceSlopeBelowPeak, ) = hookMock.getImbalanceSlopes(pool);
         assertEq(
-            hookMock.getImbalanceSlopeBelowPeak(pool),
+            imbalanceSlopeBelowPeak,
             _DEFAULT_IMBALANCE_SLOPE,
             "Imbalance slope below peak should be the default value"
         );
     }
 
     function testGetImbalanceSlopeAbovePeakAfterRegister() public view {
+        (, uint256 imbalanceSlopeAbovePeak) = hookMock.getImbalanceSlopes(pool);
         assertEq(
-            hookMock.getImbalanceSlopeAbovePeak(pool),
+            imbalanceSlopeAbovePeak,
             _DEFAULT_IMBALANCE_SLOPE,
             "Imbalance slope above peak should be the default value"
         );
@@ -167,11 +169,10 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         emit IECLPSurgeHook.ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
         hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
 
-        assertEq(
-            hookMock.getImbalanceSlopeBelowPeak(pool),
-            newImbalanceSlopeBelowPeak,
-            "Wrong imbalance slope below peak"
-        );
+        (uint256 imbalanceSlopeBelowPeak, uint256 imbalanceSlopeAbovePeak) = hookMock.getImbalanceSlopes(pool);
+
+        assertEq(imbalanceSlopeBelowPeak, newImbalanceSlopeBelowPeak, "Wrong imbalance slope below peak");
+        assertEq(imbalanceSlopeAbovePeak, _DEFAULT_IMBALANCE_SLOPE, "Wrong imbalance slope above peak");
     }
 
     function testSetImbalanceSlopeBelowPeakSwapFeeManager() public {
@@ -184,11 +185,10 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         emit IECLPSurgeHook.ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
         hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
 
-        assertEq(
-            hookMock.getImbalanceSlopeBelowPeak(pool),
-            newImbalanceSlopeBelowPeak,
-            "Wrong imbalance slope below peak"
-        );
+        (uint256 imbalanceSlopeBelowPeak, uint256 imbalanceSlopeAbovePeak) = hookMock.getImbalanceSlopes(pool);
+
+        assertEq(imbalanceSlopeBelowPeak, newImbalanceSlopeBelowPeak, "Wrong imbalance slope below peak");
+        assertEq(imbalanceSlopeAbovePeak, _DEFAULT_IMBALANCE_SLOPE, "Wrong imbalance slope above peak");
     }
 
     function testSetImbalanceSlopeBelowPeakInvalidSlope() public {
@@ -221,11 +221,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         emit IECLPSurgeHook.ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
         hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
 
-        assertEq(
-            hookMock.getImbalanceSlopeAbovePeak(pool),
-            newImbalanceSlopeAbovePeak,
-            "Wrong imbalance slope above peak"
-        );
+        (uint256 imbalanceSlopeBelowPeak, uint256 imbalanceSlopeAbovePeak) = hookMock.getImbalanceSlopes(pool);
+        assertEq(imbalanceSlopeBelowPeak, _DEFAULT_IMBALANCE_SLOPE, "Wrong imbalance slope below peak");
+        assertEq(imbalanceSlopeAbovePeak, newImbalanceSlopeAbovePeak, "Wrong imbalance slope above peak");
     }
 
     function testSetImbalanceSlopeAbovePeakSwapFeeManager() public {
@@ -238,11 +236,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         emit IECLPSurgeHook.ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
         hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
 
-        assertEq(
-            hookMock.getImbalanceSlopeAbovePeak(pool),
-            newImbalanceSlopeAbovePeak,
-            "Wrong imbalance slope above peak"
-        );
+        (uint256 imbalanceSlopeBelowPeak, uint256 imbalanceSlopeAbovePeak) = hookMock.getImbalanceSlopes(pool);
+        assertEq(imbalanceSlopeBelowPeak, _DEFAULT_IMBALANCE_SLOPE, "Wrong imbalance slope below peak");
+        assertEq(imbalanceSlopeAbovePeak, newImbalanceSlopeAbovePeak, "Wrong imbalance slope above peak");
     }
 
     function testSetImbalanceSlopeAbovePeakInvalidSlope() public {
@@ -790,7 +786,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         // This will test above peak slope.
         vm.assume(currentPrice > peakPrice);
 
-        IECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = IECLPSurgeHook.ImbalanceSlopeData({
+        ECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = ECLPSurgeHook.ImbalanceSlopeData({
             imbalanceSlopeBelowPeak: uint128(FixedPoint.ONE),
             imbalanceSlopeAbovePeak: imbalanceSlopeAbovePeak
         });
@@ -832,7 +828,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         // This will test below peak slope.
         vm.assume(currentPrice <= peakPrice);
 
-        IECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = IECLPSurgeHook.ImbalanceSlopeData({
+        ECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = ECLPSurgeHook.ImbalanceSlopeData({
             imbalanceSlopeBelowPeak: imbalanceSlopeBelowPeak,
             imbalanceSlopeAbovePeak: uint128(FixedPoint.ONE)
         });

@@ -26,10 +26,18 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // Cannot use FixedPoint.ONE because the constant is a uint128.
-    uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
-    uint128 public constant MAX_IMBALANCE_SLOPE = 10000e16;
-    uint128 public constant MIN_IMBALANCE_SLOPE = 1e16;
+    struct ImbalanceSlopeData {
+        uint128 imbalanceSlopeBelowPeak;
+        uint128 imbalanceSlopeAbovePeak;
+    }
+
+    uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = uint128(FixedPoint.ONE);
+
+    // These limits are arbitrary. However, slopes smaller than 0.01 would mean a static fee charged for almost all swaps,
+    // while slopes larger than 100 would mean the max surge fee charged for almost all swaps. Therefore, values outside
+    // of these limits are unlikely to be useful.
+    uint128 public constant MIN_IMBALANCE_SLOPE = 0.01e18;
+    uint128 public constant MAX_IMBALANCE_SLOPE = 100e18;
 
     // Store the current below and above peak slopes for each pool.
     mapping(address pool => ImbalanceSlopeData data) internal _imbalanceSlopePoolData;
@@ -67,19 +75,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     ***************************************************************************/
 
     /// @inheritdoc IECLPSurgeHook
-    function getImbalanceSlopeBelowPeak(address pool) external view returns (uint128) {
-        return _imbalanceSlopePoolData[pool].imbalanceSlopeBelowPeak;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getImbalanceSlopeAbovePeak(address pool) external view returns (uint128) {
-        return _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak;
+    function getImbalanceSlopes(address pool) external view returns (uint256, uint256) {
+        ImbalanceSlopeData memory imbalanceSlopeData = _imbalanceSlopePoolData[pool];
+        return (imbalanceSlopeData.imbalanceSlopeBelowPeak, imbalanceSlopeData.imbalanceSlopeAbovePeak);
     }
 
     /// @inheritdoc IECLPSurgeHook
     function setImbalanceSlopeBelowPeak(
         address pool,
-        uint128 newImbalanceSlopeBelowPeak
+        uint256 newImbalanceSlopeBelowPeak
     ) external onlySwapFeeManagerOrGovernance(pool) {
         _setImbalanceSlopeBelowPeak(pool, newImbalanceSlopeBelowPeak);
     }
@@ -87,7 +91,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     /// @inheritdoc IECLPSurgeHook
     function setImbalanceSlopeAbovePeak(
         address pool,
-        uint128 newImbalanceSlopeAbovePeak
+        uint256 newImbalanceSlopeAbovePeak
     ) external onlySwapFeeManagerOrGovernance(pool) {
         _setImbalanceSlopeAbovePeak(pool, newImbalanceSlopeAbovePeak);
     }
@@ -245,28 +249,32 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
                 (eclpParams.beta.toUint256() - peakPrice);
         }
 
-        if (imbalance > FixedPoint.ONE) {
-            return FixedPoint.ONE;
-        }
-
-        return imbalance;
+        return imbalance > FixedPoint.ONE ? FixedPoint.ONE : imbalance;
     }
 
-    function _setImbalanceSlopeBelowPeak(address pool, uint128 newImbalanceSlopeBelowPeak) internal {
-        if (newImbalanceSlopeBelowPeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeBelowPeak < MIN_IMBALANCE_SLOPE) {
-            revert InvalidImbalanceSlope();
-        }
+    function _setImbalanceSlopeBelowPeak(address pool, uint256 newImbalanceSlopeBelowPeak) internal {
+        _ensureValidImbalanceSlope(newImbalanceSlopeBelowPeak);
 
-        _imbalanceSlopePoolData[pool].imbalanceSlopeBelowPeak = newImbalanceSlopeBelowPeak;
-        emit ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
+        // Since the slope is < MAX_IMBALANCE_SLOPE, which is a uint128 number, we can cast it to uint128.
+        uint128 newImbalanceSlopeBelowPeak128 = newImbalanceSlopeBelowPeak.toUint128();
+
+        _imbalanceSlopePoolData[pool].imbalanceSlopeBelowPeak = newImbalanceSlopeBelowPeak128;
+        emit ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak128);
     }
 
-    function _setImbalanceSlopeAbovePeak(address pool, uint128 newImbalanceSlopeAbovePeak) internal {
-        if (newImbalanceSlopeAbovePeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeAbovePeak < MIN_IMBALANCE_SLOPE) {
+    function _setImbalanceSlopeAbovePeak(address pool, uint256 newImbalanceSlopeAbovePeak) internal {
+        _ensureValidImbalanceSlope(newImbalanceSlopeAbovePeak);
+
+        // Since the slope is < MAX_IMBALANCE_SLOPE, which is a uint128 number, we can cast it to uint128.
+        uint128 newImbalanceSlopeAbovePeak128 = newImbalanceSlopeAbovePeak.toUint128();
+
+        _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak = newImbalanceSlopeAbovePeak128;
+        emit ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak128);
+    }
+
+    function _ensureValidImbalanceSlope(uint256 newImbalanceSlope) internal pure {
+        if (newImbalanceSlope > MAX_IMBALANCE_SLOPE || newImbalanceSlope < MIN_IMBALANCE_SLOPE) {
             revert InvalidImbalanceSlope();
         }
-
-        _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak = newImbalanceSlopeAbovePeak;
-        emit ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
     }
 }
