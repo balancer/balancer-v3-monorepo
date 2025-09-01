@@ -28,6 +28,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
     uint256 constant DEFAULT_MIN_AMOUNT_OUT = 1e18;
     uint256 constant ROUNDING_ERROR = 2;
     uint256 constant REMOVE_LIQUIDITY_ROUNDING_ERROR = 4000;
+    uint256 constant REMOVE_LIQUIDITY_DELTA = 1e4;
     uint256 tokenAmount = 1e10 * 1e18;
     uint256 wrappedTokenAmount = 1e6 * 1e18;
 
@@ -223,6 +224,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -242,6 +244,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -264,6 +267,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
         });
         pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: poolAC, tokenOut: tokenC, isBuffer: false });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -286,6 +290,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
         });
         pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: poolBC, tokenOut: tokenC, isBuffer: false });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -308,6 +313,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
         });
         pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -339,6 +345,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
             isBuffer: false
         });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -361,6 +368,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
         });
         pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: poolAC, tokenOut: tokenA, isBuffer: false });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -387,6 +395,7 @@ contract BatchSwapBaseTest is BaseVaultTest {
             isBuffer: false
         });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
@@ -410,16 +419,19 @@ contract BatchSwapBaseTest is BaseVaultTest {
             isBuffer: false
         });
 
+        _generateSimpleDiffs(pathsExactIn);
         _testSwapExactIn(pathsExactIn, true, true);
     }
 
     function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep() public {
+        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ROUNDING_ERROR;
+
         IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
         pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: tokenA,
             steps: new IBatchRouter.SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - ROUNDING_ERROR
+            minAmountOut: minAmountOut
         });
         pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
             pool: poolAB,
@@ -431,12 +443,13 @@ contract BatchSwapBaseTest is BaseVaultTest {
             tokenOut: IERC20(poolBC),
             isBuffer: false
         });
+        _addPathAmountOut(minAmountOut);
 
         pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: tokenA,
             steps: new IBatchRouter.SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - ROUNDING_ERROR
+            minAmountOut: minAmountOut
         });
         pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
         pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
@@ -444,6 +457,14 @@ contract BatchSwapBaseTest is BaseVaultTest {
             tokenOut: IERC20(poolBC),
             isBuffer: false
         });
+        _addPathAmountOut(minAmountOut);
+
+        _addDiffForAlice(tokenA, -int256(DEFAULT_EXACT_AMOUNT_IN * 2));
+        _addDiffForAlice(IERC20(poolBC), int256(minAmountOut * 2));
+        _addAmountOut(IERC20(poolBC), minAmountOut * 2);
+
+        _addDiffForVault(tokenA, int256(DEFAULT_EXACT_AMOUNT_IN * 2));
+        _addDiffForVault(IERC20(poolBC), -int256(minAmountOut)); //TODO
 
         _testSwapExactIn(pathsExactIn, true, true);
     }
@@ -462,6 +483,13 @@ contract BatchSwapBaseTest is BaseVaultTest {
         });
         pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
         pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({ pool: poolBC, tokenOut: tokenC, isBuffer: false });
+        _addPathAmountOut(DEFAULT_MIN_AMOUNT_OUT);
+
+        _addDiffForAlice(IERC20(poolAB), -int256(DEFAULT_EXACT_AMOUNT_IN));
+        _addDiffForAlice(tokenC, int256(DEFAULT_MIN_AMOUNT_OUT));
+        _addDiffForVault(tokenC, -int256(DEFAULT_MIN_AMOUNT_OUT));
+
+        _addAmountOut(tokenC, DEFAULT_MIN_AMOUNT_OUT);
 
         _testSwapExactIn(pathsExactIn, true, true);
     }
@@ -482,70 +510,147 @@ contract BatchSwapBaseTest is BaseVaultTest {
         pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
         pathsExactIn[0].steps[2] = IBatchRouter.SwapPathStep({ pool: poolBC, tokenOut: tokenC, isBuffer: false });
 
-        _testSwapExactIn(pathsExactIn, true, true);
+        _generateSimpleDiffs(pathsExactIn);
+        _testSwapExactIn(pathsExactIn, true, true, REMOVE_LIQUIDITY_DELTA);
     }
 
     function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep() public {
-        //    baseTest.tokensIn = [baseTest.tokens.get(0)];
-        //   baseTest.tokensOut = [baseTest.tokens.get(1)];
-        //   baseTest.totalAmountIn = baseTest.pathExactAmountIn; // 1 path
-        //   baseTest.totalAmountOut = baseTest.pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
-        //   baseTest.pathAmountsOut = [baseTest.totalAmountOut]; // 1 path, all tokens out
-        //   baseTest.amountsOut = [baseTest.totalAmountOut];
-        //   baseTest.balanceChange = [
-        //     {
-        //       account: baseTest.sender,
-        //       changes: {
-        //         [await baseTest.tokensIn[0].symbol()]: ['very-near', -baseTest.totalAmountIn],
-        //         [await baseTest.tokensOut[0].symbol()]: ['very-near', baseTest.totalAmountOut],
-        //       },
-        //     },
-        //     {
-        //       account: baseTest.vaultAddress,
-        //       changes: {
-        //         [await baseTest.tokensIn[0].symbol()]: ['very-near', baseTest.totalAmountIn],
-        //         [await baseTest.tokensOut[0].symbol()]: ['very-near', -baseTest.totalAmountOut],
-        //       },
-        //     },
-        //   ];
-        //   baseTest.pathsExactIn = [
-        //     {
-        //       tokenIn: baseTest.token0,
-        //       steps: [
-        //         { pool: baseTest.poolA, tokenOut: baseTest.poolA, isBuffer: false },
-        //         { pool: baseTest.poolA, tokenOut: baseTest.token1, isBuffer: false },
-        //       ],
-        //       exactAmountIn: baseTest.pathExactAmountIn,
-        //       minAmountOut: pct(baseTest.pathMinAmountOut, 0.999), // Rounding tolerance
-        //     },
-        //   ];
-        // });
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(tokenA),
+            steps: new IBatchRouter.SwapPathStep[](2),
+            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
+            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR
+        });
+        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+            pool: poolAB,
+            tokenOut: IERC20(poolAB),
+            isBuffer: false
+        });
+        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
+
+        _generateSimpleDiffs(pathsExactIn);
+        _testSwapExactIn(pathsExactIn, true, true, REMOVE_LIQUIDITY_DELTA);
     }
 
-    function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep() public {}
+    function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(tokenA),
+            steps: new IBatchRouter.SwapPathStep[](2),
+            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
+            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR
+        });
+        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+            pool: poolAB,
+            tokenOut: IERC20(poolAB),
+            isBuffer: false
+        });
+        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
 
-    function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep() public {}
+        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(tokenA),
+            steps: new IBatchRouter.SwapPathStep[](3),
+            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
+            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR
+        });
+        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
+            pool: poolAC,
+            tokenOut: IERC20(poolAC),
+            isBuffer: false
+        });
+        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
+            pool: nestedPoolACBC,
+            tokenOut: IERC20(poolBC),
+            isBuffer: false
+        });
+        pathsExactIn[1].steps[2] = IBatchRouter.SwapPathStep({ pool: poolBC, tokenOut: tokenB, isBuffer: false });
 
-    enum OperationType {
-        WrapUnwrap,
-        RemoveLiquidity,
-        AddLiquidity,
-        Swap
+        _generateSimpleDiffs(pathsExactIn);
+        _testSwapExactIn(pathsExactIn, true, true, REMOVE_LIQUIDITY_DELTA);
     }
 
-    function _getOperationType(
-        IBatchRouter.SwapPathStep memory step,
-        IERC20 stepTokenIn
-    ) internal view returns (OperationType) {
-        if (step.isBuffer) {
-            return OperationType.WrapUnwrap;
-        } else if (address(stepTokenIn) == step.pool) {
-            return OperationType.RemoveLiquidity;
-        } else if (address(step.tokenOut) == step.pool) {
-            return OperationType.AddLiquidity;
-        } else {
-            return OperationType.Swap;
+    function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep() public {
+        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(poolAB),
+            steps: new IBatchRouter.SwapPathStep[](1),
+            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
+            minAmountOut: minAmountOut
+        });
+        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+            pool: nestedPoolABAC,
+            tokenOut: IERC20(poolAC),
+            isBuffer: false
+        });
+        _addPathAmountOut(minAmountOut);
+
+        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(poolBC),
+            steps: new IBatchRouter.SwapPathStep[](2),
+            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
+            minAmountOut: minAmountOut
+        });
+        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
+            pool: nestedPoolABBC,
+            tokenOut: IERC20(poolAB),
+            isBuffer: false
+        });
+        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({ pool: poolAB, tokenOut: tokenB, isBuffer: false });
+        _addPathAmountOut(minAmountOut);
+
+        //TODO: about poolAB
+        _addDiffForAlice(IERC20(poolAB), -int256(DEFAULT_EXACT_AMOUNT_IN));
+        _addDiffForAlice(IERC20(poolAC), int256(minAmountOut));
+
+        _addDiffForAlice(IERC20(poolBC), -int256(DEFAULT_EXACT_AMOUNT_IN));
+        _addDiffForAlice(tokenB, int256(minAmountOut));
+
+        _addDiffForVault(IERC20(poolAC), -int256(minAmountOut));
+        _addDiffForVault(IERC20(poolBC), int256(DEFAULT_EXACT_AMOUNT_IN));
+        _addDiffForVault(tokenB, -int256(minAmountOut));
+
+        _addAmountOut(IERC20(poolAC), minAmountOut);
+        _addAmountOut(tokenB, minAmountOut);
+
+        _testSwapExactIn(pathsExactIn, true, true, REMOVE_LIQUIDITY_DELTA);
+    }
+
+    function _generateSimpleDiffs(IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn) internal {
+        for (uint256 i = 0; i < pathsExactIn.length; i++) {
+            IBatchRouter.SwapPathExactAmountIn memory pathExactIn = pathsExactIn[i];
+
+            IBatchRouter.SwapPathStep memory lastStep = pathExactIn.steps[pathExactIn.steps.length - 1];
+
+            _addDiffForVault(pathExactIn.tokenIn, int256(pathExactIn.exactAmountIn));
+            _addDiffForVault(lastStep.tokenOut, -int256(pathExactIn.minAmountOut));
+
+            _addDiffForAlice(pathExactIn.tokenIn, -int256(pathExactIn.exactAmountIn));
+            _addDiffForAlice(lastStep.tokenOut, int256(pathExactIn.minAmountOut));
+
+            _addAmountOut(lastStep.tokenOut, pathExactIn.minAmountOut);
+            _addPathAmountOut(pathExactIn.minAmountOut);
         }
+    }
+
+    function _addPathAmountOut(uint256 amount) internal {
+        _pathAmountsOut.push(amount);
+    }
+
+    function _addAmountOut(IERC20 token, uint256 amount) internal {
+        (, uint256 currentAmountOut) = _amountsOut.tryGet(address(token));
+        _amountsOut.set(address(token), currentAmountOut + amount);
+    }
+
+    function _addDiffForVault(IERC20 token, int256 diff) internal {
+        _diffTokens.add(address(token));
+        _vaultTokenBalancesDiff[address(token)] += diff;
+    }
+
+    function _addDiffForAlice(IERC20 token, int256 diff) internal {
+        _diffTokens.add(address(token));
+        _aliceTokenBalancesDiff[address(token)] += diff;
     }
 
     function _testSwapExactIn(
@@ -553,43 +658,17 @@ contract BatchSwapBaseTest is BaseVaultTest {
         bool singleTransferIn,
         bool singleTransferOut
     ) internal {
-        for (uint256 i = 0; i < pathsExactIn.length; i++) {
-            IBatchRouter.SwapPathExactAmountIn memory pathExactIn = pathsExactIn[i];
+        return _testSwapExactIn(pathsExactIn, singleTransferIn, singleTransferOut, 0);
+    }
 
-            uint256 lastStepIndex = pathExactIn.steps.length - 1;
-            IERC20 stepTokenIn = lastStepIndex == 0
-                ? pathExactIn.tokenIn
-                : pathExactIn.steps[lastStepIndex - 1].tokenOut;
-
-            IBatchRouter.SwapPathStep memory firstStep = pathExactIn.steps[0];
-            IBatchRouter.SwapPathStep memory lastStep = pathExactIn.steps[pathExactIn.steps.length - 1];
-
-            OperationType lastOperationType = _getOperationType(lastStep, stepTokenIn);
-            OperationType firstOperationType = _getOperationType(firstStep, pathExactIn.tokenIn);
-
-            if (firstOperationType == OperationType.RemoveLiquidity) {
-                _aliceTokenBalancesDiff[address(pathExactIn.tokenIn)] -= int256(pathExactIn.exactAmountIn);
-            } else {
-                _vaultTokenBalancesDiff[address(pathExactIn.tokenIn)] += int256(pathExactIn.exactAmountIn);
-                _aliceTokenBalancesDiff[address(pathExactIn.tokenIn)] -= int256(pathExactIn.exactAmountIn);
-            }
-
-            if (lastOperationType == OperationType.AddLiquidity) {
-                _aliceTokenBalancesDiff[address(lastStep.tokenOut)] += int256(pathExactIn.minAmountOut);
-            } else {
-                _vaultTokenBalancesDiff[address(lastStep.tokenOut)] -= int256(pathExactIn.minAmountOut);
-
-                _aliceTokenBalancesDiff[address(lastStep.tokenOut)] += int256(pathExactIn.minAmountOut);
-            }
-
-            _diffTokens.add(address(pathExactIn.tokenIn));
-            _diffTokens.add(address(lastStep.tokenOut));
-
-            (, uint256 currentAmountOut) = _amountsOut.tryGet(address(lastStep.tokenOut));
-            _amountsOut.set(address(lastStep.tokenOut), currentAmountOut + pathExactIn.minAmountOut);
-
-            _pathAmountsOut.push(pathExactIn.minAmountOut);
-        }
+    function _testSwapExactIn(
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        bool singleTransferIn,
+        bool singleTransferOut,
+        uint256 delta
+    ) internal {
+        // TODO: pool balance checks
+        // TODO: check other token balances
 
         address[] memory _diffTokensArray = _diffTokens.values();
         uint256[] memory vaultTokenBalancesBefore = new uint256[](_diffTokensArray.length);
@@ -627,21 +706,28 @@ contract BatchSwapBaseTest is BaseVaultTest {
             uint256[] memory amountsOut
         ) = batchRouter.swapExactIn(pathsExactIn, MAX_UINT256, false, bytes(""));
 
+        uint256 _delta = delta;
         for (uint256 i = 0; i < _diffTokensArray.length; i++) {
-            console.log("token", _diffTokensArray[i]);
-            console.log("diff", _vaultTokenBalancesDiff[_diffTokensArray[i]]);
-            assertApproxEqAbs(
-                int256(IERC20(_diffTokensArray[i]).balanceOf(address(vault))),
-                int256(vaultTokenBalancesBefore[i]) + int256(_vaultTokenBalancesDiff[_diffTokensArray[i]]),
-                0, //TODO
-                "vault token balance mismatch"
-            );
-            assertApproxEqAbs(
-                int256(IERC20(_diffTokensArray[i]).balanceOf(alice)),
-                int256(aliceTokenBalancesBefore[i]) + int256(_aliceTokenBalancesDiff[_diffTokensArray[i]]),
-                0, //TODO
-                "alice token balance mismatch"
-            );
+            IERC20 token = IERC20(_diffTokensArray[i]);
+            console.log("Checking token %s", address(token));
+
+            uint256 currentVaultBalance = token.balanceOf(address(vault));
+            uint256 vaultBalanceBefore = vaultTokenBalancesBefore[i];
+            int256 vaultDiff = _vaultTokenBalancesDiff[address(token)];
+            uint256 expectedVaultBalance = uint256(int256(vaultBalanceBefore) + int256(vaultDiff));
+            console.log("Balance vault before:        %s", vaultBalanceBefore);
+            console.log("Expected vault balance: %s", expectedVaultBalance);
+            console.log("Current vault balance:  %s", currentVaultBalance);
+
+            uint256 currentAliceBalance = token.balanceOf(alice);
+            uint256 aliceBalanceBefore = aliceTokenBalancesBefore[i];
+            int256 aliceDiff = _aliceTokenBalancesDiff[address(token)];
+            uint256 expectedAliceBalance = uint256(int256(aliceBalanceBefore) + int256(aliceDiff));
+            console.log("Expected alice balance: %s", expectedAliceBalance);
+            console.log("Current alice balance:  %s", currentAliceBalance);
+
+            assertApproxEqAbs(currentVaultBalance, expectedVaultBalance, _delta, "vault token balance mismatch");
+            assertApproxEqAbs(currentAliceBalance, expectedAliceBalance, _delta, "alice token balance mismatch");
         }
 
         assertEq(calculatedPathAmountsOut.length, _pathAmountsOut.length, "expected path amounts out length mismatch");
