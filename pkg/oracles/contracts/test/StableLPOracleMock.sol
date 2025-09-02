@@ -27,9 +27,9 @@ contract StableLPOracleMock is StableLPOracle {
 
     function computeMarketPriceBalances(
         uint256 invariant,
-        int256[] memory prices
+        int256[] memory normalizedPrices
     ) public view returns (uint256[] memory) {
-        return _computeMarketPriceBalances(invariant, prices);
+        return _computeMarketPriceBalances(invariant, normalizedPrices);
     }
 
     function computeK(int256[] memory prices) public view returns (int256) {
