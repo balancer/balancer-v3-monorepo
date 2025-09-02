@@ -194,7 +194,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
                 prices[i] =
-                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT / 2).mulDown(0.99e18)) /
+                    bound(pricesRaw[i], priceBase, ((priceBase * PRICE_RATIO_LIMIT) / 2).mulDown(0.99e18)) /
                     (10 ** (18 - tokenDecimals));
 
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
@@ -279,7 +279,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
                 prices[i] =
-                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT / 2).mulDown(0.99e18)) /
+                    bound(pricesRaw[i], priceBase, ((priceBase * PRICE_RATIO_LIMIT) / 2).mulDown(0.99e18)) /
                     (10 ** (18 - tokenDecimals));
 
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
