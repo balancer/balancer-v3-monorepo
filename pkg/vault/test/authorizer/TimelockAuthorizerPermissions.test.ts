@@ -1,19 +1,20 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { BaseContract, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import TimelockAuthorizer from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
+import { Vault } from '../../typechain-types';
 
 describe('TimelockAuthorizer permissions', () => {
-  let authorizer: TimelockAuthorizer, vault: Contract;
+  let authorizer: TimelockAuthorizer, vault: Vault;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     revoker: SignerWithAddress,
@@ -40,10 +41,7 @@ describe('TimelockAuthorizer permissions', () => {
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
 
-    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({
-      admin: root,
-      nextAdmin: nextRoot.address,
-    }));
+    vault = await VaultDeployer.deploy();
 
     authorizer = new TimelockAuthorizer(authorizerContract, root);
   });
@@ -53,7 +51,7 @@ describe('TimelockAuthorizer permissions', () => {
       const delay = DAY;
 
       sharedBeforeEach('set delay', async () => {
-        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+        const setAuthorizerAction = await actionId(vault as BaseContract, 'setAuthorizer');
         await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
         await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
       });
