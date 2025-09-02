@@ -60,7 +60,9 @@ contract StableLPOracle is LPOracleBase {
         // Validate whether raw prices and the max/min ratio are in an acceptable range. `computeInvariant` and
         // `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot defer this validation
         // until the final tvl calculation loop.
-        int256[] memory normalizedPrices = _validateAndNormalizePrices(prices);
+        // Prices are normalized by dividing all prices by the minimum price. This ensures that the minimum price in
+        // the price feed array is always 1, and it avoids the risk of division by zero in the computation of K.
+        int256[] memory normalizedPrices = _ensureValidPricesAndNormalize(prices);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
@@ -251,7 +253,7 @@ contract StableLPOracle is LPOracleBase {
         return (a * b) / _POSITIVE_ONE_INT;
     }
 
-    function _validateAndNormalizePrices(
+    function _ensureValidPricesAndNormalize(
         int256[] memory prices
     ) internal view returns (int256[] memory normalizedPrices) {
         if (prices[0] <= 0) {
@@ -276,7 +278,7 @@ contract StableLPOracle is LPOracleBase {
             }
         }
 
-        // The invariant of the pool gets distorted if the minimum price of the price feed array is too small.
+        // The invariant of the pool gets distorted if the minimum price of the price feed array is too low.
         if (minPrice < _MIN_PRICE_LIMIT) {
             revert MinPriceTooLow();
         }
