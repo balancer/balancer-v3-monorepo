@@ -27,10 +27,10 @@ contract StableLPOracle is LPOracleBase {
     error KDidNotConverge();
 
     /**
-     * @notice The minimum price of the feed array is too small.
-     * @dev When the minimum price of the feed array is too small, `k` computation fails with division by zero.
+     * @notice The minimum price of the feed array is too low.
+     * @dev When the minimum price of the feed array is too low, `k` computation fails with division by zero.
      */
-    error MinPriceTooSmall();
+    error MinPriceTooLow();
 
     /**
      * @notice The ratio between the maximum and minimum prices is too high.
@@ -57,7 +57,9 @@ contract StableLPOracle is LPOracleBase {
 
     /// @inheritdoc LPOracleBase
     function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
-        // Check whether raw prices and the max/min ratio are in an acceptable range.
+        // Validate whether raw prices and the max/min ratio are in an acceptable range. `computeInvariant` and
+        // `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot defer this validation
+        // until the final tvl calculation loop.
         int256[] memory normalizedPrices = _validateAndNormalizePrices(prices);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
@@ -282,7 +284,7 @@ contract StableLPOracle is LPOracleBase {
         // The `k` parameter has a high risk of not converging if the ratio between the maximum and minimum prices is
         // too high.
         if (maxPrice / minPrice > _PRICE_RATIO_LIMIT) {
-            revert PriceRatioIsTooHigh();
+            revert PriceRatioTooHigh();
         }
 
         normalizedPrices = new int256[](_totalTokens);
