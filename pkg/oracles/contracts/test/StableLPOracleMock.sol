@@ -36,4 +36,20 @@ contract StableLPOracleMock is StableLPOracle {
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
         return _computeK(a, b, prices);
     }
+
+    function normalizePrices(int256[] memory prices) public view returns (int256[] memory normalizedPrices) {
+        int256 minPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
+        }
+
+        normalizedPrices = new int256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            normalizedPrices[i] = _divDownInt(prices[i], minPrice);
+        }
+
+        return normalizedPrices;
+    }
 }
