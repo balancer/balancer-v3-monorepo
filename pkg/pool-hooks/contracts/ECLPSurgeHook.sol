@@ -30,20 +30,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         uint128 imbalanceSlopeBelowPeak;
         uint128 imbalanceSlopeAbovePeak;
     }
-    /**
-     * @notice The rotation angle is too small or too large for the surge hook to be used.
-     * @dev The surge hook accepts angles from 30 to 60 degrees. Outside of this range, the computation of the peak
-     * price cannot be approximated by sine/cosine.
-     */
-    error InvalidRotationAngle();
-
-    /**
-     * @notice A new `ECLPSurgeHook` contract has been registered successfully.
-     * @dev If the registration fails the call will revert, so there will be no event.
-     * @param pool The pool on which the hook was registered
-     * @param factory The factory that registered the pool
-     */
-    event ECLPSurgeHookRegistered(address indexed pool, address indexed factory);
 
     uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = uint128(FixedPoint.ONE);
 
@@ -79,9 +65,11 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         (IGyroECLPPool.EclpParams memory eclpParams, ) = IGyroECLPPool(pool).getECLPParams();
 
         // The surge hook only works for pools with a rotation angle between 30 and 60 degrees. Outside of this range,
-        // the computation of the peak price cannot be approximated by sine/cosine.
+        // the computation of the peak price cannot be approximated by sine/cosine. Notice that sin(30deg) = 0.5, and
+        // cos(60deg) = 0.5. Therefore, we can use 0.5 as the threshold for the sine and cosine, given that in the
+        // interval [30deg, 60deg], both sine and cosine are greater than 0.5.
         if (eclpParams.s < 50e16 || eclpParams.c < 50e16) {
-            revert InvalidRotationAngleForSurgeHook();
+            revert InvalidRotationAngle();
         }
 
         success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);

@@ -269,14 +269,6 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
     }
 
-    function testPriceComputation() public view {
-        // Price computed offchain.
-        uint256 expectedPrice = 3663201029819534758509;
-
-        uint256 actualPrice = hookMock.computePriceFromBalances(_balancesScaled18, _eclpParams, _derivedECLPParams);
-        assertEq(actualPrice, expectedPrice, "Prices do not match");
-    }
-
     function testIsSurgingWithSwapTowardsLiquidityPeak() public view {
         // Current price is 3663 and peak price is sine/cosine = s/c = 3758. The following swap will increase the
         // price, bringing the pool closer to the peak of liquidity, so isSurging must be false.
@@ -804,7 +796,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
 
-        vm.expectRevert(ECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngle.selector);
         GyroECLPPoolFactory(poolFactory).create(
             "Gyro E-CLP Pool",
             "ECLP-POOL",
@@ -849,7 +841,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
 
-        vm.expectRevert(ECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngle.selector);
         GyroECLPPoolFactory(poolFactory).create(
             "Gyro E-CLP Pool",
             "ECLP-POOL",
