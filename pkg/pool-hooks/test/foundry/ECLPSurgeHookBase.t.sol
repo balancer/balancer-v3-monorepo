@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -42,6 +43,13 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
     IGyroECLPPool.DerivedEclpParams private derivedECLPParams;
     IGyroECLPPool.EclpParams private eclpParams;
     IRateProvider[] private rateProviders;
+
+    uint128 private constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
+    ECLPSurgeHook.ImbalanceSlopeData internal _DEFAULT_SLOPE =
+        ECLPSurgeHook.ImbalanceSlopeData({
+            imbalanceSlopeBelowPeak: _DEFAULT_IMBALANCE_SLOPE,
+            imbalanceSlopeAbovePeak: _DEFAULT_IMBALANCE_SLOPE
+        });
 
     function setUp() public override {
         (eclpParams, derivedECLPParams) = _setupEclpParams();
@@ -163,12 +171,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
 
         // Add USDC --> more unbalanced.
         uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            initialBalancesScaled18
+            pool,
+            initialBalancesScaled18,
+            _DEFAULT_SLOPE
         );
         uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            expectedBalancesAfterAddScaled18
+            pool,
+            expectedBalancesAfterAddScaled18,
+            _DEFAULT_SLOPE
         );
 
         assertTrue(
@@ -201,12 +211,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         ECLPSurgeHook.SurgeFeeData memory surgeFeeData = eclpSurgeHookMock.getSurgeFeeData(pool);
 
         uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            initialBalancesScaled18
+            pool,
+            initialBalancesScaled18,
+            _DEFAULT_SLOPE
         );
         uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            expectedBalancesAfterAddScaled18
+            pool,
+            expectedBalancesAfterAddScaled18,
+            _DEFAULT_SLOPE
         );
 
         assertFalse(
@@ -238,10 +250,15 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesScaled18);
+        oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
+            pool,
+            initialBalancesScaled18,
+            _DEFAULT_SLOPE
+        );
         newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            expectedBalancesAfterRemoveScaled18
+            pool,
+            expectedBalancesAfterRemoveScaled18,
+            _DEFAULT_SLOPE
         );
 
         // Pool needs to be surging after remove, so the unbalanced liquidity operation reverts.
@@ -286,12 +303,14 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
 
         // Should not surge, close to balance.
         uint256 oldTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            initialBalancesScaled18
+            pool,
+            initialBalancesScaled18,
+            _DEFAULT_SLOPE
         );
         uint256 newTotalImbalance = eclpSurgeHookMock.computeImbalanceFromBalances(
-            GyroECLPPool(pool),
-            expectedBalancesAfterRemoveScaled18
+            pool,
+            expectedBalancesAfterRemoveScaled18,
+            _DEFAULT_SLOPE
         );
 
         assertFalse(

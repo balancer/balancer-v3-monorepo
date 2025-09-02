@@ -65,6 +65,17 @@ contract EclpLPOracleFactoryTest is GyroEclpPoolDeployer, LPOracleFactoryBaseTes
     }
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
-        return ILPOracleFactoryBase(address(new EclpLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
+        return
+            ILPOracleFactoryBase(
+                address(
+                    new EclpLPOracleFactory(
+                        vault,
+                        _uptimeFeed,
+                        UPTIME_RESYNC_WINDOW,
+                        ORACLE_FACTORY_VERSION,
+                        ORACLE_VERSION
+                    )
+                )
+            );
     }
 }
