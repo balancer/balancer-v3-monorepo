@@ -9,6 +9,7 @@ contract HypercorePrecompileMock {
     function setShouldRevert(bool shouldRevert) external {
         _shouldRevert = shouldRevert;
     }
+
     function setShouldReturnZeroBytes(bool shouldReturnZeroBytes) external {
         _shouldReturnZeroBytes = shouldReturnZeroBytes;
     }
