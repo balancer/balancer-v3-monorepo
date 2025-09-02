@@ -1,32 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+pragma solidity ^0.8.24;
 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+import { IBasicAuthorizer } from "@balancer-labs/v3-interfaces/contracts/governance-scripts/IBasicAuthorizer.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IBasicAuthorizer.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-
-import "@balancer-labs/v2-vault/contracts/authorizer/TimelockAuthorizer.sol";
+import { TimelockAuthorizer } from "@balancer-labs/v3-vault/contracts/authorizer/TimelockAuthorizer.sol";
 
 contract TimelockAuthorizerMigrator {
     bytes32
         public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     // solhint-disable-previous-line max-line-length
-    address public constant EVERYWHERE = address(-1);
+    address public constant EVERYWHERE = address(type(uint160).max);
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     IVault public immutable vault;
@@ -54,7 +43,7 @@ contract TimelockAuthorizerMigrator {
     constructor(
         address _root,
         IBasicAuthorizer _oldAuthorizer,
-        IAuthorizerAdaptorEntrypoint _authorizerAdaptorEntrypoint,
+        IVault _vault,
         uint256 _changeRootDelay,
         RoleData[] memory _rolesData,
         RoleData[] memory _grantersData,
@@ -67,12 +56,12 @@ contract TimelockAuthorizerMigrator {
         TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(
             address(this),
             _root,
-            _authorizerAdaptorEntrypoint,
+            _vault,
             _changeRootDelay
         );
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
-        vault = _authorizerAdaptorEntrypoint.getVault();
+        vault = _vault;
         root = _root;
         changeRootDelay = _changeRootDelay;
 
@@ -142,7 +131,7 @@ contract TimelockAuthorizerMigrator {
         require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
 
         // Ensure the migrator contract has authority to change the vault's authorizer
-        bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
+        bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVaultAdmin.setAuthorizer.selector);
         bool canSetAuthorizer = oldAuthorizer.canPerform(setAuthorizerId, address(this), address(vault));
         require(canSetAuthorizer, "MIGRATOR_CANNOT_SET_AUTHORIZER");
 
