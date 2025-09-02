@@ -58,7 +58,7 @@ contract StableLPOracle is LPOracleBase {
     /// @inheritdoc LPOracleBase
     function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
         // Check if prices are in an acceptable range.
-        _validatePrices(prices);
+        int256[] memory normalizedPrices = _validateAndNormalizePrices(prices);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
@@ -67,7 +67,7 @@ contract StableLPOracle is LPOracleBase {
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
         uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, prices);
+        uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, normalizedPrices);
 
         for (uint256 i = 0; i < _totalTokens; i++) {
             tvl += prices[i].toUint256().mulDown(marketPriceBalancesScaled18[i]);
@@ -85,7 +85,7 @@ contract StableLPOracle is LPOracleBase {
      */
     function _computeMarketPriceBalances(
         uint256 invariant,
-        int256[] memory prices
+        int256[] memory normalizedPrices
     ) internal view returns (uint256[] memory balancesForPrices) {
         // To compute the balances for a given price vector, we need to compute the gradient of the stable invariant.
         // The stable invariant is:
@@ -109,9 +109,6 @@ contract StableLPOracle is LPOracleBase {
         // price vector.
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
-
-        // Normalize prices to avoid distortions in the balances computation.
-        int256[] memory normalizedPrices = _normalizePrices(prices);
 
         // First, we need to compute the constant k that will be used as a multiplier on all the prices.
         // This factor adjusts the input prices to find the correct balance amounts that respect both the pool
@@ -252,27 +249,32 @@ contract StableLPOracle is LPOracleBase {
         return (a * b) / _POSITIVE_ONE_INT;
     }
 
-    function _validatePrices(int256[] memory prices) internal view {
-        // `computeInvariant` and `_computeMarketPriceBalances` fail with invalid prices, so we unfortunately cannot
-        // defer this check until the final tvl calculation loop.
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            if (prices[i] <= 0) {
-                revert InvalidOraclePrice();
-            }
+    function _validateAndNormalizePrices(
+        int256[] memory prices
+    ) internal view returns (int256[] memory normalizedPrices) {
+        if (prices[0] <= 0) {
+            revert InvalidOraclePrice();
         }
 
         int256 minPrice = prices[0];
         int256 maxPrice = prices[0];
+        uint256 minPriceIndex = 0;
+
+        // Validate prices; find and validate bounds.
         for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] <= 0) {
+                revert InvalidOraclePrice();
+            }
+
             if (prices[i] < minPrice) {
                 minPrice = prices[i];
-            }
-            if (prices[i] > maxPrice) {
+                minPriceIndex = i;
+            } else if (prices[i] > maxPrice) {
                 maxPrice = prices[i];
             }
         }
 
-        // The invariant of the pool gets distorted if the minimum price of the price feed arrayis too small.
+        // The invariant of the pool gets distorted if the minimum price of the price feed array is too small.
         if (minPrice < _MIN_PRICE_LIMIT) {
             revert MinPriceTooSmall();
         }
@@ -282,21 +284,10 @@ contract StableLPOracle is LPOracleBase {
         if (maxPrice / minPrice > _PRICE_RATIO_LIMIT) {
             revert PriceRatioIsTooHigh();
         }
-    }
-
-    function _normalizePrices(int256[] memory prices) internal view returns (int256[] memory normalizedPrices) {
-        int256 minPrice = prices[0];
-        for (uint256 i = 1; i < _totalTokens; i++) {
-            if (prices[i] < minPrice) {
-                minPrice = prices[i];
-            }
-        }
 
         normalizedPrices = new int256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            normalizedPrices[i] = _divDownInt(prices[i], minPrice);
+            normalizedPrices[i] = i == minPriceIndex ? int256(FixedPoint.ONE) : _divDownInt(prices[i], minPrice);
         }
-
-        return normalizedPrices;
     }
 }
