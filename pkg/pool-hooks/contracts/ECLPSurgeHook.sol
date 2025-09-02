@@ -27,10 +27,10 @@ contract ECLPSurgeHook is SurgeHookCommon {
 
     /**
      * @notice The rotation angle is too small or too large for the surge hook to be used.
-     * @dev The surge hook accept angles from 30 to 60 degrees. Outside of this range, the computation of the peak
+     * @dev The surge hook accepts angles from 30 to 60 degrees. Outside of this range, the computation of the peak
      * price cannot be approximated by sine/cosine.
      */
-    error InvalidRotationAngleForSurgeHook();
+    error InvalidRotationAngle();
 
     /**
      * @notice A new `ECLPSurgeHook` contract has been registered successfully.
