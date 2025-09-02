@@ -5,11 +5,11 @@ pragma solidity ^0.8.24;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/ITimelockAuthorizer.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { ITimelockAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
-import "./TimelockExecutionHelper.sol";
+import { TimelockExecutionHelper } from "./TimelockExecutionHelper.sol";
 
 // Scheduled executions are time based and are expected to be on the order of days, so any time changes or manipulation
 // on the order of seconds or minutes is irrelevant.
@@ -29,7 +29,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     using Address for address;
 
     // solhint-disable-next-line const-name-snakecase
-    address private constant _EVERYWHERE = address(-1);
+    address private constant _EVERYWHERE = address(type(uint160).max);
 
     // solhint-disable-next-line const-name-snakecase
     uint256 internal constant _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
@@ -98,74 +98,54 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         _rootTransferDelay = rootTransferDelay;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     // solhint-disable-next-line func-name-mixedcase
     function EVERYWHERE() public pure override returns (address) {
         return _EVERYWHERE;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     // solhint-disable-next-line func-name-mixedcase
     function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() public pure override returns (uint256) {
         return _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isRoot(address account) public view override returns (bool) {
         return account == _root;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isPendingRoot(address account) public view override returns (bool) {
         return account == _pendingRoot;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getRootTransferDelay() public view override returns (uint256) {
         return _rootTransferDelay;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getVault() public view override returns (address) {
         return address(_vault);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getTimelockExecutionHelper() public view override returns (address) {
         return address(_executionHelper);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getRoot() external view override returns (address) {
         return _root;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getPendingRoot() external view override returns (address) {
         return _pendingRoot;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isGranter(
         bytes32 actionId,
         address account,
@@ -174,16 +154,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE()] || isRoot(account);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isRevoker(address account, address where) public view override returns (bool) {
         return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE()] || isRoot(account);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getScheduledExecution(uint256 scheduledExecutionId)
         external
         view
@@ -193,16 +169,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getScheduledExecutionsCount() external view override returns (uint256) {
         return _scheduledExecutions.length;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getScheduledExecutions(
         uint256 skip,
         uint256 maxSize,
@@ -229,16 +201,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return items;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isExecutor(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return _isExecutor[scheduledExecutionId][account];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function canExecute(uint256 scheduledExecutionId) external view override returns (bool) {
         require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
@@ -249,9 +217,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
             block.timestamp >= scheduledExecution.executableAt;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isCanceler(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return
             _isCanceler[scheduledExecutionId][account] ||
@@ -259,9 +225,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
             isRoot(account);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleRootChange(address newRoot, address[] memory executors) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
@@ -274,16 +238,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function setPendingRoot(address pendingRoot) external override onlyScheduled {
         _setPendingRoot(pendingRoot);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function claimRoot() external override {
         address pendingRoot = _pendingRoot;
         require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
@@ -293,9 +253,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         _setPendingRoot(address(0));
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function execute(uint256 scheduledExecutionId) external override returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
@@ -324,9 +282,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit ExecutionExecuted(scheduledExecutionId);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function cancel(uint256 scheduledExecutionId) external override {
         require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
@@ -344,17 +300,13 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit ExecutionCanceled(scheduledExecutionId);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function addCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         _addCanceler(scheduledExecutionId, account);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function removeCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
@@ -378,9 +330,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit CancelerRemoved(scheduledExecutionId, account);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function addGranter(
         bytes32 actionId,
         address account,
@@ -399,9 +349,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit GranterAdded(actionId, account, where);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function removeGranter(
         bytes32 actionId,
         address account,
@@ -425,9 +373,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit GranterRemoved(actionId, account, where);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function addRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
@@ -442,9 +388,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit RevokerAdded(account, where);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function removeRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
