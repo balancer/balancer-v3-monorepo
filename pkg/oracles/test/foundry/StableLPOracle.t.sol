@@ -18,6 +18,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import {
@@ -30,8 +31,9 @@ import { BaseLPOracleTest } from "./utils/BaseLPOracleTest.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
-    using FixedPoint for uint256;
     using CastingHelpers for address[];
+    using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     uint256 constant MAX_TOKENS = 5;
 
@@ -248,7 +250,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             pricesInt[i] = int256(price);
         }
 
-        vm.expectRevert(StableLPOracle.MinPriceTooSmall.selector);
+        vm.expectRevert(StableLPOracle.MinPriceTooLow.selector);
         oracle.latestRoundData();
     }
 
@@ -316,6 +318,55 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         assertEq(startedAt, 0, "Started at does not match");
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
+    }
+
+    function testComputeTVLHighPriceRatio() public {
+        uint256 totalTokens = 2;
+        uint256 amplificationParameter = 100;
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - tokenDecimals));
+            int256 rawPrice = i == 0 ? int256(1e24) : int256(1e10);
+            prices[i] = rawPrice / int256(10 ** (18 - tokenDecimals));
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+
+        vm.expectRevert(StableLPOracle.PriceRatioTooHigh.selector);
+        oracle.computeTVLGivenPrices(pricesInt);
+    }
+
+    function testComputeKNotConverging() public {
+        uint256 amplificationParameter = 1;
+
+        IStablePool pool;
+        StableLPOracleMock oracle;
+
+        uint256[] memory poolInitAmounts = [uint256(563_360_193e18), uint256(10_000_000e18)].toMemoryArray();
+        address[] memory _tokens = [address(sortedTokens[0]), address(sortedTokens[1])].toMemoryArray();
+
+        pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+        (oracle, ) = deployOracle(pool);
+
+        int256[] memory pricesInt = new int256[](2);
+        pricesInt[0] = int256(55_529_888e18);
+        pricesInt[1] = int256(1e9);
+
+        vm.expectRevert(StableLPOracle.KDidNotConverge.selector);
+        oracle.computeK(pricesInt);
     }
 
     function _checkPricesAndInvariant(
