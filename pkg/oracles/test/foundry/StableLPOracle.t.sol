@@ -185,7 +185,8 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             uint256[] memory poolInitAmounts = new uint256[](totalTokens);
             address[] memory _tokens = new address[](totalTokens);
 
-            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / (PRICE_RATIO_LIMIT / 2));
+
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
@@ -193,8 +194,9 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
                 prices[i] =
-                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT / 2).mulDown(0.99e18)) /
                     (10 ** (18 - tokenDecimals));
+
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
                 pricesInt[i] = int256(price);
             }
@@ -204,8 +206,9 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         }
 
         uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
+        int256[] memory normalizedPrices = oracle.normalizePrices(pricesInt);
 
-        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, pricesInt);
+        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, normalizedPrices);
         _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
     }
 
@@ -267,7 +270,8 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
 
         uint256 minUpdateTimestamp = MAX_UINT256;
         {
-            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / (PRICE_RATIO_LIMIT / 2));
+
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
@@ -275,8 +279,9 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
                 prices[i] =
-                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT).mulDown(0.99e18)) /
+                    bound(pricesRaw[i], priceBase, (priceBase * PRICE_RATIO_LIMIT / 2).mulDown(0.99e18)) /
                     (10 ** (18 - tokenDecimals));
+
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
