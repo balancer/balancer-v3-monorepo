@@ -58,7 +58,7 @@ contract HyperEVMRateProviderTest is Test {
     }
 
     function testGetRateZeroSpotPrice() public {
-        HypercorePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setShouldReturnZeroBytes(true);
+        HypercorePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setData(abi.encode(0));
         vm.expectRevert(abi.encodeWithSelector(HyperSpotPricePrecompile.SpotPriceIsZero.selector));
         hyperEVMRateProvider.getRate();
     }
