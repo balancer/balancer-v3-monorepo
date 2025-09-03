@@ -24,9 +24,11 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
 
     constructor(
         IVault vault,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 resyncWindow,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, factoryVersion, oracleVersion) {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, resyncWindow, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -35,7 +37,14 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
         IBasePool pool,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
-        oracle = new EclpLPOracle(vault, IGyroECLPPool(address(pool)), feeds, _oracleVersion);
+        oracle = new EclpLPOracle(
+            vault,
+            IGyroECLPPool(address(pool)),
+            feeds,
+            _sequencerUptimeFeed,
+            _uptimeResyncWindow,
+            _oracleVersion
+        );
         emit EclpLPOracleCreated(IGyroECLPPool(address(pool)), feeds, oracle);
     }
 }

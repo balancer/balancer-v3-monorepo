@@ -98,6 +98,16 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
         return
-            ILPOracleFactoryBase(address(new WeightedLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
+            ILPOracleFactoryBase(
+                address(
+                    new WeightedLPOracleFactory(
+                        vault,
+                        _uptimeFeed,
+                        UPTIME_RESYNC_WINDOW,
+                        ORACLE_FACTORY_VERSION,
+                        ORACLE_VERSION
+                    )
+                )
+            );
     }
 }

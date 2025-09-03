@@ -4,12 +4,10 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-import { IBasePool } from "../vault/IBasePool.sol";
 import { ILPOracleBase } from "./ILPOracleBase.sol";
+import { IBasePool } from "../vault/IBasePool.sol";
 
-/**
- * @notice Factory contract for deploying and managing pool oracles.
- */
+/// @notice Factory contract for deploying and managing pool oracles.
 interface ILPOracleFactoryBase {
     // @notice Emitted when a the factory is disabled.
     event OracleFactoryDisabled();
@@ -32,7 +30,7 @@ interface ILPOracleFactoryBase {
      *
      * @return oracleVersion The oracle version number
      */
-    function getOracleVersion() external view returns (uint256);
+    function getOracleVersion() external view returns (uint256 oracleVersion);
 
     /**
      * @notice Creates a new oracle for the given pool.
