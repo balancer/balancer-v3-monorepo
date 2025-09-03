@@ -171,7 +171,7 @@ contract BatchRouterHooks is BatchRouterCommon {
                 } else {
                     // Input for the next step is the output of the current step.
                     stepExactAmountIn = amountOut;
-                    // The token in for the next step is the token out of the current step.
+                    // The tokenIn for the next step is the tokenOut of the current step.
                     stepTokenIn = step.tokenOut;
                 }
             }
