@@ -236,7 +236,7 @@ contract BatchRouterHooks is BatchRouterCommon {
             }
         } else {
             // If this is an intermediate step, we don't expect the sender to have BPT to burn.
-            // Then, we flashloan tokens here (which should in practice just use existing credit).
+            // So, we flashloan tokens here (which should in practice just use existing credit).
             _vault.sendTo(IERC20(pool), address(this), stepExactAmountIn);
         }
 
