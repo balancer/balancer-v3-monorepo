@@ -10,13 +10,21 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { TimelockAuthorizer, Vault } from '../../typechain-types';
+import {
+  BasicAuthorizerMock__factory,
+  MockAuthenticatedContract,
+  TimelockAuthorizer,
+  Vault,
+} from '../../typechain-types';
 import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { IVault } from '@balancer-labs/v3-interfaces/typechain-types';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { Account } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('TimelockAuthorizer execute', () => {
-  let authorizer: TimelockAuthorizerHelper, vault: Vault, authenticatedContract: BaseContract, iVault: IVault;
+  let authorizer: TimelockAuthorizerHelper, vault: Vault, iVault: IVault;
+  let authenticatedContract: MockAuthenticatedContract;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     user: SignerWithAddress,
@@ -40,6 +48,12 @@ describe('TimelockAuthorizer execute', () => {
     const authorizerContract = (await deploy('TimelockAuthorizer', {
       args: [root, nextRoot, vault, MINIMUM_EXECUTION_DELAY],
     })) as unknown as TimelockAuthorizer;
+
+    const basicAuthorizer = BasicAuthorizerMock__factory.connect(await iVault.getAuthorizer(), iVault.runner);
+    const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
+    // The root of the basic authorizer is the default signer.
+    await basicAuthorizer.grantRole(setAuthorizerAction, root.address);
+    await iVault.connect(root).setAuthorizer(authorizerContract);
 
     authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault] });
 
@@ -66,18 +80,21 @@ describe('TimelockAuthorizer execute', () => {
 
     sharedBeforeEach('set action', async () => {
       action = await actionId(authenticatedContract, 'protectedFunction');
+      console.log('action');
     });
 
     sharedBeforeEach('grant permission', async () => {
-      await authorizer.grantPermission(action, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(action, user, await authenticatedContract.getAddress(), { from: root });
+      console.log('grant permission');
     });
 
     sharedBeforeEach('set delay for action', async () => {
       await authorizer.scheduleAndExecuteDelayChange(action, delay, { from: root });
+      console.log('scheduled delay');
     });
 
     const schedule = async (
-      where: Contract,
+      where: Account,
       executors: SignerWithAddress[] | undefined = undefined
     ): Promise<number> => {
       data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
@@ -86,14 +103,14 @@ describe('TimelockAuthorizer execute', () => {
 
     it('increases the scheduled execution count', async () => {
       const countBefore = await authorizer.instance.getScheduledExecutionsCount();
-      await schedule(authenticatedContract);
+      await schedule(await authenticatedContract.getAddress());
       const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-      expect(countAfter).to.equal(countBefore.add(1));
+      expect(countAfter).to.equal(countBefore + 1n);
     });
 
     it('stores scheduler information', async () => {
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.scheduledBy).to.equal(user.address);
@@ -101,7 +118,7 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('stores empty executor and canceler information', async () => {
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
@@ -111,57 +128,58 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('schedules a non-protected execution', async () => {
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executed).to.be.false;
       expect(scheduledExecution.data).to.be.equal(data);
-      expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
+      expect(scheduledExecution.where).to.be.equal(await authenticatedContract.getAddress());
       expect(scheduledExecution.protected).to.be.false;
-      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()) + bn(delay));
     });
 
     it('can schedule with a global permission', async () => {
-      await authorizer.revokePermission(action, user, authenticatedContract, { from: root });
+      await authorizer.revokePermission(action, user, await authenticatedContract.getAddress(), { from: root });
       await authorizer.grantPermission(action, user, EVERYWHERE, { from: root });
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executed).to.be.false;
       expect(scheduledExecution.data).to.be.equal(data);
-      expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
+      expect(scheduledExecution.where).to.be.equal(await authenticatedContract.getAddress());
       expect(scheduledExecution.protected).to.be.false;
-      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()) + bn(delay));
     });
 
     it('receives canceler status', async () => {
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
 
       expect(await authorizer.isCanceler(id, user)).to.be.true;
     });
 
     it('can cancel the action immediately', async () => {
-      const id = await schedule(authenticatedContract);
+      const id = await schedule(await authenticatedContract.getAddress());
       // should not revert
       const receipt = await authorizer.cancel(id, { from: user });
       expectEvent.inReceipt(await receipt.wait(), 'ExecutionCanceled', { scheduledExecutionId: id });
     });
 
     it('schedules the protected execution', async () => {
-      const id = await schedule(authenticatedContract, [executor]);
+      const id = await schedule(await authenticatedContract.getAddress(), [executor]);
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executed).to.be.false;
       expect(scheduledExecution.data).to.be.equal(data);
-      expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
+      expect(scheduledExecution.where).to.be.equal(await authenticatedContract.getAddress());
       expect(scheduledExecution.protected).to.be.true;
-      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()) + bn(delay));
     });
 
     it('emits ExecutorAdded events', async () => {
       const executors = [executor];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const receipt = await authorizer.instance.connect(user).schedule(
-        authenticatedContract.address,
+        await authenticatedContract.getAddress(),
         data,
         executors.map((e) => e.address)
       );
@@ -172,7 +190,9 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('emits ExecutionScheduled event', async () => {
-      const receipt = await authorizer.instance.connect(user).schedule(authenticatedContract.address, data, []);
+      const receipt = await authorizer.instance
+        .connect(user)
+        .schedule(await authenticatedContract.getAddress(), data, []);
 
       // There is no getter to fetch _scheduledExecutions.length so we don't know what the next scheduledExecutionId is
       // that is why we hardcore value `2`
@@ -180,18 +200,20 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('reverts if an executor is specified twice', async () => {
-      await expect(schedule(authenticatedContract, [executor, executor])).to.be.revertedWith('DUPLICATE_EXECUTORS');
+      await expect(schedule(await authenticatedContract.getAddress(), [executor, executor])).to.be.revertedWith(
+        'DUPLICATE_EXECUTORS'
+      );
     });
 
     it('reverts if there is no delay set', async () => {
       action = await actionId(authenticatedContract, 'secondProtectedFunction');
-      await authorizer.grantPermission(action, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(action, user, await authenticatedContract.getAddress(), { from: root });
 
       await expect(
         authorizer.instance
           .connect(user)
           .schedule(
-            authenticatedContract.address,
+            await authenticatedContract.getAddress(),
             authenticatedContract.interface.encodeFunctionData('secondProtectedFunction', [functionData]),
             []
           )
@@ -199,7 +221,9 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('reverts if the sender has permissions for another contract', async () => {
-      await expect(schedule(anotherAuthenticatedContract)).to.be.revertedWith('SENDER_DOES_NOT_HAVE_PERMISSION');
+      await expect(schedule(await anotherAuthenticatedContract.getAddress())).to.be.revertedWith(
+        'SENDER_DOES_NOT_HAVE_PERMISSION'
+      );
     });
 
     it('reverts if the sender has permissions for another action', async () => {
@@ -209,7 +233,7 @@ describe('TimelockAuthorizer execute', () => {
         authorizer.instance
           .connect(user)
           .schedule(
-            authenticatedContract.address,
+            await authenticatedContract.getAddress(),
             authenticatedContract.interface.encodeFunctionData('secondProtectedFunction', [functionData]),
             []
           )
@@ -221,7 +245,7 @@ describe('TimelockAuthorizer execute', () => {
         authorizer.instance
           .connect(other)
           .schedule(
-            authenticatedContract.address,
+            await authenticatedContract.getAddress(),
             authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]),
             []
           )
@@ -229,7 +253,7 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('reverts if the target is the authorizer', async () => {
-      const where = authorizer.instance;
+      const where = await authorizer.instance.getAddress();
       await expect(schedule(where)).to.be.revertedWith('CANNOT_SCHEDULE_AUTHORIZER_ACTIONS');
     });
 
@@ -246,9 +270,9 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('reverts if data is less than 4 bytes', async () => {
-      await expect(authorizer.schedule(authenticatedContract.address, '0x00', [], { from: user })).to.be.revertedWith(
-        'DATA_TOO_SHORT'
-      );
+      await expect(
+        authorizer.schedule(await authenticatedContract.getAddress(), '0x00', [], { from: user })
+      ).to.be.revertedWith('DATA_TOO_SHORT');
     });
   });
 
@@ -264,22 +288,23 @@ describe('TimelockAuthorizer execute', () => {
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
       await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
-      await authorizer.grantPermission(protectedFunctionAction, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(protectedFunctionAction, user, await authenticatedContract.getAddress(), {
+        from: root,
+      });
     });
 
     const schedule = async (executors: SignerWithAddress[] | undefined = undefined): Promise<number> => {
       const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
-      return authorizer.schedule(authenticatedContract, data, executors || [], { from: user });
+      return authorizer.schedule(await authenticatedContract.getAddress(), data, executors || [], { from: user });
     };
 
     it('can execute an action', async () => {
       const id = await schedule();
       await advanceTime(delay);
-      const receipt = await authorizer.execute(id, { from: executor });
 
-      expectEvent.inIndirectReceipt(await receipt.wait(), authenticatedContract.interface, 'ProtectedFunctionCalled', {
-        data: functionData,
-      });
+      await expect(authorizer.execute(id, { from: executor }))
+        .to.emit(authenticatedContract, 'ProtectedFunctionCalled')
+        .withArgs(functionData);
     });
 
     it('action is marked as executed', async () => {
@@ -314,7 +339,7 @@ describe('TimelockAuthorizer execute', () => {
     it('execute returns a correct result', async () => {
       const id = await schedule();
       await advanceTime(delay);
-      const ret = await authorizer.instance.connect(executor).callStatic.execute(id);
+      const ret = await authorizer.instance.connect(executor).execute.staticCall(id);
 
       // we have to slice first 4 selector bytes from the input data to get the return data
       expect(ret).to.be.eq(
@@ -330,15 +355,9 @@ describe('TimelockAuthorizer execute', () => {
         expect(await authorizer.isExecutor(id, executor)).to.be.true;
         expect(await authorizer.isExecutor(id, account)).to.be.true;
 
-        const receipt = await authorizer.execute(id, { from: account });
-        expectEvent.inIndirectReceipt(
-          await receipt.wait(),
-          authenticatedContract.interface,
-          'ProtectedFunctionCalled',
-          {
-            data: functionData,
-          }
-        );
+        await expect(authorizer.execute(id, { from: account }))
+          .to.emit(authenticatedContract, 'ProtectedFunctionCalled')
+          .withArgs(functionData);
       });
 
       it('other cannot execute', async () => {
@@ -353,14 +372,12 @@ describe('TimelockAuthorizer execute', () => {
       const id = await schedule();
       await advanceTime(delay);
 
-      const receipt = await authorizer.execute(id);
+      await expect(authorizer.execute(id))
+        .to.emit(authenticatedContract, 'ProtectedFunctionCalled')
+        .withArgs(functionData);
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executed).to.be.true;
-
-      expectEvent.inIndirectReceipt(await receipt.wait(), authenticatedContract.interface, 'ProtectedFunctionCalled', {
-        data: functionData,
-      });
     });
 
     it('emits an event', async () => {
@@ -408,12 +425,14 @@ describe('TimelockAuthorizer execute', () => {
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
       await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
-      await authorizer.grantPermission(protectedFunctionAction, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(protectedFunctionAction, user, await authenticatedContract.getAddress(), {
+        from: root,
+      });
     });
 
     const schedule = async (): Promise<number> => {
       const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']);
-      const id = await authorizer.schedule(authenticatedContract, data, [], { from: user });
+      const id = await authorizer.schedule(await authenticatedContract.getAddress(), data, [], { from: user });
       await authorizer.addCanceler(id, canceler, { from: root });
       return id;
     };
@@ -449,7 +468,7 @@ describe('TimelockAuthorizer execute', () => {
     it('global canceler can cancel the action', async () => {
       await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
       const id = await authorizer.schedule(
-        authenticatedContract,
+        await authenticatedContract.getAddress(),
         authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']),
         [],
         { from: user }
@@ -513,14 +532,14 @@ describe('TimelockAuthorizer execute', () => {
 
     sharedBeforeEach('grant permission', async () => {
       const action = await actionId(authenticatedContract, 'protectedFunction');
-      await authorizer.grantPermission(action, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(action, user, await authenticatedContract.getAddress(), { from: root });
 
       await authorizer.scheduleAndExecuteDelayChange(action, delay, { from: root });
     });
 
     const schedule = async (functionData: string): Promise<number> => {
       return authorizer.schedule(
-        authenticatedContract.address,
+        await authenticatedContract.getAddress(),
         authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]),
         [],
         { from: user }
@@ -564,13 +583,13 @@ describe('TimelockAuthorizer execute', () => {
         expect(entries.length).to.equal(TOTAL_ENTRIES);
 
         // The first entry is the one that sets the setAuthorizer delay
-        expect(entries[0].where).to.equal(authorizer.address);
+        expect(entries[0].where).to.equal(await authorizer.address());
         expect(entries[0].data).to.equal(
           authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
 
         // The last entry is the one that we scheduled
-        expect(entries[entries.length - 1].where).to.equal(authenticatedContract.address);
+        expect(entries[entries.length - 1].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[entries.length - 1].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
         );
@@ -582,13 +601,13 @@ describe('TimelockAuthorizer execute', () => {
 
         expect(entries.length).to.equal(SCHEDULED_ENTRIES);
 
-        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[0].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
         );
 
         // The last entry is the one that we scheduled
-        expect(entries[entries.length - 1].where).to.equal(authenticatedContract.address);
+        expect(entries[entries.length - 1].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[entries.length - 1].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
         );
@@ -600,12 +619,12 @@ describe('TimelockAuthorizer execute', () => {
 
         expect(entries.length).to.equal(3);
 
-        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[0].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
         );
 
-        expect(entries[2].where).to.equal(authenticatedContract.address);
+        expect(entries[2].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[2].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
         );
@@ -621,13 +640,13 @@ describe('TimelockAuthorizer execute', () => {
         expect(entries.length).to.equal(TOTAL_ENTRIES);
 
         // The first entry is the last one that we scheduled
-        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[0].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
         );
 
         // The last entry is the one that sets the setAuthorizer delay
-        expect(entries[entries.length - 1].where).to.equal(authorizer.address);
+        expect(entries[entries.length - 1].where).to.equal(await authorizer.address());
         expect(entries[entries.length - 1].data).to.equal(
           authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
@@ -640,13 +659,13 @@ describe('TimelockAuthorizer execute', () => {
         expect(entries.length).to.equal(TOTAL_ENTRIES - 2);
 
         // The first entry is the third to last that we scheduled
-        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[0].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
         );
 
         // The last entry is the one that sets the setAuthorizer delay
-        expect(entries[entries.length - 1].where).to.equal(authorizer.address);
+        expect(entries[entries.length - 1].where).to.equal(await authorizer.address());
         expect(entries[entries.length - 1].data).to.equal(
           authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
@@ -660,13 +679,13 @@ describe('TimelockAuthorizer execute', () => {
         expect(entries.length).to.equal(3);
 
         // This is the third to last scheduled call to `protectedFunction`
-        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[0].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
         );
 
         // This is the first scheduled call to `protectedFunction`
-        expect(entries[2].where).to.equal(authenticatedContract.address);
+        expect(entries[2].where).to.equal(await authenticatedContract.getAddress());
         expect(entries[2].data).to.equal(
           authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
         );
