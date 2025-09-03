@@ -553,8 +553,8 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, stepExactAmountOut);
 
-        // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
-        // Router is both owner and spender (which doesn't need approval).
+        // The Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
+        // the Router is both owner and spender, which doesn't require approval.
         (amountIn, , ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: pool,
