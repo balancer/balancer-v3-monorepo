@@ -260,11 +260,7 @@ interface ITimelockAuthorizer {
     /**
      * @notice Returns true if `account` is allowed to grant permissions for action `actionId` in target `where`.
      */
-    function isGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
+    function isGranter(bytes32 actionId, address account, address where) external view returns (bool);
 
     /**
      * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
@@ -352,20 +348,12 @@ interface ITimelockAuthorizer {
      * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
      * a given action.
      */
-    function isPermissionGrantedOnTarget(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
+    function isPermissionGrantedOnTarget(bytes32 actionId, address account, address where) external view returns (bool);
 
     /**
      * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
      */
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
+    function hasPermission(bytes32 actionId, address account, address where) external view returns (bool);
 
     /**
      * @notice Sets the pending root address to `pendingRoot`.
@@ -444,11 +432,7 @@ interface ITimelockAuthorizer {
      * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
      * and then any permissions granted by that account, knowing there cannot be any more.
      */
-    function addGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external;
+    function addGranter(bytes32 actionId, address account, address where) external;
 
     /**
      * @notice Revokes granter status from `account` for action `actionId` in target `where`.
@@ -462,11 +446,7 @@ interface ITimelockAuthorizer {
      * granted by them, or cancel scheduled grants. This should be done *after* removing the granter, at which point
      * they won't be able to create any more of these.
      */
-    function removeGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external;
+    function removeGranter(bytes32 actionId, address account, address where) external;
 
     /**
      * @notice Grants revoker status to `account` in target `where` for all actions.
@@ -617,22 +597,14 @@ interface ITimelockAuthorizer {
      * that has permission over an action with a delay cannot call it directly, and must instead schedule a delayed
      * execution by calling this function.
      */
-    function schedule(
-        address where,
-        bytes memory data,
-        address[] memory executors
-    ) external returns (uint256);
+    function schedule(address where, bytes memory data, address[] memory executors) external returns (uint256);
 
     /**
      * @notice Grants a permission to a single `account` at 'where' address.
      * @dev This function can only be used for actions that have no grant delay. For those that do, use
      * `scheduleGrantPermission` instead.
      */
-    function grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external;
+    function grantPermission(bytes32 actionId, address account, address where) external;
 
     /**
      * @notice Schedules a grant permission to `account` for action `actionId` in target `where`.
@@ -650,11 +622,7 @@ interface ITimelockAuthorizer {
      * @dev This function can only be used for actions that have no revoke delay. For those that do, use
      * `scheduleRevokePermission` instead.
      */
-    function revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external;
+    function revokePermission(bytes32 actionId, address account, address where) external;
 
     /**
      * @notice Schedules a revoke permission from `account` for action `actionId` in target `where`.
