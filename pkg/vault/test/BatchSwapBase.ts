@@ -234,6 +234,23 @@ export class BatchSwapBaseTest {
       await this.wToken2.connect(user).deposit(WRAPPED_TOKEN_AMOUNT, user);
     }
 
+    await this.tokens.push(ERC20TestToken__factory.connect(this.wToken0Address, this.sender));
+    await this.tokens.push(ERC20TestToken__factory.connect(this.wToken2Address, this.sender));
+
+    for (const pool of this.pools) {
+      await pool.connect(this.lp).approve(this.router, MAX_UINT256);
+      await pool.connect(this.lp).approve(this.basicRouter, MAX_UINT256);
+    }
+
+    for (const token of [...this.tokens.tokens, ...this.pools]) {
+      for (const from of [this.lp, this.sender]) {
+        await token.connect(from).approve(this.permit2, MAX_UINT256);
+        for (const to of [this.router, this.basicRouter, this.bufferRouter]) {
+          await this.permit2.connect(from).approve(token, to, MAX_UINT160, MAX_UINT48);
+        }
+      }
+    }
+
     await this.bufferRouter.connect(this.lp).initializeBuffer(this.wToken0, WRAPPED_TOKEN_AMOUNT, 0, 0);
     await this.bufferRouter.connect(this.lp).initializeBuffer(this.wToken2, WRAPPED_TOKEN_AMOUNT, 0, 0);
   }
