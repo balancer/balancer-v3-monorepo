@@ -23,7 +23,7 @@ import {
 
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
- /// @notice Base BatchRouter contract with hooks for swaps and liquidity operations via the Vault.
+/// @notice Base BatchRouter contract with hooks for swaps and liquidity operations via the Vault.
 contract BatchRouterHooks is BatchRouterCommon {
     using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
