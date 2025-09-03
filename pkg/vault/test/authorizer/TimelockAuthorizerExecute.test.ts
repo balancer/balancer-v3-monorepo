@@ -16,7 +16,7 @@ import {
   TimelockAuthorizer,
   Vault,
 } from '../../typechain-types';
-import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizerHelper';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { IVault } from '@balancer-labs/v3-interfaces/typechain-types';
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';

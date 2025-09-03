@@ -10,7 +10,7 @@ import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/const
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { range } from 'lodash';
 import { TimelockAuthorizer, Vault } from '../../typechain-types';
-import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizerHelper';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
