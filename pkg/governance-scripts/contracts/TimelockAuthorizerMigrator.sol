@@ -12,8 +12,8 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { TimelockAuthorizer } from "@balancer-labs/v3-vault/contracts/authorizer/TimelockAuthorizer.sol";
 
 contract TimelockAuthorizerMigrator {
-    bytes32
-        public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    bytes32 public constant GENERAL_PERMISSION_SPECIFIER =
+        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     // solhint-disable-previous-line max-line-length
     address public constant EVERYWHERE = address(type(uint160).max);
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
@@ -53,12 +53,7 @@ contract TimelockAuthorizerMigrator {
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
-        TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(
-            address(this),
-            _root,
-            _vault,
-            _changeRootDelay
-        );
+        TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(address(this), _root, _vault, _changeRootDelay);
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
         vault = _vault;

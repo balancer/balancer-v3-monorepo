@@ -1,21 +1,31 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { Contract, BigNumberish } from 'ethers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, DAY, WEEK } from '@balancer-labs/v3-helpers/src/time';
+import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
+import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import {
+  BasicAuthorizerMock,
+  BasicAuthorizerMock__factory,
+  MockAuthenticatedContract,
+} from '@balancer-labs/v3-vault/typechain-types';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { IVault } from '@balancer-labs/v3-interfaces/typechain-types';
+import { TimelockAuthorizer } from '../typechain-types';
 
 describe('TimelockAuthorizerMigrator', () => {
   let root: SignerWithAddress;
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let granter1: SignerWithAddress, granter2: SignerWithAddress, granter3: SignerWithAddress;
-  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
-  let adaptorEntrypoint: Contract;
+  let vault: Contract, migrator: Contract;
+  let iVault: IVault;
+  let newAuthorizer: TimelockAuthorizer;
+  let oldAuthorizer: BasicAuthorizerMock;
 
   before('set up signers', async () => {
     [, user1, user2, user3, granter1, granter2, granter3, root] = await ethers.getSigners();
@@ -45,35 +55,34 @@ describe('TimelockAuthorizerMigrator', () => {
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   sharedBeforeEach('set up vault', async () => {
-    oldAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer');
-    vault = await deploy('v2-vault/Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
+    vault = await VaultDeployer.deploy();
+    iVault = await TypesConverter.toIVault(vault);
 
-    const authorizerAdaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
-    adaptorEntrypoint = await deploy('v2-liquidity-mining/AuthorizerAdaptorEntrypoint', {
-      args: [authorizerAdaptor.address],
-    });
+    oldAuthorizer = BasicAuthorizerMock__factory.connect(await iVault.getAuthorizer(), iVault.runner);
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = await deploy('v2-vault/MockAuthenticatedContract', { args: [vault.address] });
+    const target = (await deploy('v3-vault/MockAuthenticatedContract', {
+      args: [vault],
+    })) as unknown as MockAuthenticatedContract;
     rolesData = [
-      { grantee: user1.address, role: ROLE_1, target: target.address },
-      { grantee: user2.address, role: ROLE_2, target: target.address },
+      { grantee: user1.address, role: ROLE_1, target: await target.getAddress() },
+      { grantee: user2.address, role: ROLE_2, target: await target.getAddress() },
       { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
     grantersData = [
-      { grantee: granter1.address, role: ROLE_1, target: target.address },
+      { grantee: granter1.address, role: ROLE_1, target: await target.getAddress() },
       { grantee: granter2.address, role: ROLE_2, target: ZERO_ADDRESS },
-      { grantee: granter3.address, role: ROLE_3, target: target.address },
+      { grantee: granter3.address, role: ROLE_3, target: await target.getAddress() },
     ];
     revokersData = [
-      { grantee: user1.address, role: ROLE_1, target: target.address },
-      { grantee: granter1.address, role: ROLE_2, target: target.address },
+      { grantee: user1.address, role: ROLE_1, target: await target.getAddress() },
+      { grantee: granter1.address, role: ROLE_2, target: await target.getAddress() },
       { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
     executeDelaysData = [
       // We must set this delay first to satisfy the `DELAY_EXCEEDS_SET_AUTHORIZER` check.
-      { actionId: await actionId(vault, 'setAuthorizer'), newDelay: 30 * DAY },
+      { actionId: await actionId(iVault, 'setAuthorizer'), newDelay: 30 * DAY },
       { actionId: ROLE_1, newDelay: 14 * DAY },
       { actionId: ROLE_2, newDelay: 7 * DAY },
     ];
@@ -84,14 +93,16 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   sharedBeforeEach('grant roles on old Authorizer', async () => {
-    await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
+    await oldAuthorizer.grantRole(ROLE_1, user1.address);
+    await oldAuthorizer.grantRole(ROLE_2, user2.address);
+    await oldAuthorizer.grantRole(ROLE_3, user3.address);
   });
 
   sharedBeforeEach('deploy migrator', async () => {
     const args = [
       root.address,
-      oldAuthorizer.address,
-      adaptorEntrypoint.address,
+      oldAuthorizer,
+      vault,
       CHANGE_ROOT_DELAY,
       rolesData,
       grantersData,
@@ -100,9 +111,12 @@ describe('TimelockAuthorizerMigrator', () => {
       grantDelaysData,
     ];
     migrator = await deploy('TimelockAuthorizerMigrator', { args });
-    newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
-    const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-    await oldAuthorizer.grantRolesToMany([setAuthorizerActionId], [migrator.address]);
+    newAuthorizer = (await deployedAt(
+      'TimelockAuthorizer',
+      await migrator.newAuthorizer()
+    )) as unknown as TimelockAuthorizer;
+    const setAuthorizerActionId = await actionId(iVault, 'setAuthorizer');
+    await oldAuthorizer.grantRole(setAuthorizerActionId, migrator);
   });
 
   context('constructor', () => {
@@ -110,14 +124,14 @@ describe('TimelockAuthorizerMigrator', () => {
       let tempAuthorizer: Contract;
 
       sharedBeforeEach('set up vault', async () => {
-        tempAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer');
+        tempAuthorizer = await deploy('v3-vault/BasicAuthorizerMock');
       });
 
       it('reverts', async () => {
         const args = [
           root.address,
-          tempAuthorizer.address,
-          adaptorEntrypoint.address,
+          tempAuthorizer,
+          vault,
           CHANGE_ROOT_DELAY,
           rolesData,
           grantersData,
@@ -148,11 +162,11 @@ describe('TimelockAuthorizerMigrator', () => {
     });
 
     it('does not set the new authorizer immediately', async () => {
-      expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
+      expect(await iVault.getAuthorizer()).to.be.equal(oldAuthorizer);
     });
 
     it('sets the migrator as the current root', async () => {
-      expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
+      expect(await newAuthorizer.isRoot(migrator)).to.be.true;
     });
 
     it('sets root as the pending root', async () => {
@@ -212,7 +226,7 @@ describe('TimelockAuthorizerMigrator', () => {
       it('sets the new Authorizer on the Vault', async () => {
         await migrator.finalizeMigration();
 
-        expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+        expect(await iVault.getAuthorizer()).to.be.equal(newAuthorizer);
       });
     });
   });
