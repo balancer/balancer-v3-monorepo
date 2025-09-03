@@ -77,22 +77,14 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /// @inheritdoc ITimelockAuthorizer
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function hasPermission(bytes32 actionId, address account, address where) public view override returns (bool) {
         return _isPermissionGranted[actionId][account][where] || _isPermissionGranted[actionId][account][EVERYWHERE()];
     }
 
     /**
      * @inheritdoc IAuthorizer
      */
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function canPerform(bytes32 actionId, address account, address where) public view override returns (bool) {
         // Actions with no delay can only be performed by accounts that have the associated permission.
         // However, actions with a non-zero delay cannot be performed by permissioned accounts: they can only be made by
         // the TimelockAuthorizerExecutionHelper, which works alongisde the TimelockAuthorizer itself to ensure that
@@ -244,11 +236,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /// @inheritdoc ITimelockAuthorizer
-    function grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function grantPermission(bytes32 actionId, address account, address where) external override {
         if (_grantDelays[actionId] == 0) {
             require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         } else {
@@ -295,11 +283,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /// @inheritdoc ITimelockAuthorizer
-    function revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function revokePermission(bytes32 actionId, address account, address where) external override {
         if (_revokeDelays[actionId] == 0) {
             require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
         } else {
@@ -347,11 +331,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
      * any appropriate checks.
      */
-    function _revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) private {
+    function _revokePermission(bytes32 actionId, address account, address where) private {
         require(hasPermission(actionId, account, where), "PERMISSION_NOT_GRANTED");
 
         if (_isPermissionGranted[actionId][account][EVERYWHERE()]) {

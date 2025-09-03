@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BaseContract, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
