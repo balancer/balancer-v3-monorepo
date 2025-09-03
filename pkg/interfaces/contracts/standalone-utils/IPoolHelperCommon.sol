@@ -15,7 +15,7 @@ interface IPoolHelperCommon {
     /**
      * @notice The owner destroyed a pool set.
      * @param poolSetId Id of the set with which the pool is associated
-     * @param manager The address of set's current manager
+     * @param manager The address of the set's last manager
      */
     event PoolSetDestroyed(uint256 indexed poolSetId, address indexed manager);
 
@@ -91,7 +91,7 @@ interface IPoolHelperCommon {
     ***************************************************************************/
 
     /**
-     * @notice Create a new set with an initial manager, initialized with a set of pools.
+     * @notice Create a new set with an initial manager, optionally initialized with a set of pools.
      * @dev The `newPools` list can be empty, in which case this will only create the set. Pools can then be
      * added with `addPoolsToSet`, or removed with `removePoolsFromSet`. This is a permissioned function.
      * Only the current owner of the helper contract (e.g., Maxis) may create new sets.
@@ -135,7 +135,7 @@ interface IPoolHelperCommon {
     /**
      * @notice Add pools to the set of pools controlled by this helper contract.
      * @dev This is a permissioned function. Only the current owner of the helper contract (e.g., Maxis)
-     * may add pools to an set set.
+     * may add pools to a set.
      *
      * @param newPools List of pools to add
      * @param poolSetId Id of the set to which the new pools belong
@@ -145,7 +145,7 @@ interface IPoolHelperCommon {
     /**
      * @notice Remove pools from the set of pools controlled by this helper contract.
      * @dev This is a permissioned function. Only the current owner of the helper contract (e.g., Maxis)
-     * may remove pools from an set set.
+     * may remove pools from a set.
      *
      * @param pools List of pools to remove from the set
      * @param poolSetId Id of the set to which the pools belong
@@ -158,7 +158,7 @@ interface IPoolHelperCommon {
 
     /**
      * @notice Get the pool set id associated with the caller.
-     * @return poolSetId The numeric pool set id, or zero if the caller is not a pool set manager.
+     * @return poolSetId The numeric pool set id, or zero if the caller is not a pool set manager
      */
     function getPoolSetIdForCaller() external view returns (uint256 poolSetId);
 

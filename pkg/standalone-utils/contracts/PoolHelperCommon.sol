@@ -14,7 +14,7 @@ import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // Counter for generating unique pool set IDs.
+    // Counter for generating unique pool set IDs. Must start at 1, since 0 is defined as invalid.
     uint256 private _nextPoolSetId = 1;
 
     // Mapping from pool set ID to the manager address.
@@ -40,6 +40,11 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         _;
     }
 
+    modifier withValidManager(address manager) {
+        _ensureValidManager(manager);
+        _;
+    }
+
     constructor(IVault vault, address initialOwner) OwnableAuthentication(vault, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -52,9 +57,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     function createPoolSet(
         address initialManager,
         address[] memory newPools
-    ) public onlyOwner returns (uint256 poolSetId) {
-        _ensureValidManager(initialManager);
-
+    ) public onlyOwner withValidManager(initialManager) returns (uint256 poolSetId) {
         poolSetId = _nextPoolSetId++;
 
         // Add to forward and reverse mappings.
@@ -81,7 +84,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         while (poolSet.length() > 0) {
             address pool = poolSet.at(0);
 
-            // Ensure the subgraph is kept in sync.
+            // Emit events for all removed pools.
             emit PoolRemovedFromSet(pool, poolSetId);
 
             poolSet.remove(pool);
@@ -100,10 +103,8 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     /// @inheritdoc IPoolHelperCommon
-    function transferPoolSetOwnership(address newManager) external {
+    function transferPoolSetOwnership(address newManager) external withValidManager(newManager) {
         uint256 poolSetId = _getValidPoolSetId();
-
-        _ensureValidManager(newManager);
 
         _poolSetManagers[poolSetId] = newManager;
 
