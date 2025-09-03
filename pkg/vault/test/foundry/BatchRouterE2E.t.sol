@@ -7,8 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -24,25 +24,21 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     function testSwapExactInDeadline() public {
         uint256 deadline = block.timestamp - 1;
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](0);
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](0);
 
         expectRevertSwapExactIn(pathsExactIn, deadline, false, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
         expectRevertSwapExactIn(pathsExactIn, deadline, true, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
     }
 
     function testSwapExactInIfAmountOutLessThenMin() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: MAX_UINT256
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
 
         expectRevertSwapExactIn(
             pathsExactIn,
@@ -61,204 +57,132 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     }
 
     function testSinglePathExactIn__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
     }
 
     function testSinglePathExactInIntermediateFinalSteps__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](5),
+            steps: new SwapPathStep[](5),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
 
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[2] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[3] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[4] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
+        pathsExactIn[0].steps[3] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[4] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
     }
 
     function testExactInMultiPathSISO__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? (2 * DEFAULT_EXACT_AMOUNT_IN) : 0, 0);
     }
 
     function testExactInMultiPathMISO__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
     }
 
     function testExactInMultiPathSIMO__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? (2 * DEFAULT_EXACT_AMOUNT_IN) : 0, 0);
     }
 
     function testExactInMultiPathMIMO__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: IERC20(getPool(weth, usdc)),
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
 
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[0] = SwapPathStep({
             pool: getPool(getPool(weth, usdc), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
         });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[1] = SwapPathStep({
             pool: getPool(getPool(usdc, dai), getPool(weth, dai)),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
@@ -269,35 +193,23 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     }
 
     function testExactInMultiPathCircular__Fuzz(bool wethIsEth) public {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
@@ -322,40 +234,24 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     function testExactInWrapFirst__Fuzz(bool wethIsEth) public {
         uint256 minAmountOut = _getWrapMinAmount(waUSDC, DEFAULT_EXACT_AMOUNT_IN);
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: address(waUSDC),
-            tokenOut: waUSDC,
-            isBuffer: true
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(waUSDC, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: usdc,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: address(waUSDC),
-            tokenOut: waUSDC,
-            isBuffer: true
-        });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(waUSDC, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
+        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
 
         // Ignore these tokens because the operation causes a rebalancing inside the Vault.
         ignoreVaultChangesForTokens[address(usdc)] = true;
@@ -368,42 +264,26 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     function testExactInUnwrapFirst__Fuzz(bool wethIsEth) public {
         uint256 minAmountOut = _getUnwrapMinAmount(waDAI, DEFAULT_EXACT_AMOUNT_IN);
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: waDAI,
-            steps: new IBatchRouter.SwapPathStep[](3),
+            steps: new SwapPathStep[](3),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[2] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: waDAI,
-            steps: new IBatchRouter.SwapPathStep[](3),
+            steps: new SwapPathStep[](3),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[1].steps[2] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[1].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
@@ -415,19 +295,19 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
 
     function testJoinSwapExactInSinglePathAndInitialAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: weth,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(weth, usdc),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[1] = SwapPathStep({
             pool: getPool(getPool(weth, usdc), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
@@ -443,24 +323,20 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
 
     function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
-            steps: new IBatchRouter.SwapPathStep[](3),
+            steps: new SwapPathStep[](3),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({
             pool: getPool(weth, dai),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[2] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[2] = SwapPathStep({
             pool: getPool(getPool(weth, dai), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
@@ -477,37 +353,33 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(dai, usdc),
             tokenOut: IERC20(getPool(dai, usdc)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[1] = SwapPathStep({
             pool: getPool(getPool(dai, usdc), getPool(weth, usdc)),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
         addPathAmountOut(minAmountOut);
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: dai,
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        pathsExactIn[1].steps[1] = SwapPathStep({
             pool: getPool(weth, usdc),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
@@ -530,23 +402,15 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
     ***************************************************************************/
 
     function testExitSwapExactInSinglePathAndInitialRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(getPool(weth, usdc)),
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: weth,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
         addPathAmountOut(DEFAULT_MIN_AMOUNT_OUT);
 
         addDiffForAlice(IERC20(getPool(weth, usdc)), -int256(DEFAULT_EXACT_AMOUNT_IN));
@@ -561,51 +425,39 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
 
     function testExitSwapExactInSinglePathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(weth),
-            steps: new IBatchRouter.SwapPathStep[](3),
+            steps: new SwapPathStep[](3),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(weth, dai),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: dai,
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[2] = IBatchRouter.SwapPathStep({
-            pool: getPool(dai, usdc),
-            tokenOut: usdc,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
+        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, REMOVE_LIQUIDITY_DELTA);
     }
 
     function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(dai),
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(weth, dai),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
         testSwapExactIn(pathsExactIn, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
@@ -613,45 +465,37 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
 
     function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(dai),
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(weth, dai),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: IERC20(dai),
-            steps: new IBatchRouter.SwapPathStep[](3),
+            steps: new SwapPathStep[](3),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[0] = SwapPathStep({
             pool: getPool(usdc, dai),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
         });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[1] = SwapPathStep({
             pool: getPool(getPool(usdc, dai), getPool(weth, usdc)),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
-        pathsExactIn[1].steps[2] = IBatchRouter.SwapPathStep({
-            pool: getPool(weth, usdc),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[2] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
 
         generateSimpleDiffs(pathsExactIn);
 
@@ -664,36 +508,32 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
 
     function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
         uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn = new IBatchRouter.SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
+        pathsExactIn[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(getPool(usdc, weth)),
-            steps: new IBatchRouter.SwapPathStep[](1),
+            steps: new SwapPathStep[](1),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[0].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[0].steps[0] = SwapPathStep({
             pool: getPool(getPool(usdc, weth), getPool(weth, dai)),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
         addPathAmountOut(minAmountOut);
 
-        pathsExactIn[1] = IBatchRouter.SwapPathExactAmountIn({
+        pathsExactIn[1] = SwapPathExactAmountIn({
             tokenIn: IERC20(getPool(dai, usdc)),
-            steps: new IBatchRouter.SwapPathStep[](2),
+            steps: new SwapPathStep[](2),
             exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
             minAmountOut: minAmountOut
         });
-        pathsExactIn[1].steps[0] = IBatchRouter.SwapPathStep({
+        pathsExactIn[1].steps[0] = SwapPathStep({
             pool: getPool(getPool(dai, usdc), getPool(usdc, weth)),
             tokenOut: IERC20(getPool(usdc, weth)),
             isBuffer: false
         });
-        pathsExactIn[1].steps[1] = IBatchRouter.SwapPathStep({
-            pool: getPool(usdc, weth),
-            tokenOut: weth,
-            isBuffer: false
-        });
+        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
         addPathAmountOut(minAmountOut);
 
         addDiffForAlice(IERC20(getPool(usdc, weth)), -int256(DEFAULT_EXACT_AMOUNT_IN));

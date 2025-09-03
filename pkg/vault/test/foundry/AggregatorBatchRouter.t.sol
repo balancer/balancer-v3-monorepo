@@ -4,21 +4,19 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { AggregatorBatchRouter } from "../../contracts/AggregatorBatchRouter.sol";
+import { AggregatorBatchHooks } from "../../contracts/AggregatorBatchHooks.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AggregatorBatchRouterTest is BaseVaultTest {
@@ -83,11 +81,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
         // Create single step path.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
             steps: steps,
             exactAmountIn: exactAmountIn,
@@ -128,11 +126,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 maxAmountIn = poolInitAmount;
 
         // Create single step path.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: exactAmountOut,
@@ -178,17 +176,12 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
         // Create multi-step path: DAI -> USDC -> WETH.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
+        steps[1] = SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: steps,
-            exactAmountIn: exactAmountIn,
-            minAmountOut: 0
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: exactAmountIn, minAmountOut: 0 });
 
         // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
@@ -221,12 +214,12 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 maxAmountIn = poolInitAmount;
 
         // Create multi-step path: DAI -> USDC -> WETH.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
+        steps[1] = SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
             exactAmountOut: exactAmountOut,
@@ -268,22 +261,22 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountIn2 = MIN_SWAP_AMOUNT * 2;
 
         // Path 1: DAI -> USDC.
-        IBatchRouter.SwapPathStep[] memory steps1 = new IBatchRouter.SwapPathStep[](1);
-        steps1[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps1 = new SwapPathStep[](1);
+        steps1[0] = SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
 
         // Path 2: DAI -> USDC -> WETH.
-        IBatchRouter.SwapPathStep[] memory steps2 = new IBatchRouter.SwapPathStep[](2);
-        steps2[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
-        steps2[1] = IBatchRouter.SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
+        SwapPathStep[] memory steps2 = new SwapPathStep[](2);
+        steps2[0] = SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
+        steps2[1] = SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](2);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](2);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps1,
             exactAmountIn: exactAmountIn1,
             minAmountOut: 0
         });
-        paths[1] = IBatchRouter.SwapPathExactAmountIn({
+        paths[1] = SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps2,
             exactAmountIn: exactAmountIn2,
@@ -334,11 +327,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
         // Create single step path.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
             steps: steps,
             exactAmountIn: exactAmountIn,
@@ -371,11 +364,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
 
         // Create single step path.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: exactAmountOut,
@@ -409,11 +402,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     ***************************************************************************/
 
     function testSwapExactInDeadline() public {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
             steps: steps,
             exactAmountIn: MIN_SWAP_AMOUNT,
@@ -429,11 +422,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     }
 
     function testSwapExactOutDeadline() public {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: MIN_SWAP_AMOUNT,
@@ -451,11 +444,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function testInsufficientFunds() public {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
             steps: steps,
             exactAmountIn: exactAmountIn,
@@ -500,15 +493,15 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
 
     function testOperationNotSupportedForBPTOperations() public {
         // Create a step where pool address equals tokenIn (which would be BPT).
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({
             pool: address(usdc), // This makes pool == tokenIn, triggering BPT logic
             tokenOut: dai,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: usdc,
             steps: steps,
             exactAmountIn: MIN_SWAP_AMOUNT,
@@ -543,16 +536,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256[] memory poolBalances = vault.getCurrentLiveBalances(pool);
         swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalances[daiIdx] / 2);
 
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: usdc,
-            steps: steps,
-            exactAmountIn: swapAmount,
-            minAmountOut: 0
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: usdc, steps: steps, exactAmountIn: swapAmount, minAmountOut: 0 });
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), swapAmount);
@@ -573,16 +561,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256[] memory poolBalances = vault.getCurrentLiveBalances(pool);
         swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalances[daiIdx] / 2);
 
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: usdc,
-            steps: steps,
-            exactAmountIn: swapAmount,
-            minAmountOut: 0
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: usdc, steps: steps, exactAmountIn: swapAmount, minAmountOut: 0 });
 
         uint256 snapshot = vm.snapshotState();
 
@@ -615,20 +598,15 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
         // Create buffer operation step.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({
             pool: address(dai), // Any address for buffer operation
             tokenOut: usdc,
             isBuffer: true // Trigger buffer operations
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: steps,
-            exactAmountIn: exactAmountIn,
-            minAmountOut: 0
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: exactAmountIn, minAmountOut: 0 });
 
         // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
@@ -646,11 +624,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 maxAmountIn = MIN_SWAP_AMOUNT * 2;
 
         // Create buffer operation step.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(dai), tokenOut: usdc, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(dai), tokenOut: usdc, isBuffer: true });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
             exactAmountOut: exactAmountOut,
@@ -671,11 +649,11 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
         uint256 maxAmountIn = MIN_SWAP_AMOUNT * 2;
 
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: exactAmountOut,
@@ -696,15 +674,15 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 maxAmountIn = MIN_SWAP_AMOUNT * 2;
 
         // Create a step where pool address equals tokenOut (BPT operation - add liquidity).
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({
             pool: address(dai), // pool == tokenOut triggers BPT add liquidity logic
             tokenOut: dai, // This makes it a BPT operation
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: exactAmountOut,

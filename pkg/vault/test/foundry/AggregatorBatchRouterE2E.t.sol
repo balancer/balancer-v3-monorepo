@@ -5,14 +5,14 @@ pragma solidity ^0.8.24;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { SwapPathExactAmountIn } from "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 import { BatchRouterE2ETest } from "./BatchRouterE2E.t.sol";
 
 contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
     using SafeERC20 for IERC20;
 
     function swapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        SwapPathExactAmountIn[] memory pathsExactIn,
         bool wethIsEth,
         uint256 ethAmount
     )
@@ -32,7 +32,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         vm.stopPrank();
     }
 
-    function _prepay(IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn, bool wethIsEth) internal {
+    function _prepay(SwapPathExactAmountIn[] memory pathsExactIn, bool wethIsEth) internal {
         for (uint256 i = 0; i < pathsExactIn.length; i++) {
             IERC20 token = pathsExactIn[i].tokenIn;
             if (wethIsEth && token == weth) {
@@ -44,7 +44,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
     }
 
     function expectRevertSwapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        SwapPathExactAmountIn[] memory pathsExactIn,
         uint256 deadline,
         bool wethIsEth,
         uint256 ethAmount,

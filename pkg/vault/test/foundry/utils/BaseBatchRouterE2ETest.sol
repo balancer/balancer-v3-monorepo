@@ -8,8 +8,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { SwapPathExactAmountIn, SwapPathStep } from "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -143,7 +143,7 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
     ***************************************************************************/
 
     function swapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        SwapPathExactAmountIn[] memory pathsExactIn,
         bool wethIsEth,
         uint256 ethAmount
     )
@@ -156,7 +156,7 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
     }
 
     function expectRevertSwapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        SwapPathExactAmountIn[] memory pathsExactIn,
         uint256 deadline,
         bool wethIsEth,
         uint256 ethAmount,
@@ -172,11 +172,11 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
     ***************************************************************************/
 
     // This function generates simple expected balance changes based only on tokensIn and tokensOut.
-    function generateSimpleDiffs(IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn) internal {
+    function generateSimpleDiffs(SwapPathExactAmountIn[] memory pathsExactIn) internal {
         for (uint256 i = 0; i < pathsExactIn.length; i++) {
-            IBatchRouter.SwapPathExactAmountIn memory pathExactIn = pathsExactIn[i];
+            SwapPathExactAmountIn memory pathExactIn = pathsExactIn[i];
 
-            IBatchRouter.SwapPathStep memory lastStep = pathExactIn.steps[pathExactIn.steps.length - 1];
+            SwapPathStep memory lastStep = pathExactIn.steps[pathExactIn.steps.length - 1];
 
             addDiffForVault(pathExactIn.tokenIn, int256(pathExactIn.exactAmountIn));
             addDiffForVault(lastStep.tokenOut, -int256(pathExactIn.minAmountOut));
@@ -235,7 +235,7 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
 
     // Performs querySwapExactIn and reverts to roll back all changes.
     function querySwapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn
+        SwapPathExactAmountIn[] memory pathsExactIn
     )
         internal
         virtual
@@ -250,7 +250,7 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
     }
 
     function testSwapExactIn(
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsExactIn,
+        SwapPathExactAmountIn[] memory pathsExactIn,
         bool wethIsEth,
         uint256 ethAmount,
         uint256 delta
