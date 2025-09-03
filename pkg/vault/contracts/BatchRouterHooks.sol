@@ -532,9 +532,9 @@ contract BatchRouterHooks is BatchRouterCommon {
     ) internal returns (uint256 amountIn) {
         // Token in is BPT: remove liquidity - Single token exact out
 
-        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-        // required amount when performing the operation. In this case, the BPT amount needed for the
-        // operation is not known in advance, so we take a flashloan for all the available reserves.
+        // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount when
+        // performing the operation. In this case, the BPT amount needed for the operation is not known in advance,
+        // so we take a flashloan for all the available reserves.
         //
         // The last step is the one that defines the inputs for this path. The caller should have enough
         // BPT to burn already if that's the case, so we just skip this step if so.
