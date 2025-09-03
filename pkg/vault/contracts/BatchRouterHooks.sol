@@ -246,8 +246,9 @@ contract BatchRouterHooks is BatchRouterCommon {
             minAmountOut == 0 ? 1 : minAmountOut
         );
 
-        // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
-        // Router is both owner and spender (which doesn't need approval).
+        // The Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
+        // the Router is both owner and spender, which doesn't require approval.
+        //
         // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
         (, amountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
