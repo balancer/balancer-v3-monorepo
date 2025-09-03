@@ -187,4 +187,10 @@ interface IPoolHelperCommon {
      * @return pools List of pools
      */
     function getPoolsInSet(uint256 poolSetId, uint256 from, uint256 to) external view returns (address[] memory pools);
+
+    /**
+     * @notice Utility function to predict the next pool set id.
+     * @return nextPoolSetId The pool set id that will be used on the next call of `createPoolSet`
+     */
+    function getNextPoolSetId() external view returns (uint256 nextPoolSetId);
 }

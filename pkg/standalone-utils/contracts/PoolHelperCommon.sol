@@ -196,6 +196,11 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         }
     }
 
+    /// @inheritdoc IPoolHelperCommon
+    function getNextPoolSetId() external view returns (uint256 nextPoolSetId) {
+        return _nextPoolSetId;
+    }
+
     // Find and validate the poolSetId for the caller.
     function _getValidPoolSetId() internal view returns (uint256 poolSetId) {
         poolSetId = getPoolSetIdForCaller();
