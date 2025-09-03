@@ -1,19 +1,22 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { BaseContract, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { TimelockAuthorizer, Vault } from '../../typechain-types';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { IVault } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('TimelockAuthorizer execute', () => {
-  let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
+  let authorizer: TimelockAuthorizerHelper, vault: Vault, authenticatedContract: BaseContract, iVault: IVault;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     user: SignerWithAddress,
@@ -22,23 +25,25 @@ describe('TimelockAuthorizer execute', () => {
     other: SignerWithAddress,
     account: SignerWithAddress;
 
-  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
+  const EVERYWHERE = TimelockAuthorizerHelper.EVERYWHERE;
   const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
+  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   before('setup signers', async () => {
     [, root, nextRoot, executor, canceler, account, user, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy authorizer', async () => {
-    let authorizerContract: Contract;
+    vault = await VaultDeployer.deploy();
+    iVault = await TypesConverter.toIVault(vault);
 
-    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({
-      admin: root,
-      nextAdmin: nextRoot.address,
-    }));
+    const authorizerContract = (await deploy('TimelockAuthorizer', {
+      args: [root, nextRoot, vault, MINIMUM_EXECUTION_DELAY],
+    })) as unknown as TimelockAuthorizer;
 
-    authorizer = new TimelockAuthorizer(authorizerContract, root);
-    authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
+    authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault] });
+
+    authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
 
   describe('schedule', () => {
@@ -49,13 +54,13 @@ describe('TimelockAuthorizer execute', () => {
     let anotherAuthenticatedContract: Contract;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      anotherAuthenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
+      anotherAuthenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault] });
     });
 
     sharedBeforeEach('set authorizer permission delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
       // which it must have in order to be able to schedule calls to it.
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, 2 * delay, { from: root });
     });
 
@@ -254,7 +259,7 @@ describe('TimelockAuthorizer execute', () => {
     sharedBeforeEach('grant protected function permission with delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
       // which it must have in order to be able to schedule calls to it.
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
@@ -398,7 +403,7 @@ describe('TimelockAuthorizer execute', () => {
     sharedBeforeEach('grant protected function permission with delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
       // which it must have in order to be able to schedule calls to it.
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
@@ -502,7 +507,7 @@ describe('TimelockAuthorizer execute', () => {
     sharedBeforeEach('set authorizer permission delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
       // which it must have in order to be able to schedule calls to it.
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, 2 * delay, { from: root });
     });
 
@@ -561,7 +566,7 @@ describe('TimelockAuthorizer execute', () => {
         // The first entry is the one that sets the setAuthorizer delay
         expect(entries[0].where).to.equal(authorizer.address);
         expect(entries[0].data).to.equal(
-          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
 
         // The last entry is the one that we scheduled
@@ -624,7 +629,7 @@ describe('TimelockAuthorizer execute', () => {
         // The last entry is the one that sets the setAuthorizer delay
         expect(entries[entries.length - 1].where).to.equal(authorizer.address);
         expect(entries[entries.length - 1].data).to.equal(
-          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
       });
 
@@ -643,7 +648,7 @@ describe('TimelockAuthorizer execute', () => {
         // The last entry is the one that sets the setAuthorizer delay
         expect(entries[entries.length - 1].where).to.equal(authorizer.address);
         expect(entries[entries.length - 1].data).to.equal(
-          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(iVault, 'setAuthorizer'), 2 * delay])
         );
       });
 

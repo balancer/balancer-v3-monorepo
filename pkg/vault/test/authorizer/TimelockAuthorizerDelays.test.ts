@@ -1,19 +1,23 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, currentTimestamp, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, currentTimestamp, DAY, MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { range } from 'lodash';
+import { TimelockAuthorizer, Vault } from '../../typechain-types';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizer';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 
 describe('TimelockAuthorizer delays', () => {
-  let authorizer: TimelockAuthorizer, vault: Contract;
+  let authorizer: TimelockAuthorizerHelper, vault: Vault;
 
   let root: SignerWithAddress, other: SignerWithAddress;
 
@@ -27,18 +31,18 @@ describe('TimelockAuthorizer delays', () => {
   const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    let authorizerContract: Contract;
+    vault = await VaultDeployer.deploy();
 
-    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({
-      admin: root,
-      nextAdmin: ZERO_ADDRESS,
-    }));
+    const authorizerContract = (await deploy('TimelockAuthorizer', {
+      args: [root, ZERO_ADDRESS, vault, MINIMUM_EXECUTION_DELAY],
+    })) as unknown as TimelockAuthorizer;
 
-    authorizer = new TimelockAuthorizer(authorizerContract, root);
+    authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
 
   sharedBeforeEach('set delay to set authorizer', async () => {
-    const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+    const iVault = await TypesConverter.toIVault(vault);
+    const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
     // setAuthorizer must have a delay larger or equal than the one we intend to set - it is invalid to set any delays
     // larger than setAuthorizer's.
     // We set a very large setAuthorizer delay so that we have flexibility in choosing both previous and new delay
@@ -58,8 +62,8 @@ describe('TimelockAuthorizer delays', () => {
         expect(data).to.be.equal(
           authorizer.instance.interface.encodeFunctionData('setDelay', [ACTION_1, ACTION_DELAY])
         );
-        expect(where).to.be.equal(authorizer.address);
-        expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
+        expect(where).to.be.equal(await authorizer.address());
+        expect(executableAt).to.equal((await currentTimestamp()) + bn(expectedExecutionDelay));
       });
 
       it('increases the scheduled execution count', async () => {
@@ -68,7 +72,7 @@ describe('TimelockAuthorizer delays', () => {
 
         const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-        expect(countAfter).to.equal(countBefore.add(1));
+        expect(countAfter).to.equal(countBefore + 1n);
       });
 
       it('stores scheduler information', async () => {
@@ -233,8 +237,9 @@ describe('TimelockAuthorizer delays', () => {
       });
 
       it('reverts if the delay is greater than the setAuthorizer delay', async () => {
-        const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
-        const id = await authorizer.scheduleDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+        const iVault = await TypesConverter.toIVault(vault);
+        const setAuthorizerDelay = await authorizer.delay(await actionId(iVault, 'setAuthorizer'));
+        const id = await authorizer.scheduleDelayChange(ACTION_1, setAuthorizerDelay + 1n, [], { from: root });
 
         // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
         // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
@@ -257,8 +262,8 @@ describe('TimelockAuthorizer delays', () => {
         expect(data).to.be.equal(
           authorizer.instance.interface.encodeFunctionData('setGrantDelay', [ACTION_1, ACTION_GRANT_DELAY])
         );
-        expect(where).to.be.equal(authorizer.address);
-        expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
+        expect(where).to.be.equal(await authorizer.address());
+        expect(executableAt).to.equal((await currentTimestamp()) + bn(expectedExecutionDelay));
       });
 
       it('increases the scheduled execution count', async () => {
@@ -267,7 +272,7 @@ describe('TimelockAuthorizer delays', () => {
 
         const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-        expect(countAfter).to.equal(countBefore.add(1));
+        expect(countAfter).to.equal(countBefore + 1n);
       });
 
       it('stores scheduler information', async () => {
@@ -435,8 +440,9 @@ describe('TimelockAuthorizer delays', () => {
       });
 
       it('reverts if the delay is greater than the setAuthorizer delay', async () => {
-        const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
-        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+        const iVault = await TypesConverter.toIVault(vault);
+        const setAuthorizerDelay = await authorizer.delay(await actionId(iVault, 'setAuthorizer'));
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, setAuthorizerDelay + bn(1), [], { from: root });
 
         // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
         // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
@@ -459,8 +465,8 @@ describe('TimelockAuthorizer delays', () => {
         expect(data).to.be.equal(
           authorizer.instance.interface.encodeFunctionData('setRevokeDelay', [ACTION_1, ACTION_REVOKE_DELAY])
         );
-        expect(where).to.be.equal(authorizer.address);
-        expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
+        expect(where).to.be.equal(await authorizer.address());
+        expect(executableAt).to.equal((await currentTimestamp()) + bn(expectedExecutionDelay));
       });
 
       it('increases the scheduled execution count', async () => {
@@ -469,7 +475,7 @@ describe('TimelockAuthorizer delays', () => {
 
         const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-        expect(countAfter).to.equal(countBefore.add(1));
+        expect(countAfter).to.equal(countBefore + 1n);
       });
 
       it('stores scheduler information', async () => {
@@ -637,8 +643,9 @@ describe('TimelockAuthorizer delays', () => {
       });
 
       it('reverts if the delay is greater than the setAuthorizer delay', async () => {
-        const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
-        const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+        const iVault = await TypesConverter.toIVault(vault);
+        const setAuthorizerDelay = await authorizer.delay(await actionId(iVault, 'setAuthorizer'));
+        const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, setAuthorizerDelay + 1n, [], { from: root });
 
         // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
         // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
