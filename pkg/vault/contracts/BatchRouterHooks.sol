@@ -216,9 +216,9 @@ contract BatchRouterHooks is BatchRouterCommon {
     ) internal returns (uint256 amountOut) {
         // Token in is BPT: remove liquidity - Single token exact in
 
-        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-        // required amount when performing the operation. These tokens might be the output of a previous
-        // step, in which case the user will have a BPT credit.
+        // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount
+        // when performing the operation. These tokens might be the output of a previous step, in which case
+        // the user will have a BPT credit.
         if (isFirstStep) {
             if (stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer
