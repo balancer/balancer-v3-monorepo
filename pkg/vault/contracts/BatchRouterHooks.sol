@@ -264,8 +264,7 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         if (isLastStep) {
             address tokenOut = address(stepTokenOut);
-            _currentSwapTokensOut().add(tokenOut);
-            _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+            _updateSwapTokensOut(tokenOut, amountOut);
         }
     }
 
