@@ -40,6 +40,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         _;
     }
 
+    // Ensure the manager is non-zero, and not already a manager of another set.
     modifier withValidManager(address manager) {
         _ensureValidManager(manager);
         _;
