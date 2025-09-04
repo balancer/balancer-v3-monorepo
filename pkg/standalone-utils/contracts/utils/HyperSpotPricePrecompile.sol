@@ -12,11 +12,18 @@ library HyperSpotPricePrecompile {
     /// @notice The precompile had an error while fetching the spot price.
     error SpotPricePrecompileFailed();
 
+    /// @notice The spot price is zero.
+    error SpotPriceIsZero();
+
     function spotPrice(uint32 pairIndex) internal view returns (uint256) {
         (bool success, bytes memory spotPriceBytes) = SPOT_PRICE_PRECOMPILE_ADDRESS.staticcall(abi.encode(pairIndex));
         if (success == false) {
             revert SpotPricePrecompileFailed();
         }
-        return abi.decode(spotPriceBytes, (uint256));
+        uint256 price = abi.decode(spotPriceBytes, (uint256));
+        if (price == 0) {
+            revert SpotPriceIsZero();
+        }
+        return price;
     }
 }
