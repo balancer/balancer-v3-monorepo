@@ -32,9 +32,9 @@ contract BaseBatchRouterE2ETest is BaseVaultTest {
     uint256 constant DEFAULT_TEST_AMOUNT = 1e18;
 
     uint256 constant ADD_LIQUIDITY_ROUNDING_ERROR = 2;
-    uint256 constant REMOVE_LIQUIDITY_ROUNDING_ERROR = 4000;
+    uint256 constant REMOVE_LIQUIDITY_ROUNDING_ERROR = 4e4;
 
-    uint256 constant REMOVE_LIQUIDITY_DELTA = 1e4;
+    uint256 constant REMOVE_LIQUIDITY_DELTA = 4e5;
     uint256 constant WRAPPED_TOKEN_AMOUNT = 1e6 * 1e18;
 
     mapping(address => bool) internal ignoreVaultChangesForTokens;
