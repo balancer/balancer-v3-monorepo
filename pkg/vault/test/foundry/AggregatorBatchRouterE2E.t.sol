@@ -6,9 +6,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { SwapPathExactAmountIn } from "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
-import { BatchRouterE2ETest } from "./BatchRouterE2E.t.sol";
+import { AAABatchRouterE2ETest } from "./BatchRouterE2E.t.sol";
 
-contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
+contract AggregatorBatchRouterE2ETest is AAABatchRouterE2ETest {
     using SafeERC20 for IERC20;
 
     function swapExactIn(
@@ -63,39 +63,39 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                                     Add Liquidity Exact In
     ***************************************************************************/
 
-    function testJoinSwapExactInSinglePathAndInitialAddLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testJoinSwapExactInSinglePathAndInitialAddLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
     /***************************************************************************
                                     Remove Liquidity Exact In
     ***************************************************************************/
 
-    function testExitSwapExactInSinglePathAndInitialRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testExitSwapExactInSinglePathAndInitialRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testExitSwapExactInSinglePathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testExitSwapExactInSinglePathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 
-    function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
-        // Skip this test using override
-    }
+    // function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public override {
+    //     // Skip this test using override
+    // }
 }

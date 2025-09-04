@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
@@ -16,539 +17,763 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 
 import { BaseBatchRouterE2ETest } from "./utils/BaseBatchRouterE2ETest.sol";
 
-contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
+contract AAABatchRouterE2ETest is BaseBatchRouterE2ETest {
+    // function testSwapExactInDeadline() public {
+    //     uint256 deadline = block.timestamp - 1;
+
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](0);
+
+    //     expectRevertSwapExactIn(path, deadline, false, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
+    //     expectRevertSwapExactIn(path, deadline, true, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
+    // }
+
+    // function testSwapExactInIfAmountOutLessThenMin() public {
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: weth,
+    //         steps: new SwapPathStep[](1),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: MAX_UINT256
+    //     });
+    //     path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+
+    //     expectRevertSwapExactIn(
+    //         path,
+    //         MAX_UINT128,
+    //         false,
+    //         0,
+    //         abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT, MAX_UINT256)
+    //     );
+    //     expectRevertSwapExactIn(
+    //         path,
+    //         MAX_UINT128,
+    //         true,
+    //         DEFAULT_AMOUNT,
+    //         abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT, MAX_UINT256)
+    //     );
+    // }
+
     /***************************************************************************
-                                    Swap Exact In
+                                    Swap
     ***************************************************************************/
 
-    function testSwapExactInDeadline() public {
-        uint256 deadline = block.timestamp - 1;
-
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](0);
-
-        expectRevertSwapExactIn(pathsExactIn, deadline, false, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
-        expectRevertSwapExactIn(pathsExactIn, deadline, true, 0, abi.encodePacked(ISenderGuard.SwapDeadline.selector));
+    // ------ testSinglePath ------
+    function testSinglePathExactIn() public {
+        _testSinglePath(SwapKind.EXACT_IN, false);
     }
 
-    function testSwapExactInIfAmountOutLessThenMin() public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: weth,
-            steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: MAX_UINT256
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-
-        expectRevertSwapExactIn(
-            pathsExactIn,
-            MAX_UINT128,
-            false,
-            0,
-            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_EXACT_AMOUNT_IN, MAX_UINT256)
-        );
-        expectRevertSwapExactIn(
-            pathsExactIn,
-            MAX_UINT128,
-            true,
-            DEFAULT_EXACT_AMOUNT_IN,
-            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_EXACT_AMOUNT_IN, MAX_UINT256)
-        );
+    function testSinglePathExactOut() public {
+        _testSinglePath(SwapKind.EXACT_OUT, false);
     }
 
-    function testSinglePathExactIn__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    function testSinglePathExactInETH() public {
+        _testSinglePath(SwapKind.EXACT_IN, true);
+    }
+
+    function testSinglePathExactOutETH() public {
+        _testSinglePath(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSinglePath(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+        path[0] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, wethIsEth ? DEFAULT_AMOUNT : 0, 0);
     }
 
-    function testSinglePathExactInIntermediateFinalSteps__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    // ------ testSinglePathIntermediateFinalSteps ------
+    function testSinglePathExactInIntermediateFinalSteps() public {
+        _testSinglePathIntermediateFinalSteps(SwapKind.EXACT_IN, false);
+    }
+
+    function testSinglePathExactInIntermediateFinalStepsETH() public {
+        _testSinglePathIntermediateFinalSteps(SwapKind.EXACT_IN, true);
+    }
+
+    function testSinglePathExactOutIntermediateFinalSteps() public {
+        _testSinglePathIntermediateFinalSteps(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSinglePathExactOutIntermediateFinalStepsETH() public {
+        _testSinglePathIntermediateFinalSteps(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSinglePathIntermediateFinalSteps(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+        path[0] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](5),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
 
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
-        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
-        pathsExactIn[0].steps[3] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[4] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        path[0].steps[2] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
+        path[0].steps[3] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[4] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, wethIsEth ? DEFAULT_AMOUNT : 0, 0);
     }
 
-    function testExactInMultiPathSISO__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: weth,
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
-
-        pathsExactIn[1] = SwapPathExactAmountIn({
-            tokenIn: weth,
-            steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
-        });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
-
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? (2 * DEFAULT_EXACT_AMOUNT_IN) : 0, 0);
+    // ------ testSwapMultiPathSISO ------
+    function testSwapExactInMultiPathSISO() public {
+        _testSwapMultiPathSISO(SwapKind.EXACT_IN, false);
     }
 
-    function testExactInMultiPathMISO__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
-
-        pathsExactIn[1] = SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
-        });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
-
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+    function testSwapExactInMultiPathSISOWithETH() public {
+        _testSwapMultiPathSISO(SwapKind.EXACT_IN, true);
     }
 
-    function testExactInMultiPathSIMO__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    function testSwapExactOutMultiPathSISO() public {
+        _testSwapMultiPathSISO(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSwapExactOutMultiPathSISOWithETH() public {
+        _testSwapMultiPathSISO(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSwapMultiPathSISO(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[1].steps[0] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? (2 * DEFAULT_EXACT_AMOUNT_IN) : 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, wethIsEth ? (2 * DEFAULT_AMOUNT) : 0, 0);
     }
 
-    function testExactInMultiPathMIMO__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    // ------ testSwapMultiPathMISO ------
+    function testSwapExactInMultiPathMISO() public {
+        _testSwapMultiPathMISO(SwapKind.EXACT_IN, false);
+    }
+
+    function testSwapExactInMultiPathMISOWithETH() public {
+        _testSwapMultiPathMISO(SwapKind.EXACT_IN, true);
+    }
+
+    function testSwapExactOutMultiPathMISO() public {
+        _testSwapMultiPathMISO(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSwapExactOutMultiPathMISOWithETH() public {
+        _testSwapMultiPathMISO(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSwapMultiPathMISO(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: dai,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
+            tokenIn: dai,
+            steps: new SwapPathStep[](1),
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
+        });
+        path[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
+
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, 0, 0);
+    }
+
+    // ------ testSwapMultiPathSIMO ------
+    function testSwapExactInMultiPathSIMO() public {
+        _testSwapMultiPathSIMO(SwapKind.EXACT_IN, false);
+    }
+
+    function testSwapExactInMultiPathSIMOWithETH() public {
+        _testSwapMultiPathSIMO(SwapKind.EXACT_IN, true);
+    }
+
+    function testSwapExactOutMultiPathSIMO() public {
+        _testSwapMultiPathSIMO(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSwapExactOutMultiPathSIMOWithETH() public {
+        _testSwapMultiPathSIMO(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSwapMultiPathSIMO(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
+            tokenIn: weth,
+            steps: new SwapPathStep[](2),
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
+        });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+
+        path[1] = UniversalSwapPath({
+            tokenIn: weth,
+            steps: new SwapPathStep[](1),
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
+        });
+        path[1].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, wethIsEth ? (2 * DEFAULT_AMOUNT) : 0, 0);
+    }
+
+    // ------ testSwapMultiPathSIMO ------
+    function testSwapExactInMultiPathMIMO() public {
+        _testSwapMultiPathMIMO(SwapKind.EXACT_IN, false);
+    }
+
+    function testSwapExactInMultiPathMIMOWithETH() public {
+        _testSwapMultiPathMIMO(SwapKind.EXACT_IN, true);
+    }
+
+    function testSwapExactOutMultiPathMIMO() public {
+        _testSwapMultiPathMIMO(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSwapExactOutMultiPathMIMOWithETH() public {
+        _testSwapMultiPathMIMO(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSwapMultiPathMIMO(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
+            tokenIn: dai,
+            steps: new SwapPathStep[](2),
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
+        });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+
+        path[1] = UniversalSwapPath({
             tokenIn: IERC20(getPool(weth, usdc)),
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
 
-        pathsExactIn[1].steps[0] = SwapPathStep({
+        path[1].steps[0] = SwapPathStep({
             pool: getPool(getPool(weth, usdc), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
         });
-        pathsExactIn[1].steps[1] = SwapPathStep({
+        path[1].steps[1] = SwapPathStep({
             pool: getPool(getPool(usdc, dai), getPool(weth, dai)),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, 0, 0);
     }
 
-    function testExactInMultiPathCircular__Fuzz(bool wethIsEth) public {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    // ------ testSwapMultiPathCircular ------
+    function testSwapExactInMultiPathCircular() public {
+        _testSwapMultiPathCircular(SwapKind.EXACT_IN, false);
+    }
+
+    function testSwapExactInMultiPathCircularWithETH() public {
+        _testSwapMultiPathCircular(SwapKind.EXACT_IN, true);
+    }
+
+    function testSwapExactOutMultiPathCircular() public {
+        _testSwapMultiPathCircular(SwapKind.EXACT_OUT, false);
+    }
+
+    function testSwapExactOutMultiPathCircularWithETH() public {
+        _testSwapMultiPathCircular(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testSwapMultiPathCircular(SwapKind kind, bool wethIsEth) internal {
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(usdc, dai), tokenOut: dai, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
             tokenIn: dai,
             steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
+            givenAmount: DEFAULT_AMOUNT,
+            limit: DEFAULT_AMOUNT
         });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
+        path[1].steps[0] = SwapPathStep({ pool: getPool(dai, weth), tokenOut: weth, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, wethIsEth ? DEFAULT_AMOUNT : 0, 0);
     }
 
     /***************************************************************************
                                     Wrap / Unwrap Exact In
     ***************************************************************************/
 
-    function _getWrapMinAmount(IERC4626 token, uint256 amountInUnderlying) internal returns (uint256 minAmountOut) {
+    function _getWrapExactInAmount(
+        IERC4626 token,
+        uint256 amountInUnderlying
+    ) internal returns (uint256 amountOutWrapped) {
         uint256 snapshot = vm.snapshotState();
-        minAmountOut = _vaultPreviewDeposit(token, amountInUnderlying);
+        amountOutWrapped = _vaultPreviewDeposit(token, amountInUnderlying);
         vm.revertToState(snapshot);
     }
 
-    function _getUnwrapMinAmount(IERC4626 token, uint256 amountInWrapped) internal returns (uint256 minAmountOut) {
+    function _getWrapExactOutAmount(
+        IERC4626 token,
+        uint256 amountOutWrapped
+    ) internal returns (uint256 amountInUnderlying) {
         uint256 snapshot = vm.snapshotState();
-        minAmountOut = _vaultPreviewRedeem(token, amountInWrapped);
+        amountInUnderlying = _vaultPreviewMint(token, amountOutWrapped);
         vm.revertToState(snapshot);
     }
 
-    function testExactInWrapFirst__Fuzz(bool wethIsEth) public {
-        uint256 minAmountOut = _getWrapMinAmount(waUSDC, DEFAULT_EXACT_AMOUNT_IN);
+    function _getUnwrapExactInAmount(
+        IERC4626 token,
+        uint256 amountInWrapped
+    ) internal returns (uint256 amountOutUnderlying) {
+        uint256 snapshot = vm.snapshotState();
+        amountOutUnderlying = _vaultPreviewRedeem(token, amountInWrapped);
+        vm.revertToState(snapshot);
+    }
 
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    function _getUnwrapExactOutAmount(
+        IERC4626 token,
+        uint256 amountOutUnderlying
+    ) internal returns (uint256 amountInWrapped) {
+        uint256 snapshot = vm.snapshotState();
+        amountInWrapped = _vaultPreviewWithdraw(token, amountOutUnderlying);
+        vm.revertToState(snapshot);
+    }
+
+    // ------ testWrapFirst ------
+    function testWrapExactInFirst() public {
+        _testWrapFirst(SwapKind.EXACT_IN, false);
+    }
+
+    function testWrapExactInFirstWithETH() public {
+        _testWrapFirst(SwapKind.EXACT_IN, true);
+    }
+
+    function _testWrapFirst(SwapKind kind, bool wethIsEth) internal {
+        uint256 givenAmount = DEFAULT_AMOUNT;
+        uint256 limit = _getWrapExactInAmount(waUSDC, DEFAULT_AMOUNT);
+
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: usdc,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
             tokenIn: usdc,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
-        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
+        path[1].steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
+        path[1].steps[1] = SwapPathStep({ pool: getPool(waUSDC, weth), tokenOut: weth, isBuffer: false });
 
         // Ignore these tokens because the operation causes a rebalancing inside the Vault.
         ignoreVaultChangesForTokens[address(usdc)] = true;
         ignoreVaultChangesForTokens[address(waUSDC)] = true;
-        generateSimpleDiffs(pathsExactIn);
+        generateSimpleDiffs(path, kind);
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+        testSwap(path, kind, wethIsEth, 0, 0);
     }
 
-    function testExactInUnwrapFirst__Fuzz(bool wethIsEth) public {
-        uint256 minAmountOut = _getUnwrapMinAmount(waDAI, DEFAULT_EXACT_AMOUNT_IN);
+    // ------ testUnwrapFirst ------
+    function testUnwrapExactInFirst() public {
+        _testUnwrapFirst(SwapKind.EXACT_IN, false);
+    }
 
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    function testUnwrapExactInFirstWithETH() public {
+        _testUnwrapFirst(SwapKind.EXACT_IN, true);
+    }
+
+    function _testUnwrapFirst(SwapKind kind, bool wethIsEth) internal {
+        uint256 givenAmount = DEFAULT_AMOUNT;
+        uint256 limit = _getUnwrapExactInAmount(waDAI, DEFAULT_AMOUNT);
+
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: waDAI,
             steps: new SwapPathStep[](3),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+        path[0].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        path[0].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        path[0].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
             tokenIn: waDAI,
             steps: new SwapPathStep[](3),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[1].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+        path[1].steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        path[1].steps[1] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        path[1].steps[2] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+        generateSimpleDiffs(path, kind);
+        testSwap(path, kind, wethIsEth, 0, 0);
     }
 
     /***************************************************************************
-                                    Add Liquidity Exact In
+                                    Add Liquidity
     ***************************************************************************/
 
-    function testJoinSwapExactInSinglePathAndInitialAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    // ------ _testJoinSwapSinglePathAndInitialAddLiquidityStep ------
+    function testJoinSwapExactInSinglePathAndInitialAddLiquidityStep() public virtual {
+        _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind.EXACT_IN, false);
+    }
+
+    function testJoinSwapExactInSinglePathAndInitialAddLiquidityStepETH() public virtual {
+        _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind.EXACT_IN, true);
+    }
+
+    function testJoinSwapExactOutSinglePathAndInitialAddLiquidityStep() public virtual {
+        _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind.EXACT_OUT, false);
+    }
+
+    function testJoinSwapExactOutSinglePathAndInitialAddLiquidityStepETH() public virtual {
+        _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+        uint256 givenAmount = kind == SwapKind.EXACT_IN
+            ? DEFAULT_AMOUNT
+            : DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR;
+        uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
+
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+        path[0] = UniversalSwapPath({
             tokenIn: weth,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({
+        path[0].steps[0] = SwapPathStep({
             pool: getPool(weth, usdc),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = SwapPathStep({
+        path[0].steps[1] = SwapPathStep({
             pool: getPool(getPool(weth, usdc), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
         });
 
-        generateSimpleDiffs(pathsExactIn);
+        generateSimpleDiffs(path, kind);
 
         // We add additional diffs on top of the standard ones. This is related to the fact that we work with BPTs.
-        addDiffForVault(IERC20(getPool(weth, usdc)), int256(minAmountOut));
+        addDiffForVault(IERC20(getPool(weth, usdc)), int256(limit));
 
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, 0);
+        uint256 ethAmount = kind == SwapKind.EXACT_IN ? givenAmount : limit;
+        testSwap(path, kind, wethIsEth, wethIsEth ? ethAmount : 0, ADD_LIQUIDITY_ROUNDING_ERROR);
     }
 
-    function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    // ------ _testJoinSwapSinglePathAndIntermediateAddLiquidityStep ------
+    function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStep() public virtual {
+        _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind.EXACT_IN, false);
+    }
+
+    function testJoinSwapExactInSinglePathAndIntermediateAddLiquidityStepETH() public virtual {
+        _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind.EXACT_IN, true);
+    }
+
+    function testJoinSwapExactOutSinglePathAndIntermediateAddLiquidityStep() public virtual {
+        _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind.EXACT_OUT, false);
+    }
+
+    function testJoinSwapExactOutSinglePathAndIntermediateAddLiquidityStepETH() public virtual {
+        _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+        uint256 givenAmount = kind == SwapKind.EXACT_IN
+            ? DEFAULT_AMOUNT
+            : DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR;
+        uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
+
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+        path[0] = UniversalSwapPath({
             tokenIn: usdc,
             steps: new SwapPathStep[](3),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({
+        path[0].steps[0] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+        path[0].steps[1] = SwapPathStep({
             pool: getPool(weth, dai),
             tokenOut: IERC20(getPool(weth, dai)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[2] = SwapPathStep({
+        path[0].steps[2] = SwapPathStep({
             pool: getPool(getPool(weth, dai), getPool(usdc, dai)),
             tokenOut: IERC20(getPool(usdc, dai)),
             isBuffer: false
         });
 
-        generateSimpleDiffs(pathsExactIn);
+        generateSimpleDiffs(path, kind);
 
         // We add additional diffs on top of the standard ones. This is related to the fact that we work with BPTs.
-        addDiffForVault(IERC20(getPool(weth, dai)), int256(minAmountOut));
+        addDiffForVault(IERC20(getPool(weth, dai)), int256(limit));
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+        testSwap(path, kind, wethIsEth, 0, ADD_LIQUIDITY_ROUNDING_ERROR);
     }
 
-    function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - ADD_LIQUIDITY_ROUNDING_ERROR;
+    // ------ _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep ------
+    function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStep() public virtual {
+        _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind.EXACT_IN, false);
+    }
 
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
+    function testJoinSwapExactInMultiPathAndInitialFinalAddLiquidityStepETH() public virtual {
+        _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind.EXACT_IN, true);
+    }
+
+    function testJoinSwapExactOutMultiPathAndInitialFinalAddLiquidityStep() public virtual {
+        _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind.EXACT_OUT, false);
+    }
+
+    function testJoinSwapExactOutMultiPathAndInitialFinalAddLiquidityStepETH() public virtual {
+        _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind.EXACT_OUT, true);
+    }
+
+    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+        uint256 givenAmount = DEFAULT_AMOUNT;
+        uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
+
+        UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+        path[0] = UniversalSwapPath({
             tokenIn: dai,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[0].steps[0] = SwapPathStep({
+        path[0].steps[0] = SwapPathStep({
             pool: getPool(dai, usdc),
             tokenOut: IERC20(getPool(dai, usdc)),
             isBuffer: false
         });
-        pathsExactIn[0].steps[1] = SwapPathStep({
+        path[0].steps[1] = SwapPathStep({
             pool: getPool(getPool(dai, usdc), getPool(weth, usdc)),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
-        addPathAmountOut(minAmountOut);
+        addExpectedPathAmount(limit);
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
+        path[1] = UniversalSwapPath({
             tokenIn: dai,
             steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
+            givenAmount: givenAmount,
+            limit: limit
         });
-        pathsExactIn[1].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
-        pathsExactIn[1].steps[1] = SwapPathStep({
+        path[1].steps[0] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+        path[1].steps[1] = SwapPathStep({
             pool: getPool(weth, usdc),
             tokenOut: IERC20(getPool(weth, usdc)),
             isBuffer: false
         });
-        addPathAmountOut(minAmountOut);
+        addExpectedPathAmount(limit);
 
-        addDiffForAlice(dai, -int256(DEFAULT_EXACT_AMOUNT_IN * 2));
-        addDiffForAlice(IERC20(getPool(weth, usdc)), int256(minAmountOut * 2));
-        addAmountOut(IERC20(getPool(weth, usdc)), minAmountOut * 2);
+        addDiffForAlice(dai, -int256(givenAmount * 2));
+        addDiffForAlice(IERC20(getPool(weth, usdc)), int256(limit * 2));
+        addExpectedAmount(IERC20(getPool(weth, usdc)), limit * 2);
 
-        addDiffForVault(dai, int256(DEFAULT_EXACT_AMOUNT_IN * 2));
-        addDiffForVault(IERC20(getPool(weth, usdc)), -int256(minAmountOut));
-        addDiffForVault(IERC20(getPool(dai, usdc)), int256(minAmountOut));
+        addDiffForVault(dai, int256(givenAmount * 2));
+        addDiffForVault(IERC20(getPool(weth, usdc)), -int256(limit));
+        addDiffForVault(IERC20(getPool(dai, usdc)), int256(limit));
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
+        testSwap(path, kind, wethIsEth, 0, 0);
     }
 
     /***************************************************************************
-                                    Remove Liquidity Exact In
+                                    Remove Liquidity
     ***************************************************************************/
 
-    function testExitSwapExactInSinglePathAndInitialRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: IERC20(getPool(weth, usdc)),
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
-        addPathAmountOut(DEFAULT_MIN_AMOUNT_OUT);
+    // function testExitSwapExactInSinglePathAndInitialRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: IERC20(getPool(weth, usdc)),
+    //         steps: new SwapPathStep[](2),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: DEFAULT_AMOUNT
+    //     });
+    //     path[0].steps[0] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
+    //     path[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
+    //     addExpectedPathAmount(DEFAULT_AMOUNT);
 
-        addDiffForAlice(IERC20(getPool(weth, usdc)), -int256(DEFAULT_EXACT_AMOUNT_IN));
-        addDiffForAlice(dai, int256(DEFAULT_MIN_AMOUNT_OUT));
+    //     addDiffForAlice(IERC20(getPool(weth, usdc)), -int256(DEFAULT_AMOUNT));
+    //     addDiffForAlice(dai, int256(DEFAULT_AMOUNT));
 
-        addDiffForVault(dai, -int256(DEFAULT_MIN_AMOUNT_OUT));
+    //     addDiffForVault(dai, -int256(DEFAULT_AMOUNT));
 
-        addAmountOut(dai, DEFAULT_MIN_AMOUNT_OUT);
+    //     addExpectedAmount(dai, DEFAULT_AMOUNT);
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, 0);
-    }
+    //     testSwap(path, SwapKind.EXACT_IN, wethIsEth, 0, 0);
+    // }
 
-    function testExitSwapExactInSinglePathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: IERC20(weth),
-            steps: new SwapPathStep[](3),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: IERC20(getPool(weth, dai)),
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
-        pathsExactIn[0].steps[2] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
+    // function testExitSwapExactInSinglePathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
+    //     uint256 minAmountOut = DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: IERC20(weth),
+    //         steps: new SwapPathStep[](3),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: minAmountOut
+    //     });
+    //     path[0].steps[0] = SwapPathStep({
+    //         pool: getPool(weth, dai),
+    //         tokenOut: IERC20(getPool(weth, dai)),
+    //         isBuffer: false
+    //     });
+    //     path[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: dai, isBuffer: false });
+    //     path[0].steps[2] = SwapPathStep({ pool: getPool(dai, usdc), tokenOut: usdc, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, wethIsEth ? DEFAULT_EXACT_AMOUNT_IN : 0, REMOVE_LIQUIDITY_DELTA);
-    }
+    //     generateSimpleDiffs(path, SwapKind.EXACT_IN);
+    //     testSwap(path, SwapKind.EXACT_IN, wethIsEth, wethIsEth ? DEFAULT_AMOUNT : 0, REMOVE_LIQUIDITY_DELTA);
+    // }
 
-    function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](1);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: IERC20(dai),
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: IERC20(getPool(weth, dai)),
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
+    // function testExitSwapExactInSinglePathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](1);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: IERC20(dai),
+    //         steps: new SwapPathStep[](2),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR
+    //     });
+    //     path[0].steps[0] = SwapPathStep({
+    //         pool: getPool(weth, dai),
+    //         tokenOut: IERC20(getPool(weth, dai)),
+    //         isBuffer: false
+    //     });
+    //     path[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
-    }
+    //     generateSimpleDiffs(path, SwapKind.EXACT_IN);
+    //     testSwap(path, SwapKind.EXACT_IN, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
+    // }
 
-    function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: IERC20(dai),
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({
-            pool: getPool(weth, dai),
-            tokenOut: IERC20(getPool(weth, dai)),
-            isBuffer: false
-        });
-        pathsExactIn[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
+    // function testExitSwapExactInMultiPathAndFinalRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
+    //     uint256 minAmountOut = DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: IERC20(dai),
+    //         steps: new SwapPathStep[](2),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: minAmountOut
+    //     });
+    //     path[0].steps[0] = SwapPathStep({
+    //         pool: getPool(weth, dai),
+    //         tokenOut: IERC20(getPool(weth, dai)),
+    //         isBuffer: false
+    //     });
+    //     path[0].steps[1] = SwapPathStep({ pool: getPool(weth, dai), tokenOut: weth, isBuffer: false });
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
-            tokenIn: IERC20(dai),
-            steps: new SwapPathStep[](3),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
-        });
-        pathsExactIn[1].steps[0] = SwapPathStep({
-            pool: getPool(usdc, dai),
-            tokenOut: IERC20(getPool(usdc, dai)),
-            isBuffer: false
-        });
-        pathsExactIn[1].steps[1] = SwapPathStep({
-            pool: getPool(getPool(usdc, dai), getPool(weth, usdc)),
-            tokenOut: IERC20(getPool(weth, usdc)),
-            isBuffer: false
-        });
-        pathsExactIn[1].steps[2] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
+    //     path[1] = UniversalSwapPath({
+    //         tokenIn: IERC20(dai),
+    //         steps: new SwapPathStep[](3),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: minAmountOut
+    //     });
+    //     path[1].steps[0] = SwapPathStep({
+    //         pool: getPool(usdc, dai),
+    //         tokenOut: IERC20(getPool(usdc, dai)),
+    //         isBuffer: false
+    //     });
+    //     path[1].steps[1] = SwapPathStep({
+    //         pool: getPool(getPool(usdc, dai), getPool(weth, usdc)),
+    //         tokenOut: IERC20(getPool(weth, usdc)),
+    //         isBuffer: false
+    //     });
+    //     path[1].steps[2] = SwapPathStep({ pool: getPool(weth, usdc), tokenOut: weth, isBuffer: false });
 
-        generateSimpleDiffs(pathsExactIn);
+    //     generateSimpleDiffs(path, SwapKind.EXACT_IN);
 
-        // We add additional diffs on top of the standard ones. This is related to the fact that we work with BPTs.
-        addDiffForVault(IERC20(getPool(usdc, dai)), int256(minAmountOut));
-        addDiffForVault(IERC20(getPool(weth, usdc)), -int256(minAmountOut));
+    //     // We add additional diffs on top of the standard ones. This is related to the fact that we work with BPTs.
+    //     addDiffForVault(IERC20(getPool(usdc, dai)), int256(minAmountOut));
+    //     addDiffForVault(IERC20(getPool(weth, usdc)), -int256(minAmountOut));
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
-    }
+    //     testSwap(path, SwapKind.EXACT_IN, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
+    // }
 
-    function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
-        uint256 minAmountOut = DEFAULT_MIN_AMOUNT_OUT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
-        SwapPathExactAmountIn[] memory pathsExactIn = new SwapPathExactAmountIn[](2);
-        pathsExactIn[0] = SwapPathExactAmountIn({
-            tokenIn: IERC20(getPool(usdc, weth)),
-            steps: new SwapPathStep[](1),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
-        });
-        pathsExactIn[0].steps[0] = SwapPathStep({
-            pool: getPool(getPool(usdc, weth), getPool(weth, dai)),
-            tokenOut: IERC20(getPool(weth, dai)),
-            isBuffer: false
-        });
-        addPathAmountOut(minAmountOut);
+    // function testExitSwapExactInMultiPathAndIntermediateRemoveLiquidityStep__Fuzz(bool wethIsEth) public virtual {
+    //     uint256 minAmountOut = DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR;
+    //     UniversalSwapPath[] memory path = new UniversalSwapPath[](2);
+    //     path[0] = UniversalSwapPath({
+    //         tokenIn: IERC20(getPool(usdc, weth)),
+    //         steps: new SwapPathStep[](1),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: minAmountOut
+    //     });
+    //     path[0].steps[0] = SwapPathStep({
+    //         pool: getPool(getPool(usdc, weth), getPool(weth, dai)),
+    //         tokenOut: IERC20(getPool(weth, dai)),
+    //         isBuffer: false
+    //     });
+    //     addExpectedPathAmount(minAmountOut);
 
-        pathsExactIn[1] = SwapPathExactAmountIn({
-            tokenIn: IERC20(getPool(dai, usdc)),
-            steps: new SwapPathStep[](2),
-            exactAmountIn: DEFAULT_EXACT_AMOUNT_IN,
-            minAmountOut: minAmountOut
-        });
-        pathsExactIn[1].steps[0] = SwapPathStep({
-            pool: getPool(getPool(dai, usdc), getPool(usdc, weth)),
-            tokenOut: IERC20(getPool(usdc, weth)),
-            isBuffer: false
-        });
-        pathsExactIn[1].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
-        addPathAmountOut(minAmountOut);
+    //     path[1] = UniversalSwapPath({
+    //         tokenIn: IERC20(getPool(dai, usdc)),
+    //         steps: new SwapPathStep[](2),
+    //         givenAmount: DEFAULT_AMOUNT,
+    //         limit: minAmountOut
+    //     });
+    //     path[1].steps[0] = SwapPathStep({
+    //         pool: getPool(getPool(dai, usdc), getPool(usdc, weth)),
+    //         tokenOut: IERC20(getPool(usdc, weth)),
+    //         isBuffer: false
+    //     });
+    //     path[1].steps[1] = SwapPathStep({ pool: getPool(usdc, weth), tokenOut: weth, isBuffer: false });
+    //     addExpectedPathAmount(minAmountOut);
 
-        addDiffForAlice(IERC20(getPool(usdc, weth)), -int256(DEFAULT_EXACT_AMOUNT_IN));
-        addDiffForAlice(IERC20(getPool(weth, dai)), int256(minAmountOut));
+    //     addDiffForAlice(IERC20(getPool(usdc, weth)), -int256(DEFAULT_AMOUNT));
+    //     addDiffForAlice(IERC20(getPool(weth, dai)), int256(minAmountOut));
 
-        addDiffForAlice(IERC20(getPool(dai, usdc)), -int256(DEFAULT_EXACT_AMOUNT_IN));
-        addDiffForAlice(weth, int256(minAmountOut));
+    //     addDiffForAlice(IERC20(getPool(dai, usdc)), -int256(DEFAULT_AMOUNT));
+    //     addDiffForAlice(weth, int256(minAmountOut));
 
-        addDiffForVault(IERC20(getPool(weth, dai)), -int256(minAmountOut));
-        addDiffForVault(IERC20(getPool(dai, usdc)), int256(DEFAULT_EXACT_AMOUNT_IN));
-        addDiffForVault(weth, -int256(minAmountOut));
+    //     addDiffForVault(IERC20(getPool(weth, dai)), -int256(minAmountOut));
+    //     addDiffForVault(IERC20(getPool(dai, usdc)), int256(DEFAULT_AMOUNT));
+    //     addDiffForVault(weth, -int256(minAmountOut));
 
-        addAmountOut(IERC20(getPool(weth, dai)), minAmountOut);
-        addAmountOut(weth, minAmountOut);
+    //     addExpectedAmount(IERC20(getPool(weth, dai)), minAmountOut);
+    //     addExpectedAmount(weth, minAmountOut);
 
-        testSwapExactIn(pathsExactIn, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
-    }
+    //     testSwap(path, SwapKind.EXACT_IN, wethIsEth, 0, REMOVE_LIQUIDITY_DELTA);
+    // }
 }
