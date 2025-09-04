@@ -15,12 +15,7 @@ export default {
     const rootTransferDelay = deployment.rootTransferDelay || MONTH;
     const vault = deployment.vault;
 
-    const args = [
-      TypesConverter.toAddress(root),
-      TypesConverter.toAddress(nextRoot),
-      vault,
-      rootTransferDelay,
-    ];
+    const args = [TypesConverter.toAddress(root), TypesConverter.toAddress(nextRoot), vault, rootTransferDelay];
     const instance = await deploy('TimelockAuthorizer', { args });
     return new TimelockAuthorizerHelper(instance, root);
   },
