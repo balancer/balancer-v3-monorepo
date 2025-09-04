@@ -223,7 +223,6 @@ interface ITimelockAuthorizer {
     /// @notice Returns true if `account` is an executor for `scheduledExecutionId`.
     function isExecutor(uint256 scheduledExecutionId, address account) external view returns (bool);
 
-
     /**
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
      * @dev Only true if it is not already executed or canceled, and if the execution delay has passed.
