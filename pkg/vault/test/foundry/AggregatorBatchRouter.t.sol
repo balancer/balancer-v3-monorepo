@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
@@ -464,14 +465,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), exactAmountIn / 2);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AggregatorBatchHooks.InsufficientFunds.selector,
-                address(usdc),
-                exactAmountIn / 2,
-                exactAmountIn
-            )
-        );
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
         aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -676,14 +670,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountIn / 2);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AggregatorBatchHooks.InsufficientFunds.selector,
-                address(usdc),
-                maxAmountIn / 2,
-                maxAmountIn
-            )
-        );
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
         aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
