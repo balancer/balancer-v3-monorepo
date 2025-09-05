@@ -1,30 +1,36 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { BigNumberish } from 'ethers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizerHelper';
+import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { TimelockAuthorizer } from '../../typechain-types';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 
 describe('TimelockAuthorizer root', () => {
-  let authorizer: TimelockAuthorizer;
+  let authorizer: TimelockAuthorizerHelper;
   let root: SignerWithAddress, nextRoot: SignerWithAddress, user: SignerWithAddress, other: SignerWithAddress;
+
+  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   before('setup signers', async () => {
     [, root, nextRoot, user, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy authorizer', async () => {
-    const vault = await Vault.create({
-      admin: root,
-      nextAdmin: nextRoot.address,
-    });
+    const vault = await VaultDeployer.deploy();
 
-    authorizer = new TimelockAuthorizer(vault.authorizer, root);
+    const authorizerContract = (await deploy('TimelockAuthorizer', {
+      args: [root, nextRoot, vault, MINIMUM_EXECUTION_DELAY],
+    })) as unknown as TimelockAuthorizer;
+
+    authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
 
   describe('root', () => {
@@ -52,10 +58,10 @@ describe('TimelockAuthorizer root', () => {
             const scheduledExecution = await authorizer.getScheduledExecution(id);
             expect(scheduledExecution.executed).to.be.false;
             expect(scheduledExecution.data).to.be.equal(expectedData);
-            expect(scheduledExecution.where).to.be.equal(authorizer.address);
+            expect(scheduledExecution.where).to.be.equal(await authorizer.address());
             expect(scheduledExecution.protected).to.be.false;
             expect(scheduledExecution.executableAt).to.be.at.almostEqual(
-              (await currentTimestamp()).add(ROOT_CHANGE_DELAY)
+              (await currentTimestamp()) + bn(ROOT_CHANGE_DELAY)
             );
           });
 

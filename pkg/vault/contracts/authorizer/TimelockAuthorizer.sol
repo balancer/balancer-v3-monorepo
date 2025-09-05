@@ -1,42 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+pragma solidity ^0.8.24;
 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { ITimelockAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/ITimelockAuthorizer.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
+import { TimelockAuthorizerManagement } from "./TimelockAuthorizerManagement.sol";
+import { TimelockExecutionHelper } from "./TimelockExecutionHelper.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "./TimelockExecutionHelper.sol";
-import "./TimelockAuthorizerManagement.sol";
-
-/**
- * See ITimelockAuthorizer.
- */
+/// @notice See ITimelockAuthorizer.
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     // solhint-disable-next-line const-name-snakecase
     uint256 private constant _MAX_DELAY = 2 * (365 days);
 
     // solhint-disable-next-line const-name-snakecase
     uint256 private constant _MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
-
-    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
-    IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
@@ -52,11 +35,10 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     constructor(
         address initialRoot,
         address nextRoot,
-        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
+        IVault vault,
         uint256 rootTransferDelay
-    ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint.getVault(), rootTransferDelay) {
-        _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
-        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+    ) TimelockAuthorizerManagement(initialRoot, nextRoot, vault, rootTransferDelay) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -69,30 +51,22 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return _MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getActionIdDelay(bytes32 actionId) external view override returns (uint256) {
         return _delaysPerActionId[actionId];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getActionIdGrantDelay(bytes32 actionId) external view override returns (uint256) {
         return _grantDelays[actionId];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function getActionIdRevokeDelay(bytes32 actionId) external view override returns (uint256) {
         return _revokeDelays[actionId];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function isPermissionGrantedOnTarget(
         bytes32 actionId,
         address account,
@@ -101,42 +75,16 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return _isPermissionGranted[actionId][account][where];
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    /// @inheritdoc ITimelockAuthorizer
+    function hasPermission(bytes32 actionId, address account, address where) public view override returns (bool) {
         return _isPermissionGranted[actionId][account][where] || _isPermissionGranted[actionId][account][EVERYWHERE()];
     }
 
-    /**
-     * @inheritdoc IAuthorizer
-     */
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
-        if (msg.sender == address(_authorizerAdaptor)) {
-            // The situation where the caller is the `AuthorizerAdaptor` is a special case, as due to a bug it can be
-            // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
-            //
-            // To remedy this we force all calls to the `AuthorizerAdaptor` to be made through a singleton entrypoint
-            // contract, called the `AuthorizerAdaptorEntrypoint`. This contract correctly checks whether `account` can
-            // perform `actionId` on `where`, and then forwards the call onto the `AuthorizerAdaptor` to execute.
-            //
-            // The authorizer then rejects calls to the `AuthorizerAdaptor` which aren't made through the entrypoint,
-            // and approves all calls made through it (since the entrypoint will have already performed any necessary
-            // permission checks).
-            return account == address(_authorizerAdaptorEntrypoint);
-        }
-
+    /// @inheritdoc IAuthorizer
+    function canPerform(bytes32 actionId, address account, address where) public view override returns (bool) {
         // Actions with no delay can only be performed by accounts that have the associated permission.
         // However, actions with a non-zero delay cannot be performed by permissioned accounts: they can only be made by
-        // the TimelockAuthorizerExecutionHelper, which works alongisde the TimelockAuthorizer itself to ensure that
+        // the TimelockAuthorizerExecutionHelper, which works alongside the TimelockAuthorizer itself to ensure that
         // executions have been properly scheduled in advance by an authorized party via the `schedule` function.
         return
             _delaysPerActionId[actionId] == 0
@@ -144,13 +92,11 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
                 : account == getTimelockExecutionHelper();
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
         // validity.
-        if (actionId != IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector)) {
+        if (actionId != IAuthentication(getVault()).getActionId(IVaultAdmin.setAuthorizer.selector)) {
             require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
         }
 
@@ -158,9 +104,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         emit ActionDelaySet(actionId, delay);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function setGrantDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
 
@@ -168,9 +112,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         emit GrantDelaySet(actionId, delay);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function setRevokeDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
 
@@ -178,9 +120,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         emit RevokeDelaySet(actionId, delay);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleDelayChange(
         bytes32 actionId,
         uint256 newDelay,
@@ -192,7 +132,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
 
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        // TODO: add custom event
+        // TODO: add custom event.
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
@@ -201,9 +141,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleGrantDelayChange(
         bytes32 actionId,
         uint256 newDelay,
@@ -223,9 +161,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleRevokeDelayChange(
         bytes32 actionId,
         uint256 newDelay,
@@ -245,9 +181,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function schedule(
         address where,
         bytes memory data,
@@ -262,7 +196,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         // Similarly, `setDelay` can only be called if scheduled via `scheduleDelayChange`.
         //
         // For this reason we disallow this function from scheduling calls to functions on the Authorizer to ensure that
-        // these actions can only be scheduled through specialised functions.
+        // these actions can only be scheduled through specialized functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
 
         // We also disallow the TimelockExecutionHelper from attempting to call into itself. Otherwise the above
@@ -298,14 +232,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
-    function grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    /// @inheritdoc ITimelockAuthorizer
+    function grantPermission(bytes32 actionId, address account, address where) external override {
         if (_grantDelays[actionId] == 0) {
             require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         } else {
@@ -319,16 +247,14 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         // Note that it is possible for `account` to have permission for an `actionId` in some specific `where`, and
         // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
         // se, but removing these permissions status will require undoing these actions in inverse order.
-        // To avoid these issues, it is recommended to revoke any prior prermissions over specific contracts before
+        // To avoid these issues, it is recommended to revoke any prior permissions over specific contracts before
         // granting an account a global permissions.
 
         _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleGrantPermission(
         bytes32 actionId,
         address account,
@@ -353,14 +279,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
-    function revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    /// @inheritdoc ITimelockAuthorizer
+    function revokePermission(bytes32 actionId, address account, address where) external override {
         if (_revokeDelays[actionId] == 0) {
             require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
         } else {
@@ -372,9 +292,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         _revokePermission(actionId, account, where);
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function scheduleRevokePermission(
         bytes32 actionId,
         address account,
@@ -399,9 +317,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return scheduledExecutionId;
     }
 
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
+    /// @inheritdoc ITimelockAuthorizer
     function renouncePermission(bytes32 actionId, address where) external override {
         _revokePermission(actionId, msg.sender, where);
     }
@@ -412,11 +328,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
      * any appropriate checks.
      */
-    function _revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) private {
+    function _revokePermission(bytes32 actionId, address account, address where) private {
         require(hasPermission(actionId, account, where), "PERMISSION_NOT_GRANTED");
 
         if (_isPermissionGranted[actionId][account][EVERYWHERE()]) {
@@ -471,7 +383,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * check is therefore simply a way to try to prevent user error, but is not infallible.
      */
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
+        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVaultAdmin.setAuthorizer.selector);
         return delay <= _delaysPerActionId[setAuthorizerActionId];
     }
 }

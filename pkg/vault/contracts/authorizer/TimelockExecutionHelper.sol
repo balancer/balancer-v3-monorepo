@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+pragma solidity ^0.8.24;
 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-pragma solidity ^0.7.0;
+import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
-
-import "./TimelockAuthorizer.sol";
+import { TimelockAuthorizer } from "./TimelockAuthorizer.sol";
 
 /**
  * @dev Helper contract that is used by the TimelockAuthorizer to execute scheduled executions.
@@ -36,7 +27,7 @@ import "./TimelockAuthorizer.sol";
  * Therefore, any function called by the ExecutionHelper originates from an `execute` call, which in turn originates
  * from the TimelockAuthorizer having completed all permission and delay validation.
  */
-contract TimelockExecutionHelper is ReentrancyGuard {
+contract TimelockExecutionHelper is ReentrancyGuardTransient {
     TimelockAuthorizer private immutable _authorizer;
 
     constructor() {
@@ -50,9 +41,10 @@ contract TimelockExecutionHelper is ReentrancyGuard {
     }
 
     /**
-     * @dev Calls `target` with `data`. Because the ExecutionHelper is authorized to call any permission function that
-     * has a delay, this is a very powerful call. However, only the TimelockAuthorizer can initiate it, and it should
-     * only do so after having validated that the conditions to perform a delayed execution have been met.
+     * @notice Calls `target` with `data`.
+     * @dev Because the ExecutionHelper is authorized to call any permission function that has a delay, this is a very
+     * powerful call. However, only the TimelockAuthorizer can initiate it, and it should only do so after having
+     * validated that the conditions to perform a delayed execution have been met.
      *
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a

@@ -1,18 +1,21 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizerHelper';
+import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, DAY, MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { TimelockAuthorizer, Vault } from '../../typechain-types';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 
 describe('TimelockAuthorizer actors', () => {
   let vault: Vault;
-  let authorizer: TimelockAuthorizer;
+  let authorizer: TimelockAuthorizerHelper;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     account: SignerWithAddress,
@@ -31,15 +34,17 @@ describe('TimelockAuthorizer actors', () => {
   const WHERE_1 = ethers.Wallet.createRandom().address;
   const WHERE_2 = ethers.Wallet.createRandom().address;
 
-  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
+  const EVERYWHERE = TimelockAuthorizerHelper.EVERYWHERE;
+  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    vault = await Vault.create({
-      admin: root,
-      nextAdmin: nextRoot.address,
-    });
+    vault = await VaultDeployer.deploy();
 
-    authorizer = new TimelockAuthorizer(vault.authorizer, root);
+    const authorizerContract = (await deploy('TimelockAuthorizer', {
+      args: [root, nextRoot, vault, MINIMUM_EXECUTION_DELAY],
+    })) as unknown as TimelockAuthorizer;
+
+    authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
 
   describe('granters', () => {
@@ -527,7 +532,8 @@ describe('TimelockAuthorizer actors', () => {
       // `setAuthorizer`, since not having that delay prevents other delays from being set. We schedule two
       // calls to that function.
 
-      const setAuthorizerAction = await actionId(vault.instance, 'setAuthorizer');
+      const iVault = await TypesConverter.toIVault(vault);
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       executionId = await authorizer.scheduleDelayChange(setAuthorizerAction, DAY, [], { from: root });
       otherExecutionId = await authorizer.scheduleDelayChange(setAuthorizerAction, DAY, [], { from: root });
     });
