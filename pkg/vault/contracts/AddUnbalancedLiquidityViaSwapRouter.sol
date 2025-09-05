@@ -103,10 +103,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
             uint256 amountIn = amountsIn[i];
             uint256 amountOut = amountsOut[i];
 
-            console.log("take token in", amountIn);
             _takeTokenIn(hookParams.sender, tokens[i], amountIn, hookParams.wethIsEth);
-
-            console.log("send token out", amountOut);
             _sendTokenOut(hookParams.sender, tokens[i], amountOut, hookParams.wethIsEth);
         }
         _returnEth(hookParams.sender);
@@ -158,10 +155,11 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                     tokenIn: hookParams.operationParams.tokenMaxIn,
                     tokenOut: hookParams.operationParams.tokenExactIn,
                     amountGivenRaw: swapAmount,
-                    limitRaw: amountsIn[exactMaxInTokenIndex],
+                    limitRaw: hookParams.operationParams.maxAmountIn - amountsIn[exactMaxInTokenIndex],
                     userData: hookParams.operationParams.swapUserData
                 })
             );
+            console.log("swapAmountIn", swapAmountIn);
 
             amountsIn[exactMaxInTokenIndex] += swapAmountIn;
             if (amountsIn[exactInTokenIndex] >= swapAmountOut) {
@@ -170,6 +168,8 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                 amountsIn[exactInTokenIndex] = 0;
                 amountsOut[exactInTokenIndex] = swapAmountOut - amountsIn[exactInTokenIndex];
             }
+
+            console.log("test", swapAmountIn);
         } else if (amountsIn[exactInTokenIndex] < hookParams.operationParams.exactAmountIn) {
             uint256 swapAmount = hookParams.operationParams.exactAmountIn - amountsIn[exactInTokenIndex];
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(

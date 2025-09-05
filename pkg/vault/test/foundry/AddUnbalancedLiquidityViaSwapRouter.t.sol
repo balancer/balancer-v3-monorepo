@@ -14,6 +14,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { AddUnbalancedLiquidityViaSwapRouter } from "../../contracts/AddUnbalancedLiquidityViaSwapRouter.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
@@ -22,6 +23,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
@@ -81,11 +83,11 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     ) public {
         bool wethIsEth = false;
         uint256[] memory balancesBefore = vault.getCurrentLiveBalances(pool);
-        exactAmountIn = bound(exactAmountIn, 1e6, balancesBefore[wethIdx]);
-        maxAmountIn = bound(maxAmountIn, exactAmountIn, balancesBefore[daiIdx]);
-        liquidityRatio = bound(liquidityRatio, 2, 5);
+        exactAmountIn = bound(exactAmountIn, 1e6, balancesBefore[wethIdx] / 2);
+        maxAmountIn = exactAmountIn * 10;
+        liquidityRatio = bound(liquidityRatio, 0.1e18, 5e18);
 
-        uint256 addLiquidityAmount = exactAmountIn / liquidityRatio;
+        uint256 addLiquidityAmount = exactAmountIn.mulDown(liquidityRatio);
 
         // Get expected BPT out for the add liquidity from the standard router
         uint256 snapshot = vm.snapshotState();
@@ -106,7 +108,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 tokenExactIn: weth,
                 tokenMaxIn: dai,
                 exactAmountIn: exactAmountIn,
-                maxAmountIn: exactAmountIn * 2,
+                maxAmountIn: maxAmountIn,
                 addLiquidityUserData: bytes(""),
                 swapUserData: bytes("")
             });
