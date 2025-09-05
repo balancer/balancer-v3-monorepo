@@ -13,8 +13,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { StableSurgeHookDeployer } from "./utils/StableSurgeHookDeployer.sol";
@@ -49,7 +50,12 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
             "Test"
         );
 
-        stablePoolFactory = deployStableSurgePoolFactory(stableSurgeHook, 365 days, FACTORY_VERSION, POOL_VERSION);
+        stablePoolFactory = deployStableSurgePoolFactory(
+            address(stableSurgeHook),
+            365 days,
+            FACTORY_VERSION,
+            POOL_VERSION
+        );
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -135,6 +141,27 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
         stablePoolFactory.create(
             "Big Pool",
             "TOO_BIG",
+            tokenConfig,
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            MAX_SWAP_FEE_PERCENTAGE,
+            false,
+            ZERO_BYTES32
+        );
+    }
+
+    function testCreateWithPoolCreator() public {
+        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
+
+        // Balancer factories do not allow poolCreator.
+        vm.expectRevert(BasePoolFactory.StandardPoolWithCreator.selector);
+        stablePoolFactory.create(
+            "Pool with Creator",
+            "CREATOR",
             tokenConfig,
             DEFAULT_AMP_FACTOR,
             roleAccounts,

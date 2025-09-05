@@ -17,21 +17,12 @@ contract StableSurgeHookMock is StableSurgeHook {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticFeePercentage,
-        uint256[] memory newBalances
-    ) external view returns (uint256) {
-        return _getSurgeFeePercentage(params, pool, staticFeePercentage, newBalances);
-    }
-
     function isSurging(
-        SurgeFeeData memory surgeFeeData,
-        uint256[] memory currentBalances,
+        uint64 thresholdPercentage,
+        uint256 oldTotalImbalance,
         uint256 newTotalImbalance
     ) external pure returns (bool) {
-        return _isSurging(surgeFeeData, currentBalances, newTotalImbalance);
+        return _isSurging(thresholdPercentage, oldTotalImbalance, newTotalImbalance);
     }
 
     function getSurgeFeeData(address pool) external view returns (SurgeFeeData memory) {

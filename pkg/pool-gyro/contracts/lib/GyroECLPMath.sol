@@ -17,6 +17,9 @@ import { GyroPoolMath } from "./GyroPoolMath.sol";
  * @notice ECLP math library. Pretty much a direct translation of the python version.
  * @dev We use *signed* values here because some of the intermediate results can be negative (e.g. coordinates of
  * points in the untransformed circle, "prices" in the untransformed circle).
+ *
+ * Section references in the code refer to ECLP Math documentation from Gyro.
+ * See https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf.
  */
 library GyroECLPMath {
     using SignedFixedPoint for int256;
@@ -69,7 +72,11 @@ library GyroECLPMath {
         int256 c;
     }
 
-    /// @dev Enforces limits and approximate normalization of the rotation vector.
+    /**
+     * @notice Enforces limits and approximate normalization of the rotation vector.
+     * @dev This is used to check the parameters of the pool on contract creation.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     */
     function validateParams(IGyroECLPPool.EclpParams memory params) internal pure {
         require(0 <= params.s && params.s <= _ONE, RotationVectorSWrong());
         require(0 <= params.c && params.c <= _ONE, RotationVectorCWrong());
@@ -87,12 +94,14 @@ library GyroECLPMath {
     /**
      * @notice Enforces limits and approximate normalization of the derived values.
      * @dev Does NOT check for internal consistency of 'derived' with 'params'.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
      */
     function validateDerivedParamsLimits(
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derived
     ) internal pure {
-        // If tau is not within the range below, the pool math may be messed.
+        // If tau is not within the range below, the pool math may be inaccurate.
         require(derived.tauAlpha.y > 0, DerivedTauAlphaYWrong());
         require(derived.tauBeta.y > 0, DerivedTauBetaYWrong());
         require(derived.tauBeta.x > derived.tauAlpha.x, DerivedTauXWrong());
@@ -129,6 +138,12 @@ library GyroECLPMath {
         require(mulDenominator <= _MAX_INV_INVARIANT_DENOMINATOR_XP, InvariantDenominatorWrong());
     }
 
+    /**
+     * @notice Calculate the scalar product of two vectors.
+     * @param t1 First vector
+     * @param t2 Second vector
+     * @return ret Scalar product of the two vectors
+     */
     function scalarProd(
         IGyroECLPPool.Vector2 memory t1,
         IGyroECLPPool.Vector2 memory t2
@@ -136,7 +151,13 @@ library GyroECLPMath {
         ret = t1.x.mulDownMag(t2.x) + t1.y.mulDownMag(t2.y);
     }
 
-    /// @dev Scalar product for extra-precision values
+    /**
+     * @notice Scalar product for extra-precision values.
+     * @dev Extra precision means 38 decimal precision.
+     * @param t1 First vector
+     * @param t2 Second vector
+     * @return ret Scalar product of the two vectors
+     */
     function scalarProdXp(
         IGyroECLPPool.Vector2 memory t1,
         IGyroECLPPool.Vector2 memory t2
@@ -144,22 +165,26 @@ library GyroECLPMath {
         ret = t1.x.mulXp(t2.x) + t1.y.mulXp(t2.y);
     }
 
-    // "Methods" for Params. We could put these into a separate library and import them via 'using' to get method call
-    // syntax.
-
     /**
-     * @notice Calculate A t where A is given in Section 2.2.
-     * @dev This is reversing rotation and scaling of the ellipse (mapping back to circle) .
+     * @notice Multiply matrix A by vector t.
+     * @dev This is reversing the rotation and scaling of the ellipse mapping back to the unit circle. A is described
+     * in Section 2.2 of the ECLP technical paper:
+     * (See https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * This function is only used inside calculatePrice(). This is why we can make two simplifications:
+     * 1. We don't correct for precision of s, c using d.dSq because that level of precision is not important in
+     * this context;
+     * 2. We don't need to check for over/underflow because these are impossible in that context, given the (checked)
+     * assumptions on the various values.
+     *
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param tp Point on the ellipse
+     * @return t Point on the circle
      */
     function mulA(
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.Vector2 memory tp
     ) internal pure returns (IGyroECLPPool.Vector2 memory t) {
-        // NB: This function is only used inside calculatePrice(). This is why we can make two simplifications:
-        // 1. We don't correct for precision of s, c using d.dSq because that level of precision is not important in
-        // this context;
-        // 2. We don't need to check for over/underflow because these are impossible in that context and given the
-        // (checked) assumptions on the various values.
         t.x =
             params.c.mulDownMagU(tp.x).divDownMagU(params.lambda) -
             params.s.mulDownMagU(tp.y).divDownMagU(params.lambda);
@@ -167,16 +192,39 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Calculate virtual offset a given invariant r, see calculation in Section 2.1.2.
+     * @notice Multiply the inverse of matrix A by vector t (i.e., solve Ax = t for x).
+     * @dev This is rotating and scaling the circle into an ellipse centered at the origin. A^{-1} is described in
+     * Section 2.2 (See https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param t Point on the circle
+     * @return tp Point on the ellipse
+     */
+    function mulAinv(
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.Vector2 memory t
+    ) internal pure returns (IGyroECLPPool.Vector2 memory tp) {
+        tp.x = t.x.mulDownMag(params.lambda).mulDownMag(params.c) + t.y.mulDownMag(params.s);
+        tp.y = -t.x.mulDownMag(params.lambda).mulDownMag(params.s) + t.y.mulDownMag(params.c);
+    }
+
+    /**
+     * @notice Calculate virtual offset a given invariant r.
      * @dev In contrast to virtual reserve offsets in CPMM, these are *subtracted* from the real reserves, moving the
      * curve to the upper-right. They can be positive or negative, but not both can be negative. Calculates
      * `a = r*(A^{-1}tau(beta))_x` rounding up in signed direction. That error in r is scaled by lambda, and so
-     * rounding direction is important.
+     * rounding direction is important. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return a Virtual offset a
      */
     function virtualOffset0(
         IGyroECLPPool.EclpParams memory p,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 a) {
         // a = r lambda c tau(beta)_x + rs tau(beta)_y
         //       account for 1 factors of dSq (2 s,c factors)
@@ -190,13 +238,18 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice calculate virtual offset b given invariant r.
-     * @dev Calculates b = r*(A^{-1}tau(alpha))_y rounding up in signed direction
+     * @notice Calculate virtual offset b given invariant r.
+     * @dev Calculates b = r*(A^{-1}tau(alpha))_y rounding up in signed direction.
+     *
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return b Virtual offset b
      */
     function virtualOffset1(
         IGyroECLPPool.EclpParams memory p,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 b) {
         // b = -r \lambda s tau(alpha)_x + rc tau(alpha)_y
         //       account for 1 factors of dSq (2 s,c factors)
@@ -210,14 +263,20 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Maximal value for the real reserves x when the respective other balance is 0 for given invariant.
-     * @dev See calculation in Section 2.1.2. Calculation is ordered here for precision, but error in r is magnified
-     * by lambda. Rounds down in signed direction
+     * @notice Maximal value for the real reserves x when the other balance is zero, at the given invariant.
+     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in the signed
+     * direction. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return xp Maximal value for the real reserves x
      */
     function maxBalances0(
         IGyroECLPPool.EclpParams memory p,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 xp) {
         // x^+ = r lambda c (tau(beta)_x - tau(alpha)_x) + rs (tau(beta)_y - tau(alpha)_y)
         //      account for 1 factors of dSq (2 s,c factors)
@@ -231,14 +290,20 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Maximal value for the real reserves y when the respective other balance is 0 for given invariant.
-     * @dev See calculation in Section 2.1.2. Calculation is ordered here for precision, but erorr in r is magnified
-     * by lambda. Rounds down in signed direction
+     * @notice Maximal value for the real reserves y when the other balance is zero, at the given invariant.
+     * @dev Calculation is ordered here for precision, but error in r is magnified by lambda. Rounds down in the signed
+     * direction. For more details, see Section 2.1.2 in the ECLP technical paper:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return yp Maximal value for the real reserves y
      */
     function maxBalances1(
         IGyroECLPPool.EclpParams memory p,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 yp) {
         // y^+ = r lambda s (tau(beta)_x - tau(alpha)_x) + rc (tau(alpha)_y - tau(beta)_y)
         //      account for 1 factors of dSq (2 s,c factors)
@@ -253,7 +318,14 @@ library GyroECLPMath {
      * @dev The invariant can't be negative, but we use a signed value to store it because all the other calculations
      * are happening with signed ints, too. Computes r according to Prop 13 in 2.2.1 Initialization from Real Reserves.
      * Orders operations to achieve best precision. Returns an underestimate and a bound on error size. Enforces
-     * anti-overflow limits on balances and the computed invariant in the process.
+     * anti-overflow limits on balances and the computed invariant in the process. For more details, see Section 2.2.1
+     * in the docs (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param balances Pool balances, scaled with 18 decimals
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
+     * @return invariant Invariant r, rounded down
+     * @return err Error bound on invariant, required to compute the invariant rounded up
      */
     function calculateInvariantWithError(
         uint256[] memory balances,
@@ -267,7 +339,6 @@ library GyroECLPMath {
         int256 atAChi = calcAtAChi(x, y, params, derived);
         (int256 sqrt, int256 err) = calcInvariantSqrt(x, y, params, derived);
         // Calculate the error in the square root term, separates cases based on sqrt >= 1/2
-        // somedayTODO: can this be improved for cases of large balances (when xp error magnifies to np)
         // Note: the minimum non-zero value of sqrt is 1e-9 since the minimum argument is 1e-18
         if (sqrt > 0) {
             // err + 1 to account for O(eps_np) term ignored before
@@ -275,7 +346,6 @@ library GyroECLPMath {
         } else {
             // In the false case here, the extra precision error does not magnify, and so the error inside the sqrt is
             // O(1e-18)
-            // somedayTODO: The true case will almost surely never happen (can it be removed)
             err = err > 0 ? GyroPoolMath.sqrt(err.toUint256(), 5).toInt256() : int256(1e9);
         }
         // Calculate the error in the numerator, scale the error by 20 to be sure all possible terms accounted for
@@ -310,7 +380,15 @@ library GyroECLPMath {
         return (invariant, err);
     }
 
-    /// @dev Calculate At \cdot A chi, ignores rounding direction. We will later compensate for the rounding error.
+    /**
+     * @notice Calculate At \cdot A chi, ignores rounding direction. We will later compensate for the rounding error.
+     *
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val At \cdot A chi
+     */
     function calcAtAChi(
         int256 x,
         int256 y,
@@ -339,6 +417,10 @@ library GyroECLPMath {
      * @dev This can be >1 (and involves factor of lambda^2). We can compute it in extra precision without overflowing
      * because it will be at most 38 + 16 digits (38 from decimals, 2*8 from lambda^2 if lambda=1e8). Since we will
      * only divide by this later, we will not need to worry about overflow in that operation if done in the right way.
+     *
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val A chi \cdot A chi in extra precision
      */
     function calcAChiAChiInXp(
         IGyroECLPPool.EclpParams memory p,
@@ -349,9 +431,6 @@ library GyroECLPMath {
 
         // (A chi)_y^2 = lambda^2 u^2 + lambda 2 u v + v^2
         //      account for 3 factors of dSq (6 s,c factors)
-        // SOMEDAY: In these calcs, a calculated value is multiplied by lambda and lambda^2, resp, which implies some
-        // error amplification. It's fine because we're doing it in extra precision here, but would still be nice if it
-        // could be avoided, perhaps by splitting up the numbers into a high and low part.
         val = p.lambda.mulUpMagU((2 * d.u).mulXpU(d.v).divXpU(dSq3));
         // For lambda^2 u^2 factor in rounding error in u since lambda could be big.
         // Note: lambda^2 is multiplied at the end to be sure the calculation doesn't overflow, but this can lose some
@@ -366,7 +445,14 @@ library GyroECLPMath {
         val = val + termXp.mulXpU(termXp).divXpU(dSq3);
     }
 
-    /// @dev Calculate -(At)_x ^2 (A chi)_y ^2 + (At)_x ^2, rounding down in signed direction
+    /**
+     * @notice Calculate -(At)_x ^2 (A chi)_y ^2 + (At)_x ^2, rounding down in signed direction.
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val -(At)_x ^2 (A chi)_y ^2 + (At)_x ^2
+     */
     function calcMinAtxAChiySqPlusAtxSq(
         int256 x,
         int256 y,
@@ -401,6 +487,11 @@ library GyroECLPMath {
     /**
      * @notice Calculate 2(At)_x * (At)_y * (A chi)_x * (A chi)_y, ignores rounding direction.
      * @dev This ignores rounding direction and is corrected for later.
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val 2(At)_x * (At)_y * (A chi)_x * (A chi)_y
      */
     function calc2AtxAtyAChixAChiy(
         int256 x,
@@ -423,7 +514,14 @@ library GyroECLPMath {
         val = termNp.mulDownXpToNpU(termXp);
     }
 
-    /// @dev Calculate -(At)_y ^2 (A chi)_x ^2 + (At)_y ^2, rounding down in signed direction.
+    /**
+     * @notice Calculate -(At)_y ^2 (A chi)_x ^2 + (At)_y ^2, rounding down in signed direction.
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val -(At)_y ^2 (A chi)_x ^2 + (At)_y ^2
+     */
     function calcMinAtyAChixSqPlusAtySq(
         int256 x,
         int256 y,
@@ -453,6 +551,13 @@ library GyroECLPMath {
      * @notice Calculates the square root of the invariant.
      * @dev Rounds down. Also returns an estimate for the error of the term under the sqrt (!) and without the regular
      * normal-precision error of O(1e-18).
+     *
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param p ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @return val Square root of the invariant
+     * @return err Error bound on the invariant, required to compute the invariant rounded up
      */
     function calcInvariantSqrt(
         int256 x,
@@ -476,7 +581,14 @@ library GyroECLPMath {
 
     /**
      * @notice Spot price of token 0 in units of token 1.
-     * @dev See Prop. 12 in 2.1.6 Computing Prices
+     * @dev See Prop. 12 in the 2.1.6 Computing Prices section of the ECLP technical document:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param balances Pool balances, scaled with 18 decimals
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
+     * @param invariant Invariant r, rounded down
+     * @return px Spot price of token 0 in units of token 1
      */
     function calcSpotPrice0in1(
         uint256[] memory balances,
@@ -503,16 +615,127 @@ library GyroECLPMath {
 
         // Convert prices back to ellipse
         // NB: These operations check for overflow because the price pc[0] might be large when vec.y is small.
-        // SOMEDAY I think this probably can't actually happen due to our bounds on the different values. In this case
-        // we could do this unchecked as well.
         int256 pgx = scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(_ONE, 0)));
         px = pgx.divDownMag(scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(0, _ONE)))).toUint256();
     }
 
     /**
+     * @notice Computes the spot price of token 0 in units of token 1.
+     * @dev This version of price computation does not require the invariant, only the virtual offsets. So, for
+     * certain cases, it is more gas efficient.
+     *
+     * @param balancesScaled18 Pool balances, scaled with 18 decimals
+     * @param eclpParams ECLP params alpha, beta, c, s and lambda
+     * @param a Virtual offset of token at position 0
+     * @param b Virtual offset of token at position 1
+     * @return price Spot price of token 0 in units of token 1
+     */
+    function computePrice(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        int256 a,
+        int256 b
+    ) internal pure returns (uint256 price) {
+        // To compute the price, first we need to transform the real balances into balances of a circle centered at
+        // (0,0).
+        //
+        // The transformation is:
+        //
+        //     --   --    --           --   --     --
+        //     | x'' |    |  c/λ  -s/λ  | * | x - a |
+        //     | y'' | =  |   s     c   |   | y - b |
+        //     --   --    --           --   --     --
+        //
+        // With x'' and y'', we can compute the price as:
+        //
+        //                          --            --   --   --
+        //             [xll, yll] o |  c/λ   -s/λ  | * |  1  |
+        //                          |   s      c   |   |  0  |
+        //                          --            --   --   --
+        //    price =  -------------------------------------------
+        //                          --            --   --   --
+        //             [xll, yll] o |  c/λ   -s/λ  | * |  0  |
+        //                          |   s      c   |   |  1  |
+        //                          --            --   --   --
+
+        // Balances in the rotated ellipse centered at (0,0)
+        int256 xl = int256(balancesScaled18[0]) - a;
+        int256 yl = int256(balancesScaled18[1]) - b;
+
+        // Balances in the circle centered at (0,0)
+        int256 xll = (xl * eclpParams.c - yl * eclpParams.s) / eclpParams.lambda;
+        int256 yll = (xl * eclpParams.s + yl * eclpParams.c) / 1e18;
+
+        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
+        int256 numerator = yll.mulDownMag(eclpParams.s) + ((xll * eclpParams.c) / eclpParams.lambda);
+        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
+        int256 denominator = yll.mulDownMag(eclpParams.c) - ((xll * eclpParams.s) / eclpParams.lambda);
+
+        price = numerator.divDownMag(denominator).toUint256();
+        // The price cannot be outside of pool range.
+        price = clampPriceToPoolRange(price, eclpParams);
+
+        return price;
+    }
+
+    /**
+     * @notice Computes the virtual offsets of token at position 0 and 1 given the pool balances.
+     * @param balancesScaled18 Pool balances, scaled with 18 decimals
+     * @param eclpParams ECLP params alpha, beta, c, s and lambda
+     * @param derivedECLPParams Derived ECLP params u, v, w, z, dSq
+     * @return a Virtual offset of token at position 0
+     * @return b Virtual offset of token at position 1
+     */
+    function computeOffsetFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) internal pure returns (int256 a, int256 b) {
+        IGyroECLPPool.Vector2 memory invariant;
+
+        (int256 currentInvariant, int256 invErr) = calculateInvariantWithError(
+            balancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        // invariant = overestimate in x-component, underestimate in y-component
+        // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
+        // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
+        invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
+
+        a = virtualOffset0(eclpParams, derivedECLPParams, invariant);
+        b = virtualOffset1(eclpParams, derivedECLPParams, invariant);
+    }
+
+    /**
+     * @notice Clamps the price to the pool range.
+     * @dev The pool price cannot be lower than alpha or higher than beta. So, we clamp it to the interval.
+     * @param price The price to clamp
+     * @param eclpParams The E-CLP parameters
+     * @return The clamped price
+     */
+    function clampPriceToPoolRange(
+        uint256 price,
+        IGyroECLPPool.EclpParams memory eclpParams
+    ) internal pure returns (uint256) {
+        if (price < eclpParams.alpha.toUint256()) {
+            return eclpParams.alpha.toUint256();
+        } else if (price > eclpParams.beta.toUint256()) {
+            return eclpParams.beta.toUint256();
+        }
+        return price;
+    }
+
+    /**
      * @notice Check that post-swap balances obey maximal asset bounds.
      * @dev newBalance = post-swap balance of one asset. assetIndex gives the index of the provided asset
-     * (0 = X, 1 = Y)
+     * (0 = X, 1 = Y).
+     *
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
+     * @param invariant Invariant r, rounded down
+     * @param newBal New balance of the asset
+     * @param assetIndex Index of the asset
      */
     function checkAssetBounds(
         IGyroECLPPool.EclpParams memory params,
@@ -530,6 +753,18 @@ library GyroECLPMath {
         }
     }
 
+    /**
+     * @notice Calculates the amount out given the amount in for a swap.
+     * @param balances Pool balances, scaled with 18 decimals
+     * @param amountIn Amount in, scaled with 18 decimals
+     * @param tokenInIsToken0 Whether the token in is token 0
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
+     * @param invariant Invariant r, rounded down
+     * @return amountOut Amount out, scaled with 18 decimals
+     * @return a Virtual offset a
+     * @return b Virtual offset b
+     */
     function calcOutGivenIn(
         uint256[] memory balances,
         uint256 amountIn,
@@ -565,6 +800,19 @@ library GyroECLPMath {
         // The above line guarantees that amountOut <= balances[ixOut].
     }
 
+    /**
+     * @notice Calculates the amount in given the amount out for a swap.
+     * @dev This is the inverse of calcOutGivenIn.
+     * @param balances Pool balances, scaled with 18 decimals
+     * @param amountOut Amount out, scaled with 18 decimals
+     * @param tokenInIsToken0 Whether the token in is token 0
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param derived Derived ECLP params u, v, w, z, dSq
+     * @param invariant Invariant r, rounded down
+     * @return amountIn Amount in, scaled with 18 decimals
+     * @return a Virtual offset a
+     * @return b Virtual offset b
+     */
     function calcInGivenOut(
         uint256[] memory balances,
         uint256 amountOut,
@@ -602,16 +850,28 @@ library GyroECLPMath {
     }
 
     /**
+     * @notice Calculates the amount in given the amount out for a swap.
      * @dev Variables are named for calculating y given x. To calculate x given y, change x->y, s->c, c->s, a->b, b->a,
      * tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y. Also, calculates an overestimate of calculated reserve
-     * post-swap.
+     * post-swap. For more details, see Section 2.2.2 Trade Execution in the ECLP technical document:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param lambda Stretching factor of the ellipse
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param s ECLP param s
+     * @param c ECLP param c
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @param ab Virtual offsets a and b
+     * @param tauBeta ECLP param tauBeta
+     * @param dSq Derived ECLP param dSq
+     * @return val Calculated reserve post-swap
      */
     function solveQuadraticSwap(
         int256 lambda,
         int256 x,
         int256 s,
         int256 c,
-        IGyroECLPPool.Vector2 memory r, // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r,
         IGyroECLPPool.Vector2 memory ab,
         IGyroECLPPool.Vector2 memory tauBeta,
         int256 dSq
@@ -665,13 +925,22 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice Calculates x'x'/λ^2 where x' = x - b = x - r (A^{-1}tau(beta))_x
+     * @notice Calculates x'x'/λ^2 where x' = x - b = x - r (A^{-1}tau(beta))_x.
      * @dev Calculates an overestimate. To calculate y'y', change x->y, s->c, c->s, tauBeta.x -> -tauAlpha.x,
-     * tauBeta.y -> tauAlpha.y
+     * tauBeta.y -> tauAlpha.y.
+     *
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @param lambda Stretching factor of the ellipse
+     * @param s ECLP param (sine of rotation angle)
+     * @param c ECLP param (cosine of rotation angle)
+     * @param tauBeta Derived ECLP param tauBeta
+     * @param dSq Derived ECLP param dSq
+     * @return val x'x'/λ^2
      */
     function calcXpXpDivLambdaLambda(
         int256 x,
-        IGyroECLPPool.Vector2 memory r, // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r,
         int256 lambda,
         int256 s,
         int256 c,
@@ -736,14 +1005,23 @@ library GyroECLPMath {
     }
 
     /**
-     * @notice compute y such that (x, y) satisfy the invariant at the given parameters.
-     * @dev We calculate an overestimate of y. See Prop 14 in section 2.2.2 Trade Execution
+     * @notice Compute y such that (x, y) satisfy the invariant at the given parameters.
+     * @dev We calculate an overestimate of y. See Prop 14 in Section 2.2.2 Trade Execution of the docs:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param x Real reserve x, scaled with 18 decimals
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return y Calculated reserve post-swap
+     * @return a Virtual offset a
+     * @return b Virtual offset b
      */
     function calcYGivenX(
         int256 x,
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 y, int256 a, int256 b) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
@@ -754,11 +1032,24 @@ library GyroECLPMath {
         y = solveQuadraticSwap(params.lambda, x, params.s, params.c, r, ab, d.tauBeta, d.dSq);
     }
 
+    /**
+     * @notice Calculate x such that (x, y) satisfy the invariant at the given parameters.
+     * @dev We calculate an overestimate of x. See Prop 14 in Section 2.2.2 Trade Execution of the docs:
+     * (https://github.com/gyrostable/technical-papers/blob/main/E-CLP/E-CLP%20Mathematics.pdf).
+     *
+     * @param y Real reserve y, scaled with 18 decimals
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param d Derived ECLP params u, v, w, z, dSq
+     * @param r Invariant vector, overestimated in x component, underestimated in y component
+     * @return x Calculated reserve post-swap
+     * @return a Virtual offset a
+     * @return b Virtual offset b
+     */
     function calcXGivenY(
         int256 y,
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory d,
-        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r
     ) internal pure returns (int256 x, int256 a, int256 b) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
@@ -777,5 +1068,41 @@ library GyroECLPMath {
             IGyroECLPPool.Vector2(-d.tauAlpha.x, d.tauAlpha.y),
             d.dSq
         );
+    }
+
+    /**
+     * @notice Maps price px to the corresponding point on the untransformed normalized circle.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param px price of asset x in terms of asset y in the rotated and translated ellipsis
+     * @return tpp Balances of the normalized circle corresponding to price px in the ellipsis
+     */
+    function tau(
+        IGyroECLPPool.EclpParams memory params,
+        int256 px
+    ) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
+        return eta(zeta(params, px));
+    }
+
+    /**
+     * @notice Maps price pxc of the circle to the corresponding point on the circle centered at the origin.
+     * @dev Notice that eta function does not depend on ECLP params.
+     * @param pxc price of asset x in terms of asset y in the circle centered at the origin
+     * @return tpp Balances of the normalized circle corresponding to price pxc in this same circle
+     */
+    function eta(int256 pxc) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
+        int256 z = FixedPoint.powDown(FixedPoint.ONE + (pxc.mulDownMag(pxc).toUint256()), _ONEHALF).toInt256();
+        tpp.x = pxc.divDownMag(z);
+        tpp.y = SignedFixedPoint.ONE.divDownMag(z);
+    }
+
+    /**
+     * @notice Maps price px in the transformed ellipsis to the untransformed price pxc on the circle.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param px price of asset x in terms of asset y in the rotated and translated ellipsis
+     * @return pxc price of asset x in terms of asset y in the circle centered at the origin
+     */
+    function zeta(IGyroECLPPool.EclpParams memory params, int256 px) internal pure returns (int256 pxc) {
+        IGyroECLPPool.Vector2 memory nd = mulA(params, IGyroECLPPool.Vector2(-SignedFixedPoint.ONE, px));
+        return -nd.y.divDownMag(nd.x);
     }
 }
