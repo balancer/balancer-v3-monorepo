@@ -131,26 +131,6 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployAggregatorBatchRouter(
-        IVault vault,
-        IWETH weth,
-        string memory routerVersion
-    ) internal returns (AggregatorBatchRouter) {
-        if (reusingArtifacts) {
-            return
-                AggregatorBatchRouter(
-                    payable(
-                        deployCode(
-                            _computeVaultTestPath(type(AggregatorBatchRouter).name),
-                            abi.encode(vault, weth, routerVersion)
-                        )
-                    )
-                );
-        } else {
-            return new AggregatorBatchRouter(vault, weth, routerVersion);
-        }
-    }
-
     function deployCompositeLiquidityRouterMock(
         IVault vault,
         IWETH weth,
