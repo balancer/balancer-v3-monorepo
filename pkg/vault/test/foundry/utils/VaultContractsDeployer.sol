@@ -19,7 +19,6 @@ import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeL
 import { VaultFactory } from "../../../contracts/VaultFactory.sol";
 import { VaultExplorer } from "../../../contracts/VaultExplorer.sol";
 import { BaseHooksMock } from "../../../contracts/test/BaseHooksMock.sol";
-import { AggregatorBatchRouter } from "../../../contracts/AggregatorBatchRouter.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
