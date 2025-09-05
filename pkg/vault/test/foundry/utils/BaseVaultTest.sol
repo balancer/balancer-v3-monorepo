@@ -23,6 +23,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
+import { AggregatorBatchRouter } from "../../../contracts/AggregatorBatchRouter.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
@@ -67,6 +68,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         uint256[] yieldFeeAmounts;
     }
 
+    string AGGREGATOR_BATCH_ROUTER_VERSION = "AggregatorBatchRouter v1";
     // Pool limits.
     uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
     uint256 internal constant PRODUCTION_MIN_TRADE_AMOUNT = 1e6;
@@ -101,6 +103,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
+    AggregatorBatchRouter internal aggregatorBatchRouter;
     BufferRouterMock internal bufferRouter;
     RateProviderMock internal rateProvider;
     BasicAuthorizerMock internal authorizer;
@@ -179,6 +182,12 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        aggregatorBatchRouter = new AggregatorBatchRouter(
+            IVault(address(vault)),
+            weth,
+            AGGREGATOR_BATCH_ROUTER_VERSION
+        );
+        vm.label(address(aggregatorBatchRouter), "aggregator batch router");
         compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         aggregatorCompositeLiquidityRouter = deployCompositeLiquidityRouterMock(
