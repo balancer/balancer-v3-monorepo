@@ -182,7 +182,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        aggregatorBatchRouter = deployAggregatorBatchRouter(
+        aggregatorBatchRouter = new AggregatorBatchRouter(
             IVault(address(vault)),
             weth,
             AGGREGATOR_BATCH_ROUTER_VERSION
