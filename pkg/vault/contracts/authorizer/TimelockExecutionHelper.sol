@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -40,9 +41,10 @@ contract TimelockExecutionHelper is ReentrancyGuardTransient {
     }
 
     /**
-     * @dev Calls `target` with `data`. Because the ExecutionHelper is authorized to call any permission function that
-     * has a delay, this is a very powerful call. However, only the TimelockAuthorizer can initiate it, and it should
-     * only do so after having validated that the conditions to perform a delayed execution have been met.
+     * @notice Calls `target` with `data`.
+     * @dev Because the ExecutionHelper is authorized to call any permission function that has a delay, this is a very
+     * powerful call. However, only the TimelockAuthorizer can initiate it, and it should only do so after having
+     * validated that the conditions to perform a delayed execution have been met.
      *
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a

@@ -12,7 +12,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import {
   BasicAuthorizerMock__factory,
-  MockAuthenticatedContract,
+  AuthenticatedContractMock,
   TimelockAuthorizer,
   Vault,
 } from '../../typechain-types';
@@ -24,7 +24,7 @@ import { Account } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('TimelockAuthorizer execute', () => {
   let authorizer: TimelockAuthorizerHelper, vault: Vault, iVault: IVault;
-  let authenticatedContract: MockAuthenticatedContract;
+  let authenticatedContract: AuthenticatedContractMock;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     user: SignerWithAddress,
@@ -55,7 +55,7 @@ describe('TimelockAuthorizer execute', () => {
     await basicAuthorizer.grantRole(setAuthorizerAction, root.address);
     await iVault.connect(root).setAuthorizer(authorizerContract);
 
-    authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault] });
+    authenticatedContract = await deploy('AuthenticatedContractMock', { args: [vault] });
 
     authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
@@ -68,7 +68,7 @@ describe('TimelockAuthorizer execute', () => {
     let anotherAuthenticatedContract: Contract;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      anotherAuthenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault] });
+      anotherAuthenticatedContract = await deploy('AuthenticatedContractMock', { args: [vault] });
     });
 
     sharedBeforeEach('set authorizer permission delay', async () => {

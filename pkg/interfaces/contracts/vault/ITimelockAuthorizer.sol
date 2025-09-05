@@ -1,19 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-pragma solidity >=0.7.0 <0.9.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.24;
 
 /**
  * @title Timelock Authorizer
@@ -37,7 +24,7 @@ pragma experimental ABIEncoderV2;
  *   directly, but are instead allowed to schedule future executions for them.
  *
  * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
- * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * The only function which makes an external non-view call (and so could initiate a reentrancy attack) is `execute`
  * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
@@ -58,69 +45,43 @@ interface ITimelockAuthorizer {
         uint256 canceledAt;
     }
 
-    /**
-     * @notice Emitted when a root change is scheduled.
-     */
+    /// @notice Emitted when a root change is scheduled.
     event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
 
-    /**
-     * @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
-     */
+    /// @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
     event ExecutorAdded(uint256 indexed scheduledExecutionId, address indexed executor);
 
-    /**
-     * @notice Emitted when an account is added as a granter for `actionId` in `where`.
-     */
+    /// @notice Emitted when an account is added as a granter for `actionId` in `where`.
     event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
 
-    /**
-     * @notice Emitted when an account is removed as a granter `actionId` in `where`.
-     */
+    /// @notice Emitted when an account is removed as a granter `actionId` in `where`.
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
-    /**
-     * @notice Emitted when `account` is added as a revoker in `where`.
-     */
+    /// @notice Emitted when `account` is added as a revoker in `where`.
     event RevokerAdded(address indexed account, address indexed where);
 
-    /**
-     * @notice Emitted when an account is removed as a revoker in `where`.
-     */
+    /// @notice Emitted when an account is removed as a revoker in `where`.
     event RevokerRemoved(address indexed account, address indexed where);
 
-    /**
-     * @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
-     */
+    /// @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
     event CancelerAdded(uint256 indexed scheduledExecutionId, address indexed canceler);
 
-    /**
-     * @notice Emitted when a canceler is removed for a scheduled execution `scheduledExecutionId`.
-     */
+    /// @notice Emitted when a canceler is removed for a scheduled execution `scheduledExecutionId`.
     event CancelerRemoved(uint256 indexed scheduledExecutionId, address indexed canceler);
 
-    /**
-     * @notice Emitted when an execution `scheduledExecutionId` is executed.
-     */
+    /// @notice Emitted when an execution `scheduledExecutionId` is executed.
     event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
-    /**
-     * @notice Emitted when an execution `scheduledExecutionId` is canceled.
-     */
+    /// @notice Emitted when an execution `scheduledExecutionId` is canceled.
     event ExecutionCanceled(uint256 indexed scheduledExecutionId);
 
-    /**
-     * @notice Emitted when a new `root` is set.
-     */
+    /// @notice Emitted when a new `root` is set.
     event RootSet(address indexed root);
 
-    /**
-     * @notice Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
-     */
+    /// @notice Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
     event PendingRootSet(address indexed pendingRoot);
 
-    /**
-     * @notice Emitted when a revoke permission is scheduled.
-     */
+    /// @notice Emitted when a revoke permission is scheduled.
     event RevokePermissionScheduled(
         bytes32 indexed actionId,
         address indexed account,
@@ -128,9 +89,7 @@ interface ITimelockAuthorizer {
         uint256 scheduledExecutionId
     );
 
-    /**
-     * @notice Emitted when a grant permission is scheduled.
-     */
+    /// @notice Emitted when a grant permission is scheduled.
     event GrantPermissionScheduled(
         bytes32 indexed actionId,
         address indexed account,
@@ -138,138 +97,96 @@ interface ITimelockAuthorizer {
         uint256 scheduledExecutionId
     );
 
-    /**
-     * @notice Emitted when a revoke delay change is scheduled.
-     */
+    /// @notice Emitted when a revoke delay change is scheduled.
     event RevokeDelayChangeScheduled(
         bytes32 indexed actionId,
         uint256 indexed newDelay,
         uint256 indexed scheduledExecutionId
     );
 
-    /**
-     * @notice Emitted when a grant delay change is scheduled.
-     */
+    /// @notice Emitted when a grant delay change is scheduled.
     event GrantDelayChangeScheduled(
         bytes32 indexed actionId,
         uint256 indexed newDelay,
         uint256 indexed scheduledExecutionId
     );
 
-    /**
-     * @notice Emitted when a delay change is scheduled.
-     */
+    /// @notice Emitted when a delay change is scheduled.
     event DelayChangeScheduled(
         bytes32 indexed actionId,
         uint256 indexed newDelay,
         uint256 indexed scheduledExecutionId
     );
 
-    /**
-     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
-     */
+    /// @notice Emitted when a new `delay` is set in order to perform action `actionId`.
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
-    /**
-     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
-     */
+    /// @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
-    /**
-     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
-     */
+    /// @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
     event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
 
-    /**
-     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
-     */
+    /// @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
     event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
 
-    /**
-     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
-     */
+    /// @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
     event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
 
-    /**
-     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
-     */
+    /// @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
     event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    // solhint-disable func-name-mixedcase
 
     /**
      * @notice A constant value for `scheduledExecutionId` that will match any execution Id.
      * Cancelers assigned to this Id will be able to cancel *any* scheduled execution,
      * which is very useful for e.g. emergency response dedicated teams that analyze these.
      */
-    // solhint-disable-next-line func-name-mixedcase
     function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() external view returns (uint256);
 
     /**
      * @notice A sentinel value for `where` that will match any address.
      */
-    // solhint-disable-next-line func-name-mixedcase
     function EVERYWHERE() external view returns (address);
 
     /**
      * @notice We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through
-     *         setting an arbitrarily long delay.
+     * setting an arbitrarily long delay.
      */
-    // solhint-disable-next-line func-name-mixedcase
     function MAX_DELAY() external view returns (uint256);
 
-    /**
-     * @notice We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
-     */
-    // solhint-disable-next-line func-name-mixedcase
+    /// @notice We need a minimum delay period to ensure that all delay changes may be properly scrutinized.
     function MINIMUM_CHANGE_DELAY_EXECUTION_DELAY() external view returns (uint256);
 
-    /**
-     * @notice Returns true if `account` is the root.
-     */
+    /// @notice Returns true if `account` is the root.
     function isRoot(address account) external view returns (bool);
 
-    /**
-     * @notice Returns true if `account` is the pending root.
-     */
+    /// @notice Returns true if `account` is the pending root.
     function isPendingRoot(address account) external view returns (bool);
 
-    /**
-     * @notice Returns the delay required to transfer the root address.
-     */
+    /// @notice Returns the delay required to transfer the root address.
     function getRootTransferDelay() external view returns (uint256);
 
-    /**
-     * @notice Returns the vault address.
-     */
+    /// @notice Returns the vault address.
     function getVault() external view returns (address);
 
-    /**
-     * @notice Returns the TimelockExecutionHelper address.
-     */
+    /// @notice Returns the TimelockExecutionHelper address.
     function getTimelockExecutionHelper() external view returns (address);
 
-    /**
-     * @notice Returns the root address.
-     */
+    /// @notice Returns the root address.
     function getRoot() external view returns (address);
 
-    /**
-     * @notice Returns the currently pending new root address.
-     */
+    /// @notice Returns the currently pending new root address.
     function getPendingRoot() external view returns (address);
 
-    /**
-     * @notice Returns true if `account` is allowed to grant permissions for action `actionId` in target `where`.
-     */
+    /// @notice Returns true if `account` is allowed to grant permissions for action `actionId` in target `where`.
     function isGranter(bytes32 actionId, address account, address where) external view returns (bool);
 
-    /**
-     * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
-     */
+    /// @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
     function isRevoker(address account, address where) external view returns (bool);
 
-    /**
-     * @notice Returns the scheduled execution `scheduledExecutionId`.
-     */
+    /// @notice Returns the scheduled execution `scheduledExecutionId`.
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory);
 
     /**
@@ -295,7 +212,7 @@ interface ITimelockAuthorizer {
      *  - { skip: 5, reverseOrder: false } : returns up to `maxSize` of the oldest entries, skipping the 5 oldest
      *    entries, with the globally sixth oldest at index 0
      *  - { skip: 5, reverseOrder: true } : returns up to `maxSize` of the newest entries, skipping the 5 newest
-     *    entries, with the globally sixth nexest at index 0
+     *    entries, with the globally sixth newest at index 0
      */
     function getScheduledExecutions(
         uint256 skip,
@@ -303,40 +220,28 @@ interface ITimelockAuthorizer {
         bool reverseOrder
     ) external view returns (ITimelockAuthorizer.ScheduledExecution[] memory items);
 
-    /**
-     * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
-     */
+    /// @notice Returns true if `account` is an executor for `scheduledExecutionId`.
     function isExecutor(uint256 scheduledExecutionId, address account) external view returns (bool);
 
     /**
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
-     * Only true if it is not already executed or canceled, and if the execution delay has passed.
+     * @dev Only true if it is not already executed or canceled, and if the execution delay has passed.
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool);
 
-    /**
-     * @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
-     */
+    /// @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
     function isCanceler(uint256 scheduledExecutionId, address account) external view returns (bool);
 
-    /**
-     * @notice Schedules an execution to change the root address to `newRoot`.
-     */
+    /// @notice Schedules an execution to change the root address to `newRoot`.
     function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256);
 
-    /**
-     * @notice Returns the execution delay for action `actionId`.
-     */
+    /// @notice Returns the execution delay for action `actionId`.
     function getActionIdDelay(bytes32 actionId) external view returns (uint256);
 
-    /**
-     * @notice Returns the execution delay for granting permission for action `actionId`.
-     */
+    /// @notice Returns the execution delay for granting permission for action `actionId`.
     function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256);
 
-    /**
-     * @notice Returns the execution delay for revoking permission for action `actionId`.
-     */
+    /// @notice Returns the execution delay for revoking permission for action `actionId`.
     function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
 
     /**
@@ -350,9 +255,7 @@ interface ITimelockAuthorizer {
      */
     function isPermissionGrantedOnTarget(bytes32 actionId, address account, address where) external view returns (bool);
 
-    /**
-     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
-     */
+    /// @notice Returns true if `account` has permission over the action `actionId` in target `where`.
     function hasPermission(bytes32 actionId, address account, address where) external view returns (bool);
 
     /**
@@ -608,7 +511,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules a grant permission to `account` for action `actionId` in target `where`.
-     * See `schedule` comments.
+     * @dev See `schedule` comments.
      */
     function scheduleGrantPermission(
         bytes32 actionId,
@@ -626,7 +529,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules a revoke permission from `account` for action `actionId` in target `where`.
-     * See `schedule` comments.
+     * @dev See `schedule` comments.
      */
     function scheduleRevokePermission(
         bytes32 actionId,

@@ -2,11 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ITimelockAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
 import { TimelockExecutionHelper } from "./TimelockExecutionHelper.sol";
@@ -26,8 +24,6 @@ import { TimelockExecutionHelper } from "./TimelockExecutionHelper.sol";
  * See `ITimelockAuthorizer`.
  */
 abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
-    using Address for address;
-
     // solhint-disable-next-line const-name-snakecase
     address private constant _EVERYWHERE = address(type(uint160).max);
 
@@ -74,7 +70,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         //
         //  4) Scheduled delayed executions either target the TimelockAuthorizer directly (such as in
         //    `scheduleRootChange` or `scheduleDelayChange`), in which case this modifier will not revert (as intended,
-        //    given those functions check proper permissions), or explictly forbid targeting the TimelockAuthorizer
+        //    given those functions check proper permissions), or explicitly forbid targeting the TimelockAuthorizer
         //    (in the `schedule` function), making it impossible for the TimelockExecutionHelper to call into it.
         require(msg.sender == address(_executionHelper), "CAN_ONLY_BE_SCHEDULED");
         _;
@@ -93,14 +89,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         _rootTransferDelay = rootTransferDelay;
     }
 
+    // solhint-disable func-name-mixedcase
+
     /// @inheritdoc ITimelockAuthorizer
-    // solhint-disable-next-line func-name-mixedcase
     function EVERYWHERE() public pure override returns (address) {
         return _EVERYWHERE;
     }
 
     /// @inheritdoc ITimelockAuthorizer
-    // solhint-disable-next-line func-name-mixedcase
     function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() public pure override returns (uint256) {
         return _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
     }
@@ -177,7 +173,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
 
         for (uint256 i = 0; i < size; i++) {
             if (!reverseOrder) {
-                // In chronological order we simply skip the first (older) entries
+                // In chronological order we simply skip the first (older) entries.
                 items[i] = _scheduledExecutions[skip + i];
             } else {
                 // In reverse order we go back to front, skipping the last (newer) entries. Note that `remaining` will
@@ -430,9 +426,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         }
     }
 
-    /**
-     * @dev Sets the root address to `root`.
-     */
+    /// @dev Sets the root address to `root`.
     function _setRoot(address root) internal {
         _root = root;
         emit RootSet(root);
@@ -461,9 +455,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         emit CancelerAdded(scheduledExecutionId, account);
     }
 
-    /**
-     * @dev Sets the pending root address to `pendingRoot`.
-     */
+    /// @dev Sets the pending root address to `pendingRoot`.
     function _setPendingRoot(address pendingRoot) internal {
         _pendingRoot = pendingRoot;
         emit PendingRootSet(pendingRoot);

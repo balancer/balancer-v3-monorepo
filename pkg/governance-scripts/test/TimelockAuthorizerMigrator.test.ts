@@ -12,7 +12,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import {
   BasicAuthorizerMock,
   BasicAuthorizerMock__factory,
-  MockAuthenticatedContract,
+  AuthenticatedContractMock,
 } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { IVault } from '@balancer-labs/v3-interfaces/typechain-types';
@@ -62,9 +62,9 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = (await deploy('v3-vault/MockAuthenticatedContract', {
+    const target = (await deploy('v3-vault/AuthenticatedContractMock', {
       args: [vault],
-    })) as unknown as MockAuthenticatedContract;
+    })) as unknown as AuthenticatedContractMock;
     rolesData = [
       { grantee: user1.address, role: ROLE_1, target: await target.getAddress() },
       { grantee: user2.address, role: ROLE_2, target: await target.getAddress() },

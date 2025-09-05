@@ -12,9 +12,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { TimelockAuthorizer } from "@balancer-labs/v3-vault/contracts/authorizer/TimelockAuthorizer.sol";
 
 contract TimelockAuthorizerMigrator {
-    bytes32 public constant GENERAL_PERMISSION_SPECIFIER =
-        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    // solhint-disable-previous-line max-line-length
+    bytes32 public constant GENERAL_PERMISSION_SPECIFIER = bytes32(type(uint256).max);
     address public constant EVERYWHERE = address(type(uint160).max);
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
@@ -37,9 +35,7 @@ contract TimelockAuthorizerMigrator {
         uint256 newDelay;
     }
 
-    /**
-     * @dev Reverts if _rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
-     */
+    /// @dev Reverts if _rolesData contains a role for an account without the same role on the old Authorizer.
     constructor(
         address _root,
         IBasicAuthorizer _oldAuthorizer,
@@ -107,9 +103,7 @@ contract TimelockAuthorizerMigrator {
         _lastScheduledExecutionId = lastScheduledExecutionId;
     }
 
-    /**
-     * @notice Executes the scheduled setup of delays on the new authorizer
-     */
+    /// @notice Executes the scheduled setup of delays on the new authorizer.
     function executeDelays() external {
         for (uint256 i = 0; i <= _lastScheduledExecutionId; i++) {
             newAuthorizer.execute(i);
@@ -125,7 +119,7 @@ contract TimelockAuthorizerMigrator {
         // `root` must call `claimRoot` on `newAuthorizer` before we update the Vault to point at it.
         require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
 
-        // Ensure the migrator contract has authority to change the vault's authorizer
+        // Ensure the migrator contract has authority to change the vault's authorizer.
         bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVaultAdmin.setAuthorizer.selector);
         bool canSetAuthorizer = oldAuthorizer.canPerform(setAuthorizerId, address(this), address(vault));
         require(canSetAuthorizer, "MIGRATOR_CANNOT_SET_AUTHORIZER");
