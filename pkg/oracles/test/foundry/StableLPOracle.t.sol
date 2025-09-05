@@ -367,6 +367,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (oracle, ) = deployOracle(pool);
 
+        // Prices found empirically, by running a forge fuzz test that had K convergence error.
         int256[] memory pricesInt = new int256[](2);
         pricesInt[0] = int256(55_529_888e18);
         pricesInt[1] = int256(1e9);
