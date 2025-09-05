@@ -33,13 +33,6 @@ contract AggregatorBatchHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    /**
-     * @notice Not enough tokens sent to cover the operation amount.
-     * @param senderCredits Amounts needed to cover the operation
-     * @param senderDebits Amounts sent by the sender
-     */
-    error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
-
     /// @notice The operations with weth is not supported.
     error WethOperationsNotSupported();
 
