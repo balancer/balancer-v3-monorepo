@@ -334,6 +334,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
      * @dev The prices given do not come from the user, so we know the length is correct. Derived contracts should
      * accordingly never pass a user-provided price array directly to this function without length validation.
      * Note that it's still possible for price feeds to malfunction, so the price values still need validation.
+     * Also, it's important to use prices scaled to 18 decimals.
      *
      * @param prices A length-checked array of prices from the feeds, sorted in token registration order
      * @return tvl TVL (total value locked) calculated from the prices and other pool data
