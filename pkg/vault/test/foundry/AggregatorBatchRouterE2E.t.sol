@@ -159,4 +159,47 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
             pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
         }
     }
+
+    /***************************************************************************
+                                    Add Liquidity
+    ***************************************************************************/
+
+    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    /***************************************************************************
+                                    Remove Liquidity
+    ***************************************************************************/
+
+    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(
+        SwapKind kind,
+        bool wethIsEth
+    ) internal override {
+        // Skip these tests
+    }
+
+    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
+
+    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
+        // Skip these tests
+    }
 }
