@@ -7,6 +7,8 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { StableLPOracle } from "../StableLPOracle.sol";
 
 contract StableLPOracleMock is StableLPOracle {
@@ -39,15 +41,17 @@ contract StableLPOracleMock is StableLPOracle {
 
     function normalizePrices(int256[] memory prices) public view returns (int256[] memory normalizedPrices) {
         int256 minPrice = prices[0];
+        uint256 minPriceIndex = 0;
         for (uint256 i = 1; i < _totalTokens; i++) {
             if (prices[i] < minPrice) {
                 minPrice = prices[i];
+                minPriceIndex = i;
             }
         }
 
         normalizedPrices = new int256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            normalizedPrices[i] = _divDownInt(prices[i], minPrice);
+            normalizedPrices[i] = i == minPriceIndex ? int256(FixedPoint.ONE) : _divDownInt(prices[i], minPrice);
         }
 
         return normalizedPrices;
