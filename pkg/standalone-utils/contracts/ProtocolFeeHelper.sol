@@ -9,12 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
-    modifier withAddedPool(address pool) {
-        _ensurePoolAdded(pool);
-        _;
-    }
-
-    constructor(IVault vault) PoolHelperCommon(vault) {
+    constructor(IVault vault, address initialOwner) PoolHelperCommon(vault, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -26,7 +21,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external withAddedPool(pool) authenticate {
+    ) external withValidPool(pool) {
         _getProtocolFeeController().setProtocolSwapFeePercentage(pool, newProtocolSwapFeePercentage);
     }
 
@@ -34,7 +29,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external withAddedPool(pool) authenticate {
+    ) external withValidPool(pool) {
         _getProtocolFeeController().setProtocolYieldFeePercentage(pool, newProtocolYieldFeePercentage);
     }
 
@@ -44,6 +39,6 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
 
     // The protocol fee controller is upgradeable in the Vault, so we must fetch it every time.
     function _getProtocolFeeController() internal view returns (IProtocolFeeController) {
-        return getVault().getProtocolFeeController();
+        return vault.getProtocolFeeController();
     }
 }
