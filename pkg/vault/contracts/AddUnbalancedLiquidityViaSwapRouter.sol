@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -159,7 +158,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                     userData: hookParams.operationParams.swapUserData
                 })
             );
-            console.log("swapAmountIn", swapAmountIn);
 
             amountsIn[exactMaxInTokenIndex] += swapAmountIn;
             if (amountsIn[exactInTokenIndex] >= swapAmountOut) {
@@ -168,8 +166,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                 amountsIn[exactInTokenIndex] = 0;
                 amountsOut[exactInTokenIndex] = swapAmountOut - amountsIn[exactInTokenIndex];
             }
-
-            console.log("test", swapAmountIn);
         } else if (amountsIn[exactInTokenIndex] < hookParams.operationParams.exactAmountIn) {
             uint256 swapAmount = hookParams.operationParams.exactAmountIn - amountsIn[exactInTokenIndex];
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
