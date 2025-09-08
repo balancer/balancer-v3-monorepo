@@ -1,33 +1,33 @@
 import { Interface } from 'ethers/lib/utils';
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumberish, Contract, ContractTransactionResponse } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../test/expectEvent';
-import { BigNumberish } from '../../numbers';
 import { ANY_ADDRESS } from '../../constants';
 
 import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 import { TimelockAuthorizerDeployment } from './types';
 import { Account, NAry, TxParams } from '../types/types';
 import { advanceToTimestamp } from '../../time';
+import { TimelockAuthorizer } from '@balancer-labs/v3-vault/typechain-types';
 
-export default class TimelockAuthorizer {
+export default class TimelockAuthorizerHelper {
   static EVERYWHERE = ANY_ADDRESS;
 
-  instance: Contract;
+  instance: TimelockAuthorizer;
   root: SignerWithAddress;
 
-  static async create(deployment: TimelockAuthorizerDeployment = {}): Promise<TimelockAuthorizer> {
+  static async create(deployment: TimelockAuthorizerDeployment = {}): Promise<TimelockAuthorizerHelper> {
     return TimelockAuthorizerDeployer.deploy(deployment);
   }
 
-  constructor(instance: Contract, root: SignerWithAddress) {
+  constructor(instance: TimelockAuthorizer, root: SignerWithAddress) {
     this.instance = instance;
     this.root = root;
   }
 
-  get address(): string {
-    return this.instance.address;
+  async address(): Promise<string> {
+    return await this.instance.getAddress();
   }
 
   get interface(): Interface {
@@ -103,7 +103,7 @@ export default class TimelockAuthorizer {
     return event.args.scheduledExecutionId;
   }
 
-  async claimRoot(params?: TxParams): Promise<ContractTransaction> {
+  async claimRoot(params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).claimRoot();
   }
 
@@ -199,11 +199,11 @@ export default class TimelockAuthorizer {
     return event.args.scheduledExecutionId;
   }
 
-  async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+  async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).execute(id);
   }
 
-  async cancel(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+  async cancel(id: BigNumberish, params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).cancel(id);
   }
 
@@ -211,7 +211,7 @@ export default class TimelockAuthorizer {
     scheduledExecutionId: BigNumberish,
     account: Account,
     params?: TxParams
-  ): Promise<ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).addCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
@@ -219,11 +219,16 @@ export default class TimelockAuthorizer {
     scheduledExecutionId: BigNumberish,
     account: Account,
     params?: TxParams
-  ): Promise<ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).removeCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
-  async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+  async addGranter(
+    action: string,
+    account: Account,
+    where: Account,
+    params?: TxParams
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).addGranter(action, this.toAddress(account), this.toAddress(where));
   }
 
@@ -232,15 +237,15 @@ export default class TimelockAuthorizer {
     account: Account,
     wheres: Account,
     params?: TxParams
-  ): Promise<ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).removeGranter(action, this.toAddress(account), this.toAddress(wheres));
   }
 
-  async addRevoker(account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+  async addRevoker(account: Account, where: Account, params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).addRevoker(this.toAddress(account), this.toAddress(where));
   }
 
-  async removeRevoker(account: Account, wheres: Account, params?: TxParams): Promise<ContractTransaction> {
+  async removeRevoker(account: Account, wheres: Account, params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).removeRevoker(this.toAddress(account), this.toAddress(wheres));
   }
 
@@ -249,7 +254,7 @@ export default class TimelockAuthorizer {
     account: Account,
     where: Account,
     params?: TxParams
-  ): Promise<ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).grantPermission(action, this.toAddress(account), this.toAddress(where));
   }
 
@@ -258,24 +263,32 @@ export default class TimelockAuthorizer {
     account: Account,
     where: Account,
     params?: TxParams
-  ): Promise<ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     return this.with(params).revokePermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async renouncePermission(action: string, where: Account, params?: TxParams): Promise<ContractTransaction> {
+  async renouncePermission(action: string, where: Account, params?: TxParams): Promise<ContractTransactionResponse> {
     return this.with(params).renouncePermission(action, this.toAddress(where));
   }
 
-  async grantPermissionGlobally(action: string, account: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).grantPermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
+  async grantPermissionGlobally(
+    action: string,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransactionResponse> {
+    return this.with(params).grantPermission(action, this.toAddress(account), TimelockAuthorizerHelper.EVERYWHERE);
   }
 
-  async revokePermissionGlobally(action: string, account: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).revokePermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
+  async revokePermissionGlobally(
+    action: string,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransactionResponse> {
+    return this.with(params).revokePermission(action, this.toAddress(account), TimelockAuthorizerHelper.EVERYWHERE);
   }
 
-  async renouncePermissionGlobally(action: string, params: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renouncePermission(action, TimelockAuthorizer.EVERYWHERE);
+  async renouncePermissionGlobally(action: string, params: TxParams): Promise<ContractTransactionResponse> {
+    return this.with(params).renouncePermission(action, TimelockAuthorizerHelper.EVERYWHERE);
   }
 
   async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {

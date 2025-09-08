@@ -1,19 +1,22 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import TimelockAuthorizerHelper from '@balancer-labs/v3-helpers/src/models/authorizer/TimelockAuthorizerHelper';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { range } from 'lodash';
+import { TimelockAuthorizer, Vault } from '../../typechain-types';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 
 describe('TimelockAuthorizer permissions', () => {
-  let authorizer: TimelockAuthorizer, vault: Contract;
+  let authorizer: TimelockAuthorizerHelper, vault: Vault;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     revoker: SignerWithAddress,
@@ -33,19 +36,18 @@ describe('TimelockAuthorizer permissions', () => {
   const WHERE_2 = ethers.Wallet.createRandom().address;
   const WHERE_3 = ethers.Wallet.createRandom().address;
 
-  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
+  const EVERYWHERE = TimelockAuthorizerHelper.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
   const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    let authorizerContract: Contract;
+    vault = await VaultDeployer.deploy();
 
-    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({
-      admin: root,
-      nextAdmin: nextRoot.address,
-    }));
+    const authorizerContract = (await deploy('TimelockAuthorizer', {
+      args: [root, nextRoot, vault, MINIMUM_EXECUTION_DELAY],
+    })) as unknown as TimelockAuthorizer;
 
-    authorizer = new TimelockAuthorizer(authorizerContract, root);
+    authorizer = new TimelockAuthorizerHelper(authorizerContract, root);
   });
 
   describe('grantPermission', () => {
@@ -53,7 +55,8 @@ describe('TimelockAuthorizer permissions', () => {
       const delay = DAY;
 
       sharedBeforeEach('set delay', async () => {
-        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+        const iVault = await TypesConverter.toIVault(vault);
+        const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
         await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
         await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
       });
@@ -128,7 +131,7 @@ describe('TimelockAuthorizer permissions', () => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 actionId: ACTION_1,
                 account: user.address,
-                where: TimelockAuthorizer.EVERYWHERE,
+                where: TimelockAuthorizerHelper.EVERYWHERE,
               });
             });
           });
@@ -161,7 +164,7 @@ describe('TimelockAuthorizer permissions', () => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 actionId: ACTION_1,
                 account: user.address,
-                where: TimelockAuthorizer.EVERYWHERE,
+                where: TimelockAuthorizerHelper.EVERYWHERE,
               });
             });
           });
@@ -293,7 +296,8 @@ describe('TimelockAuthorizer permissions', () => {
     const delay = DAY;
 
     sharedBeforeEach('set delay', async () => {
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const iVault = await TypesConverter.toIVault(vault);
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
       await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
     });
@@ -319,8 +323,8 @@ describe('TimelockAuthorizer permissions', () => {
         expect(data).to.be.equal(
           authorizer.instance.interface.encodeFunctionData('grantPermission', [ACTION_1, user.address, WHERE_1])
         );
-        expect(where).to.be.equal(authorizer.address);
-        expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+        expect(where).to.be.equal(await authorizer.address());
+        expect(executableAt).to.equal((await currentTimestamp()) + bn(delay));
       });
 
       it('increases the scheduled execution count', async () => {
@@ -329,7 +333,7 @@ describe('TimelockAuthorizer permissions', () => {
 
         const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-        expect(countAfter).to.equal(countBefore.add(1));
+        expect(countAfter).to.equal(countBefore + 1n);
       });
 
       it('stores scheduler information', async () => {
@@ -466,7 +470,8 @@ describe('TimelockAuthorizer permissions', () => {
 
     context('when there is a delay set to revoke permissions', () => {
       sharedBeforeEach('set delay', async () => {
-        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+        const iVault = await TypesConverter.toIVault(vault);
+        const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
         await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
         await authorizer.scheduleAndExecuteRevokeDelayChange(ACTION_1, delay, { from: root });
       });
@@ -593,7 +598,7 @@ describe('TimelockAuthorizer permissions', () => {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 actionId: ACTION_1,
                 account: user.address,
-                where: TimelockAuthorizer.EVERYWHERE,
+                where: TimelockAuthorizerHelper.EVERYWHERE,
               });
             });
           });
@@ -635,7 +640,7 @@ describe('TimelockAuthorizer permissions', () => {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 actionId: ACTION_1,
                 account: user.address,
-                where: TimelockAuthorizer.EVERYWHERE,
+                where: TimelockAuthorizerHelper.EVERYWHERE,
               });
             });
           });
@@ -727,7 +732,8 @@ describe('TimelockAuthorizer permissions', () => {
     const delay = DAY;
 
     sharedBeforeEach('set delay', async () => {
-      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      const iVault = await TypesConverter.toIVault(vault);
+      const setAuthorizerAction = await actionId(iVault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
       await authorizer.scheduleAndExecuteRevokeDelayChange(ACTION_1, delay, { from: root });
     });
@@ -753,8 +759,8 @@ describe('TimelockAuthorizer permissions', () => {
         expect(data).to.be.equal(
           authorizer.instance.interface.encodeFunctionData('revokePermission', [ACTION_1, user.address, WHERE_1])
         );
-        expect(where).to.be.equal(authorizer.address);
-        expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+        expect(where).to.be.equal(await authorizer.address());
+        expect(executableAt).to.equal((await currentTimestamp()) + bn(delay));
       });
 
       it('increases the scheduled execution count', async () => {
@@ -763,7 +769,7 @@ describe('TimelockAuthorizer permissions', () => {
 
         const countAfter = await authorizer.instance.getScheduledExecutionsCount();
 
-        expect(countAfter).to.equal(countBefore.add(1));
+        expect(countAfter).to.equal(countBefore + 1n);
       });
 
       it('stores scheduler information', async () => {
@@ -944,7 +950,10 @@ describe('TimelockAuthorizer permissions', () => {
         });
 
         it('can revoke even if the permission has a delay', async () => {
-          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const iVault = await TypesConverter.toIVault(vault);
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(iVault, 'setAuthorizer'), delay, {
+            from: root,
+          });
           const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
           await advanceTime(MINIMUM_EXECUTION_DELAY);
           await authorizer.execute(id);
@@ -1010,7 +1019,10 @@ describe('TimelockAuthorizer permissions', () => {
         });
 
         it('can revoke even if the permission has a delay', async () => {
-          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const iVault = await TypesConverter.toIVault(vault);
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(iVault, 'setAuthorizer'), delay, {
+            from: root,
+          });
           const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
           await advanceTime(MINIMUM_EXECUTION_DELAY);
           await authorizer.execute(id);
@@ -1071,7 +1083,10 @@ describe('TimelockAuthorizer permissions', () => {
         });
 
         it('can revoke even if the permission has a delay', async () => {
-          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const iVault = await TypesConverter.toIVault(vault);
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(iVault, 'setAuthorizer'), delay, {
+            from: root,
+          });
           const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
           await advanceTime(MINIMUM_EXECUTION_DELAY);
           await authorizer.execute(id);
