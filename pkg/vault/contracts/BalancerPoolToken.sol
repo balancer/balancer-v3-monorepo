@@ -69,6 +69,10 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
         return _vault.totalSupply(address(this));
     }
 
+    /**
+     * @notice Get the address of the Balancer Vault.
+     * @return vault An interface pointer to the Vault
+     */
     function getVault() public view returns (IVault) {
         return _vault;
     }
