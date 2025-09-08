@@ -24,9 +24,6 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
-    string constant ROUTER_VERSION = "test-aggregator-batch";
-
-    AggregatorBatchRouter internal aggregatorBatchRouter;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -40,8 +37,6 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        aggregatorBatchRouter = new AggregatorBatchRouter(IVault(address(vault)), weth, ROUTER_VERSION);
 
         // Create additional pool for multi-hop: USDC/WETH.
         secondPool = _createSecondPool();
@@ -527,7 +522,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     ***************************************************************************/
 
     function testRouterVersion() public view {
-        assertEq(aggregatorBatchRouter.version(), ROUTER_VERSION, "Router version mismatch");
+        assertEq(aggregatorBatchRouter.version(), AGGREGATOR_BATCH_ROUTER_VERSION, "Router version mismatch");
     }
 
     function testRouterVault() public view {
