@@ -33,7 +33,6 @@ contract AggregatorBatchHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-
     constructor(
         IVault vault,
         IWETH weth,
