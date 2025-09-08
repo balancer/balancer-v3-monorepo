@@ -33,8 +33,6 @@ contract AggregatorBatchHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    /// @notice The operations with weth is not supported.
-    error WethOperationsNotSupported();
 
     constructor(
         IVault vault,
