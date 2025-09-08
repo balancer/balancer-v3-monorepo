@@ -45,10 +45,6 @@ contract AggregatorBatchRouter is IBatchRouter, AggregatorBatchHooks {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
-        if (wethIsEth) {
-            revert WethOperationsNotSupported();
-        }
-
         return
             abi.decode(
                 _vault.unlock(
@@ -79,10 +75,6 @@ contract AggregatorBatchRouter is IBatchRouter, AggregatorBatchHooks {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
-        if (wethIsEth) {
-            revert WethOperationsNotSupported();
-        }
-
         return
             abi.decode(
                 _vault.unlock(
