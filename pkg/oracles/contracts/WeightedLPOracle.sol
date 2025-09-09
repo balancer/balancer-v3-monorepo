@@ -22,6 +22,14 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
 
+    uint256 internal immutable _weight0;
+    uint256 internal immutable _weight1;
+    uint256 internal immutable _weight2;
+    uint256 internal immutable _weight3;
+    uint256 internal immutable _weight4;
+    uint256 internal immutable _weight5;
+    uint256 internal immutable _weight6;
+    uint256 internal immutable _weight7;
 
     constructor(
         IVault vault_,
@@ -31,7 +39,33 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         uint256 uptimeResyncWindow,
         uint256 version_
     ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
-        // No need to store weights at deployment - they will be fetched dynamically
+        uint256[] memory weights = pool_.getNormalizedWeights();
+
+        // prettier-ignore
+        {
+            _weight0 = weights[0];
+
+            _weight1 = weights[1];
+        
+            if (_totalTokens > 2) { 
+                _weight2 = weights[2];
+            }
+            if (_totalTokens > 3) { 
+                _weight3 = weights[3];
+            }
+            if (_totalTokens > 4) {
+                _weight4 = weights[4];
+            }
+            if (_totalTokens > 5) {
+                _weight5 = weights[5];
+            }
+            if (_totalTokens > 6) {
+                _weight6 = weights[6];
+            }
+            if (_totalTokens > 7) {
+                _weight7 = weights[7];
+            }
+        }
     }
 
     /// @inheritdoc LPOracleBase
@@ -99,8 +133,21 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         return _getWeights();
     }
 
-    function _getWeights() internal view returns (uint256[] memory) {
-        // Dynamically fetch current normalized weights from the pool
-        return IWeightedPool(address(pool)).getNormalizedWeights();
+    function _getWeights() internal view virtual returns (uint256[] memory) {
+        uint256[] memory weights = new uint256[](_totalTokens);
+
+        // prettier-ignore
+        {
+            weights[0] = _weight0;
+            weights[1] = _weight1;
+            if (_totalTokens > 2) { weights[2] = _weight2; } else { return weights; }
+            if (_totalTokens > 3) { weights[3] = _weight3; } else { return weights; }
+            if (_totalTokens > 4) { weights[4] = _weight4; } else { return weights; }
+            if (_totalTokens > 5) { weights[5] = _weight5; } else { return weights; }
+            if (_totalTokens > 6) { weights[6] = _weight6; } else { return weights; }
+            if (_totalTokens > 7) { weights[7] = _weight7; }
+        }
+
+        return weights;
     }
 }
