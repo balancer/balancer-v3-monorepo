@@ -106,6 +106,28 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         assertEq(poolSetId, 0, "PoolSetId should be 0");
     }
 
+    function testGetPoolSetIdForManager() public view {
+        uint256 poolSetId = poolHelper.getPoolSetIdForManager(alice);
+        assertEq(poolSetId, alicePoolSetId, "Wrong poolSetId for alice");
+
+        poolSetId = poolHelper.getPoolSetIdForManager(bob);
+        assertEq(poolSetId, bobPoolSetId, "Wrong poolSetId for bob");
+
+        poolSetId = poolHelper.getPoolSetIdForManager(lp);
+        assertEq(poolSetId, 0, "PoolSetId should be 0");
+    }
+
+    function testGetManagerForPoolSetId() public view {
+        address manager = poolHelper.getManagerForPoolSet(alicePoolSetId);
+        assertEq(manager, alice, "Wrong manager for alicePoolSetId");
+
+        manager = poolHelper.getManagerForPoolSet(bobPoolSetId);
+        assertEq(manager, bob, "Wrong manager for bobPoolSetId");
+
+        manager = poolHelper.getManagerForPoolSet(45);
+        assertEq(manager, address(0), "Manager should be 0");
+    }
+
     function testPoolCountForSetErrors() public {
         uint256 poolCount = poolHelper.getPoolCountForSet(alicePoolSetId);
         assertEq(poolCount, 0, "Alice's pool set should have no pools");
