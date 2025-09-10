@@ -34,7 +34,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     // Ensure the pool is in a set controlled by the caller.
-    modifier withValidPool(address pool) {
+    modifier withValidPoolForSender(address pool) {
         uint256 poolSetId = _getValidPoolSetId();
         _ensurePoolInSet(poolSetId, pool);
         _;
@@ -73,7 +73,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     /// @inheritdoc IPoolHelperCommon
-    function createPoolSet(address initialManager) external onlyOwner returns (uint256 poolSetId) {
+    function createPoolSet(address initialManager) external onlyOwner returns (uint256) {
         return createPoolSet(initialManager, new address[](0));
     }
 
@@ -82,10 +82,14 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         EnumerableSet.AddressSet storage poolSet = _poolSets[poolSetId];
 
         // Remove all pools from the set.
-        while (poolSet.length() > 0) {
-            address pool = poolSet.at(0);
+        uint256 numPools = poolSet.length();
 
-            // Emit events for all removed pools.
+        while (numPools != 0) {
+            unchecked {
+                --numPools;
+            }
+
+            address pool = poolSet.at(numPools);
             emit PoolRemovedFromSet(pool, poolSetId);
 
             poolSet.remove(pool);
@@ -166,8 +170,13 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     ***************************************************************************/
 
     /// @inheritdoc IPoolHelperCommon
-    function getPoolSetIdForCaller() public view returns (uint256 poolSetId) {
+    function getPoolSetIdForCaller() public view returns (uint256) {
         return _poolSetLookup[msg.sender];
+    }
+
+    /// @inheritdoc IPoolHelperCommon
+    function getPoolSetIdForManager(address manager) public view returns (uint256) {
+        return _poolSetLookup[manager];
     }
 
     /// @inheritdoc IPoolHelperCommon
@@ -199,9 +208,18 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     /// @inheritdoc IPoolHelperCommon
-    function getNextPoolSetId() external view returns (uint256 nextPoolSetId) {
+    function getNextPoolSetId() external view returns (uint256) {
         return _nextPoolSetId;
     }
+
+    /// @inheritdoc IPoolHelperCommon
+    function getManagerForPoolSet(uint256 poolSetId) external view returns (address) {
+        return _poolSetManagers[poolSetId];
+    }
+
+    /***************************************************************************
+                                Internal functions                                
+    ***************************************************************************/
 
     // Find and validate the poolSetId for the caller.
     function _getValidPoolSetId() internal view returns (uint256 poolSetId) {
@@ -211,10 +229,6 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
             revert SenderIsNotPoolSetManager();
         }
     }
-
-    /***************************************************************************
-                                Internal functions                                
-    ***************************************************************************/
 
     function _ensureValidManager(address manager) internal view {
         if (manager == address(0)) {

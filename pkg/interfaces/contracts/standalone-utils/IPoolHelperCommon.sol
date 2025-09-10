@@ -163,16 +163,22 @@ interface IPoolHelperCommon {
     function getPoolSetIdForCaller() external view returns (uint256 poolSetId);
 
     /**
+     * @notice Get the pool set id associated with a given manager address.
+     * @return poolSetId The numeric pool set id, or zero if the address given is not a pool set manager
+     */
+    function getPoolSetIdForManager(address manager) external view returns (uint256 poolSetId);
+
+    /**
      * @notice Get the number of pools associated with the given set.
      * @dev Needed to support pagination in case the set is too large to process in a single transaction.
-     * @param poolSetId Id of the set
+     * @param poolSetId Id of the set containing the pools
      * @return poolCount The current number of pools in the set
      */
     function getPoolCountForSet(uint256 poolSetId) external view returns (uint256 poolCount);
 
     /**
      * @notice Check whether a pool is in the set of pools.
-     * @param poolSetId Id of the set containing the pool
+     * @param poolSetId Id of the set containing the pools
      * @param pool Address of the pool to check
      * @return poolInSet True if the pool is in the given set, false otherwise
      */
@@ -181,7 +187,7 @@ interface IPoolHelperCommon {
     /**
      * @notice Get a range of pools from a given set.
      * @dev Indexes are 0-based and [start, end) (i.e., inclusive of `start`; exclusive of `end`).
-     * @param poolSetId Id of the set containing the pool
+     * @param poolSetId Id of the set containing the pools
      * @param from Start index
      * @param to End index
      * @return pools List of pools
@@ -193,4 +199,11 @@ interface IPoolHelperCommon {
      * @return nextPoolSetId The pool set id that will be used on the next call of `createPoolSet`
      */
     function getNextPoolSetId() external view returns (uint256 nextPoolSetId);
+
+    /**
+     * @notice Get the manager address associated with a given poolSetId.
+     * @param poolSetId Id of the set containing the pools
+     * @return manager The address of the manager of the given poolSetId, or zero if the poolSetId is unassigned
+     */
+    function getManagerForPoolSet(uint256 poolSetId) external view returns (address manager);
 }
