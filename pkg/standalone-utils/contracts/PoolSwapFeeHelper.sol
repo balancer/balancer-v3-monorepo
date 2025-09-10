@@ -17,7 +17,7 @@ contract PoolSwapFeeHelper is IPoolSwapFeeHelper, PoolHelperCommon {
     ***************************************************************************/
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) public withValidPool(pool) {
+    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) public withValidPoolForSender(pool) {
         vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 

@@ -21,7 +21,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external withValidPool(pool) {
+    ) external withValidPoolForSender(pool) {
         _getProtocolFeeController().setProtocolSwapFeePercentage(pool, newProtocolSwapFeePercentage);
     }
 
@@ -29,7 +29,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external withValidPool(pool) {
+    ) external withValidPoolForSender(pool) {
         _getProtocolFeeController().setProtocolYieldFeePercentage(pool, newProtocolYieldFeePercentage);
     }
 
