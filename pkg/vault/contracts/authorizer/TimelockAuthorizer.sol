@@ -21,6 +21,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     // solhint-disable-next-line const-name-snakecase
     uint256 private constant _MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
 
+    bytes32 private immutable _setAuthorizerActionId;
+
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
     // action id => delay
@@ -38,7 +40,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         IVault vault,
         uint256 rootTransferDelay
     ) TimelockAuthorizerManagement(initialRoot, nextRoot, vault, rootTransferDelay) {
-        // solhint-disable-previous-line no-empty-blocks
+        _setAuthorizerActionId = IAuthentication(vault).getActionId(IVaultAdmin.setAuthorizer.selector);
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -96,7 +98,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
         // validity.
-        if (actionId != IAuthentication(getVault()).getActionId(IVaultAdmin.setAuthorizer.selector)) {
+        if (actionId != _setAuthorizerActionId) {
             require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
         }
 
@@ -383,7 +385,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * check is therefore simply a way to try to prevent user error, but is not infallible.
      */
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVaultAdmin.setAuthorizer.selector);
-        return delay <= _delaysPerActionId[setAuthorizerActionId];
+        return delay <= _delaysPerActionId[_setAuthorizerActionId];
     }
 }
