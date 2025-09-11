@@ -138,7 +138,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
@@ -147,7 +146,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
         uint256 deadline
     ) external virtual onlyProtocolFeeSweeper nonReentrant {
         _burn(
-            pool,
             feeToken,
             exactFeeTokenAmountIn,
             targetToken,
@@ -159,7 +157,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
     }
 
     function _burn(
-        address pool,
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
@@ -199,7 +196,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);
+        emit ProtocolFeeBurned(feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);
     }
 
     /***************************************************************************
