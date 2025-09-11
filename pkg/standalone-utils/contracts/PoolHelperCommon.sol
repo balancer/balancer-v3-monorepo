@@ -84,7 +84,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         // Remove all pools from the set.
         uint256 numPools = poolSet.length();
 
-        while (numPools != 0) {
+        while (numPools > 0) {
             unchecked {
                 --numPools;
             }
