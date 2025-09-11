@@ -56,9 +56,24 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
 
     /// @inheritdoc IPoolHelperCommon
     function createPoolSet(
+        address initialManager
+    ) external onlyOwner withValidManager(initialManager) returns (uint256) {
+        return _createPoolSet(initialManager);
+    }
+
+    /// @inheritdoc IPoolHelperCommon
+    function createPoolSet(
         address initialManager,
         address[] memory newPools
-    ) public onlyOwner withValidManager(initialManager) returns (uint256 poolSetId) {
+    ) external onlyOwner withValidManager(initialManager) returns (uint256 poolSetId) {
+        poolSetId = _createPoolSet(initialManager);
+
+        if (newPools.length > 0) {
+            addPoolsToSet(poolSetId, newPools);
+        }
+    }
+
+    function _createPoolSet(address initialManager) internal returns (uint256 poolSetId) {
         poolSetId = _nextPoolSetId++;
 
         // Add to forward and reverse mappings.
@@ -66,15 +81,6 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         _poolSetLookup[initialManager] = poolSetId;
 
         emit PoolSetCreated(poolSetId, initialManager);
-
-        if (newPools.length > 0) {
-            addPoolsToSet(poolSetId, newPools);
-        }
-    }
-
-    /// @inheritdoc IPoolHelperCommon
-    function createPoolSet(address initialManager) external onlyOwner returns (uint256) {
-        return createPoolSet(initialManager, new address[](0));
     }
 
     /// @inheritdoc IPoolHelperCommon
@@ -185,8 +191,15 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     /// @inheritdoc IPoolHelperCommon
-    function setHasPool(uint256 poolSetId, address pool) external view withValidPoolSet(poolSetId) returns (bool) {
+    function isPoolInSet(address pool, uint256 poolSetId) external view withValidPoolSet(poolSetId) returns (bool) {
         return _poolSets[poolSetId].contains(pool);
+    }
+
+    /// @inheritdoc IPoolHelperCommon
+    function getAllPoolsInSet(
+        uint256 poolSetId
+    ) external view withValidPoolSet(poolSetId) returns (address[] memory pools) {
+        return _poolSets[poolSetId].values();
     }
 
     /// @inheritdoc IPoolHelperCommon
