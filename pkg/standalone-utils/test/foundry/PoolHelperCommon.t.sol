@@ -69,11 +69,11 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         uint256 poolCount = poolHelper.getPoolCountForSet(actualPoolSetId);
         assertEq(poolCount, numPools, "Wrong pool count");
 
-        bool hasPool = poolHelper.setHasPool(actualPoolSetId, address(0));
+        bool hasPool = poolHelper.isPoolInSet(address(0), actualPoolSetId);
         assertFalse(hasPool, "Should not have zero address");
 
         for (uint256 i = 0; i < numPools; ++i) {
-            hasPool = poolHelper.setHasPool(actualPoolSetId, pools[i]);
+            hasPool = poolHelper.isPoolInSet(pools[i], actualPoolSetId);
             assertTrue(hasPool, "Set does not contain expected pool");
         }
     }
@@ -140,14 +140,14 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
     }
 
     function testSetHasPoolErrors() public {
-        bool hasPool = poolHelper.setHasPool(alicePoolSetId, ANY_ADDRESS);
+        bool hasPool = poolHelper.isPoolInSet(ANY_ADDRESS, alicePoolSetId);
         assertFalse(hasPool, "Alice's pool set should not have a random pool");
 
         vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.InvalidPoolSetId.selector, 0));
-        poolHelper.setHasPool(0, ANY_ADDRESS);
+        poolHelper.isPoolInSet(ANY_ADDRESS, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.InvalidPoolSetId.selector, 100));
-        poolHelper.setHasPool(100, ANY_ADDRESS);
+        poolHelper.isPoolInSet(ANY_ADDRESS, 100);
     }
 
     function testDestroyPoolSetPermissions() public {
@@ -174,6 +174,9 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         uint256 poolSetId = poolHelper.getPoolSetIdForCaller();
         assertEq(poolSetId, alicePoolSetId, "Wrong poolSetId for alice");
 
+        // `poolSetId` will get overwritten later.
+        uint256 originalPoolSetId = poolSetId;
+
         vm.prank(admin);
         poolHelper.destroyPoolSet(alicePoolSetId);
 
@@ -181,6 +184,9 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         vm.prank(alice);
         poolSetId = poolHelper.getPoolSetIdForCaller();
         assertEq(poolSetId, 0, "alice still a manager");
+
+        address manager = poolHelper.getManagerForPoolSet(originalPoolSetId);
+        assertEq(manager, address(0), "Destroyed poolSetId still has a manager");
 
         // Set should be gone
         vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.InvalidPoolSetId.selector, alicePoolSetId));
@@ -218,5 +224,8 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         vm.prank(lp);
         uint256 poolSetId = poolHelper.getPoolSetIdForCaller();
         assertEq(poolSetId, alicePoolSetId, "Pool set not transferred");
+
+        address manager = poolHelper.getManagerForPoolSet(poolSetId);
+        assertEq(manager, lp, "Manager address not transferred");
     }
 }

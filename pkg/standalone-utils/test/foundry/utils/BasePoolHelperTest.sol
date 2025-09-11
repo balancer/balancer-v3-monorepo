@@ -46,7 +46,7 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
 
         assertEq(poolHelper.getPoolCountForSet(alicePoolSetId), firstPools.length, "Pools count should be 10");
         for (uint256 i = 0; i < firstPools.length; i++) {
-            assertTrue(poolHelper.setHasPool(alicePoolSetId, firstPools[i]));
+            assertTrue(poolHelper.isPoolInSet(firstPools[i], alicePoolSetId));
         }
 
         // Add second batch of pools
@@ -65,11 +65,11 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
         );
 
         for (uint256 i = 0; i < secondPools.length; i++) {
-            assertTrue(poolHelper.setHasPool(alicePoolSetId, secondPools[i]));
+            assertTrue(poolHelper.isPoolInSet(secondPools[i], alicePoolSetId));
         }
 
-        assertFalse(poolHelper.setHasPool(alicePoolSetId, address(poolHelper)), "Has invalid pool");
-        assertFalse(poolHelper.setHasPool(alicePoolSetId, address(0)), "Has zero address pool");
+        assertFalse(poolHelper.isPoolInSet(address(poolHelper), alicePoolSetId), "Has invalid pool");
+        assertFalse(poolHelper.isPoolInSet(address(0), alicePoolSetId), "Has zero address pool");
     }
 
     function testDoubleAddOnePool() public {
@@ -106,7 +106,7 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
         assertEq(poolHelper.getPoolCountForSet(alicePoolSetId), 0, "End pool count non-zero");
 
         for (uint256 i = 0; i < pools.length; i++) {
-            assertFalse(poolHelper.setHasPool(alicePoolSetId, pools[i]));
+            assertFalse(poolHelper.isPoolInSet(pools[i], alicePoolSetId));
         }
     }
 
@@ -138,6 +138,15 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
 
         for (uint256 i = 3; i < 5; i++) {
             assertEq(pools[i], storedPools[i - 3], "Stored pool should be the same as the added pool (partial)");
+        }
+    }
+
+    function testGetAllPools() public {
+        address[] memory pools = _addPools(10);
+        address[] memory storedPools = poolHelper.getAllPoolsInSet(alicePoolSetId);
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            assertEq(pools[i], storedPools[i], "Stored pool should be the same as the added pool");
         }
     }
 
