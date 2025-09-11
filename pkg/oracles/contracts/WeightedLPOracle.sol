@@ -133,7 +133,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         return _getWeights();
     }
 
-    function _getWeights() internal view returns (uint256[] memory) {
+    function _getWeights() internal view virtual returns (uint256[] memory) {
         uint256[] memory weights = new uint256[](_totalTokens);
 
         // prettier-ignore
