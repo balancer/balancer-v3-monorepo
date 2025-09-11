@@ -33,7 +33,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
         _;
     }
 
-    // Ensure the pool is in a set controlled by the caller.
+    // Ensure the pool is in a set controlled by the caller. This is used in derived contracts.
     modifier withValidPoolForSender(address pool) {
         uint256 poolSetId = _getValidPoolSetId();
         _ensurePoolInSet(poolSetId, pool);
@@ -188,6 +188,11 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     /// @inheritdoc IPoolHelperCommon
     function getPoolCountForSet(uint256 poolSetId) external view withValidPoolSet(poolSetId) returns (uint256) {
         return _poolSets[poolSetId].length();
+    }
+
+    /// @inheritdoc IPoolHelperCommon
+    function isValidPoolSetId(uint256 poolSetId) external view returns (bool) {
+        return _poolSets[poolSetId].length() > 0;
     }
 
     /// @inheritdoc IPoolHelperCommon

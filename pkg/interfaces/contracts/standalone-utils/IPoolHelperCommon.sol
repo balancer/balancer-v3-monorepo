@@ -94,7 +94,8 @@ interface IPoolHelperCommon {
      * @notice Create a new set with an initial manager, optionally initialized with a set of pools.
      * @dev The `newPools` list can be empty, in which case this will only create the set. Pools can then be
      * added with `addPoolsToSet`, or removed with `removePoolsFromSet`. This is a permissioned function.
-     * Only the current owner of the helper contract (e.g., Maxis) may create new sets.
+     * Only the current owner of the helper contract (e.g., Maxis) may create new sets. Also reverts if the
+     * initial manager address is zero or already a manager of another pool set.
      *
      * @param initialManager Address of the account authorized to perform operations on the set
      * @param newPools Set of pools to add to the set
@@ -103,7 +104,9 @@ interface IPoolHelperCommon {
 
     /**
      * @notice Create a new empty set with an initial manager.
-     * @dev Convenience function to create a pool set with no initial pools.
+     * @dev Convenience function to create a pool set with no initial pools. Also reverts if the initial manager
+     * address is zero or already a manager of another pool set.
+     *
      * @param initialManager Address of the account authorized to perform operations on the set
      */
     function createPoolSet(address initialManager) external returns (uint256 poolSetId);
@@ -112,6 +115,7 @@ interface IPoolHelperCommon {
      * @notice Simple way to remove an entire set of pools from control of the helper function.
      * @dev This is a permissioned function. Only the current owner of the helper contract (e.g., Maxis)
      * may destroy sets, effectively removing control of any pools in the set from the associated manager.
+     * Also reverts if the poolSetId is not valid.
      *
      * @param poolSetId Id of the set being destroyed
      */
@@ -122,7 +126,8 @@ interface IPoolHelperCommon {
      * @dev This is a permissioned function. Only the current manager of a set can call this to set a new manager.
      * Since managers can only control a single set, there is no need to specify the id in the call. Note that this
      * is a one-step migration. If it is done incorrectly, effective control of the set is lost, and the owner of this
-     * contract will need to destroy the old set and create a new one with the correct initial manager.
+     * contract will need to destroy the old set and create a new one with the correct initial manager. Also reverts
+     * if the new manager address is zero or already the manager of a pool set.
      *
      * @param newManager The address of the new manager
      */
@@ -135,7 +140,7 @@ interface IPoolHelperCommon {
     /**
      * @notice Add pools to the set of pools controlled by this helper contract.
      * @dev This is a permissioned function. Only the current owner of the helper contract (e.g., Maxis)
-     * may add pools to a set.
+     * may add pools to a set. Also reverts if the poolSetId is not valid.
      *
      * @param newPools List of pools to add
      * @param poolSetId Id of the set to which the new pools belong
@@ -145,7 +150,7 @@ interface IPoolHelperCommon {
     /**
      * @notice Remove pools from the set of pools controlled by this helper contract.
      * @dev This is a permissioned function. Only the current owner of the helper contract (e.g., Maxis)
-     * may remove pools from a set.
+     * may remove pools from a set. Also reverts if the poolSetId is not valid.
      *
      * @param pools List of pools to remove from the set
      * @param poolSetId Id of the set to which the pools belong
@@ -171,13 +176,23 @@ interface IPoolHelperCommon {
     /**
      * @notice Get the number of pools associated with the given set.
      * @dev Needed to support pagination in case the set is too large to process in a single transaction.
+     * Reverts if the poolSetId is not valid.
+     *
      * @param poolSetId Id of the set containing the pools
      * @return poolCount The current number of pools in the set
      */
     function getPoolCountForSet(uint256 poolSetId) external view returns (uint256 poolCount);
 
     /**
+     * @notice Check whether a poolSetId has been created.
+     * @param poolSetId Id of the set containing the pools
+     * @return isValidPoolSetId True if the poolSetId exists
+     */
+    function isValidPoolSetId(uint256 poolSetId) external view returns (bool isValidPoolSetId);
+
+    /**
      * @notice Check whether a pool is in the set of pools.
+     * @dev Reverts if the poolSetId is not valid.
      * @param pool Address of the pool to check
      * @param poolSetId Id of the set containing the pools
      * @return poolInSet True if the pool is in the given set, false otherwise
@@ -186,6 +201,7 @@ interface IPoolHelperCommon {
 
     /**
      * @notice Get the full set of pools from a given set.
+     * @dev Reverts if the poolSetId is not valid.
      * @param poolSetId Id of the set containing the pools
      * @return pools List of pools
      */
@@ -194,6 +210,8 @@ interface IPoolHelperCommon {
     /**
      * @notice Get a range of pools from a given set.
      * @dev Indexes are 0-based and [start, end) (i.e., inclusive of `start`; exclusive of `end`).
+     * Reverts if the poolSetId is not valid.
+     *
      * @param poolSetId Id of the set containing the pools
      * @param from Start index
      * @param to End index
