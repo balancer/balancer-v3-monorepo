@@ -228,4 +228,11 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         address manager = poolHelper.getManagerForPoolSet(poolSetId);
         assertEq(manager, lp, "Manager address not transferred");
     }
+
+    function testIsValidPoolSetId() public view {
+        assertTrue(poolHelper.isValidPoolSetId(alicePoolSetId), "Alice's pool set id not valid");
+        assertTrue(poolHelper.isValidPoolSetId(bobPoolSetId), "Bob's pool set id not valid");
+
+        assertFalse(poolHelper.isValidPoolSetId(45), "PoolSetId should not be valid");
+    }
 }

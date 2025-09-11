@@ -192,7 +192,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
 
     /// @inheritdoc IPoolHelperCommon
     function isValidPoolSetId(uint256 poolSetId) external view returns (bool) {
-        return _poolSets[poolSetId].length() > 0;
+        return _poolSetManagers[poolSetId] != address(0);
     }
 
     /// @inheritdoc IPoolHelperCommon
