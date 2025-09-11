@@ -178,11 +178,18 @@ interface IPoolHelperCommon {
 
     /**
      * @notice Check whether a pool is in the set of pools.
-     * @param poolSetId Id of the set containing the pools
      * @param pool Address of the pool to check
+     * @param poolSetId Id of the set containing the pools
      * @return poolInSet True if the pool is in the given set, false otherwise
      */
-    function setHasPool(uint256 poolSetId, address pool) external view returns (bool poolInSet);
+    function isPoolInSet(address pool, uint256 poolSetId) external view returns (bool poolInSet);
+
+    /**
+     * @notice Get the full set of pools from a given set.
+     * @param poolSetId Id of the set containing the pools
+     * @return pools List of pools
+     */
+    function getAllPoolsInSet(uint256 poolSetId) external view returns (address[] memory pools);
 
     /**
      * @notice Get a range of pools from a given set.
