@@ -24,7 +24,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     // Note that this means an address may only control a single pool set.
     mapping(address manager => uint256 poolSetId) private _poolSetLookup;
 
-    // Mapping from pool set ID to set of pools in that pool set
+    // Mapping from a pool set ID to the set of pools in that pool set.
     mapping(uint256 poolSetId => EnumerableSet.AddressSet pools) private _poolSets;
 
     // Ensure the explicit poolSetId (used in the admin interface) is valid.
