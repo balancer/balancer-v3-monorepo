@@ -164,42 +164,50 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                                     Add Liquidity
     ***************************************************************************/
 
-    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
-    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
-    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
     /***************************************************************************
                                     Remove Liquidity
     ***************************************************************************/
 
-    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
     function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(
-        SwapKind kind,
-        bool wethIsEth
+        SwapKind,
+        bool
     ) internal override {
-        // Skip these tests
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
-    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
-    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 
-    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal override {
-        // Skip these tests
+    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind, bool) internal override {
+        // Add/Remove liquidity operations are unsupported by the aggregate router.
+        vm.skip(true);
     }
 }
