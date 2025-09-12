@@ -186,9 +186,9 @@ interface IPoolHelperCommon {
     /**
      * @notice Check whether a poolSetId has been created.
      * @param poolSetId Id of the set containing the pools
-     * @return isValidPoolSetId True if the poolSetId exists
+     * @return isValid True if the poolSetId exists
      */
-    function isValidPoolSetId(uint256 poolSetId) external view returns (bool isValidPoolSetId);
+    function isValidPoolSetId(uint256 poolSetId) external view returns (bool isValid);
 
     /**
      * @notice Check whether a pool is in the set of pools.
