@@ -188,10 +188,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         vm.skip(true);
     }
 
-    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(
-        SwapKind,
-        bool
-    ) internal override {
+    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(SwapKind, bool) internal override {
         // Add/Remove liquidity operations are unsupported by the aggregate router.
         vm.skip(true);
     }
