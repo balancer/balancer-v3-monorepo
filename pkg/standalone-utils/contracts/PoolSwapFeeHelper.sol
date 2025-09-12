@@ -8,7 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract PoolSwapFeeHelper is IPoolSwapFeeHelper, PoolHelperCommon {
-    constructor(IVault vault) PoolHelperCommon(vault) {
+    constructor(IVault vault, address initialOwner) PoolHelperCommon(vault, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -17,10 +17,8 @@ contract PoolSwapFeeHelper is IPoolSwapFeeHelper, PoolHelperCommon {
     ***************************************************************************/
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) public authenticate {
-        _ensurePoolAdded(pool);
-
-        getVault().setStaticSwapFeePercentage(pool, swapFeePercentage);
+    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) public withValidPoolForSender(pool) {
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
     /***************************************************************************
@@ -30,7 +28,7 @@ contract PoolSwapFeeHelper is IPoolSwapFeeHelper, PoolHelperCommon {
     /// @inheritdoc PoolHelperCommon
     function _validatePool(address pool) internal view override {
         // Pools cannot have a swap fee manager.
-        if (getVault().getPoolRoleAccounts(pool).swapFeeManager != address(0)) {
+        if (vault.getPoolRoleAccounts(pool).swapFeeManager != address(0)) {
             revert PoolHasSwapManager(pool);
         }
     }
