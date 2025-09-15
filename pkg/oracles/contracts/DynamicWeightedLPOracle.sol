@@ -12,6 +12,7 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
 
 /**
  * @notice Oracle for weighted pools with dynamic weight fetching.
+ * @author Amped Finance https://github.com/AmpedFinance
  * @dev This oracle fetches weights dynamically from the pool instead of storing them at deployment.
  * This enables proper TVL calculation for pools where weights may change over time, such as
  * Liquidity Bootstrapping Pools (LBPs) or other dynamic weight pool implementations.
