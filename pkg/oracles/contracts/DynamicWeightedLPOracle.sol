@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-import { IDynamicWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/oracles/IDynamicWeightedLPOracle.sol";
+import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/oracles/IWeightedLPOracle.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -16,7 +16,7 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
  * This enables proper TVL calculation for pools where weights may change over time, such as
  * Liquidity Bootstrapping Pools (LBPs) or other dynamic weight pool implementations.
  */
-contract DynamicWeightedLPOracle is IDynamicWeightedLPOracle, WeightedLPOracle {
+contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
     constructor(
         IVault vault_,
         IWeightedPool pool_,
