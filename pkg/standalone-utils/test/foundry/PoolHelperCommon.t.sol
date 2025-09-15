@@ -180,7 +180,7 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         vm.prank(admin);
         poolHelper.destroyPoolSet(alicePoolSetId);
 
-        // She should be removed as a manager
+        // She should be removed as a manager.
         vm.prank(alice);
         poolSetId = poolHelper.getPoolSetIdForCaller();
         assertEq(poolSetId, 0, "alice still a manager");
@@ -188,7 +188,7 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
         address manager = poolHelper.getManagerForPoolSet(originalPoolSetId);
         assertEq(manager, address(0), "Destroyed poolSetId still has a manager");
 
-        // Set should be gone
+        // Set should be gone.
         vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.InvalidPoolSetId.selector, alicePoolSetId));
         poolHelper.getPoolCountForSet(alicePoolSetId);
     }
