@@ -465,11 +465,13 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // If the pool is in Recovery Mode, do a recovery withdrawal.
         if (_vault.isPoolInRecoveryMode(params.pool)) {
+            // Pass zero limits here, as params.minAmountsOut corresponds `tokensOut`, not the parent pool tokens.
+            // Limits will be checked at the end of the operation.
             parentPoolAmountsOut = _vault.removeLiquidityRecovery(
                 params.pool,
                 params.sender,
                 params.maxBptAmountIn,
-                params.minAmountsOut
+                new uint256[](parentPoolTokens.length)
             );
         } else {
             (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
