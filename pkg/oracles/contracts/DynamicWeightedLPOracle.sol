@@ -17,6 +17,7 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
  * Liquidity Bootstrapping Pools (LBPs) or other dynamic weight pool implementations.
  */
 contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
+    /// @dev Constructor delegates to parent - weights will be dynamically fetched via _getWeights override
     constructor(
         IVault vault_,
         IWeightedPool pool_,
@@ -25,7 +26,7 @@ contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
         uint256 uptimeResyncWindow,
         uint256 version_
     ) WeightedLPOracle(vault_, pool_, feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
-        // Constructor delegates to parent - weights will be dynamically fetched via _getWeights override
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
