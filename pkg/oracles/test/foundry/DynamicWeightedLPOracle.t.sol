@@ -61,27 +61,24 @@ contract DynamicWeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDepl
         feeds = _createFeeds(totalTokens);
 
         pool = _createPool(sortedTokens.asIERC20(), weights);
-        _initializePool(pool, sortedTokens, [uint256(1e3), 2e3, 3e3, 4e3, 5e3, 6e3, 7e3, 8e3].toMemoryArray().slice(0, totalTokens));
+        _initializePool(
+            pool,
+            sortedTokens,
+            [uint256(1e3), 2e3, 3e3, 4e3, 5e3, 6e3, 7e3, 8e3].toMemoryArray().slice(0, totalTokens)
+        );
     }
 
     function deployOracle(IWeightedPool pool) internal returns (DynamicWeightedLPOracle oracle) {
-        oracle = new DynamicWeightedLPOracle(
-            vault,
-            pool,
-            feeds,
-            sequencerUptimeFeed,
-            uptimeResyncWindow,
-            VERSION
-        );
+        oracle = new DynamicWeightedLPOracle(vault, pool, feeds, sequencerUptimeFeed, uptimeResyncWindow, VERSION);
     }
 
     function testGetWeights__Dynamic() public {
         uint256 totalTokens = 3;
         (IWeightedPool pool, uint256[] memory expectedWeights) = createAndInitPool(totalTokens);
         DynamicWeightedLPOracle oracle = deployOracle(pool);
-        
+
         uint256[] memory oracleWeights = oracle.getWeights();
-        
+
         for (uint256 i = 0; i < expectedWeights.length; i++) {
             assertEq(expectedWeights[i], oracleWeights[i], "Dynamic oracle weight does not match pool weight");
         }
@@ -91,7 +88,7 @@ contract DynamicWeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDepl
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
         DynamicWeightedLPOracle oracle = deployOracle(pool);
-        
+
         uint256[] memory returnedWeights = oracle.getWeights();
         for (uint256 i = 0; i < weights.length; i++) {
             assertEq(weights[i], returnedWeights[i], "Dynamic weight does not match expected weight");
@@ -103,17 +100,17 @@ contract DynamicWeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDepl
         for (uint256 i = 0; i < totalTokens; i++) {
             weights[i] = MIN_WEIGHT + (i * 1e16);
         }
-        
+
         uint256 sum = 0;
         for (uint256 i = 0; i < totalTokens; i++) {
             sum += weights[i];
         }
-        
+
         // Normalize so they sum to 1
         for (uint256 i = 0; i < totalTokens; i++) {
             weights[i] = weights[i].divDown(sum);
         }
-        
+
         // Ensure they sum to exactly 1e18
         uint256 actualSum = 0;
         for (uint256 i = 0; i < totalTokens - 1; i++) {
@@ -132,40 +129,27 @@ contract DynamicWeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDepl
         return feeds;
     }
 
-    function _createPool(
-        IERC20[] memory poolTokens,
-        uint256[] memory poolWeights
-    ) private returns (IWeightedPool) {
-        return IWeightedPool(
-            weightedPoolFactory.create(
-                "50/50 Pool",
-                "50_50_POOL",
-                InputHelpers.sortTokens(poolTokens),
-                poolWeights,
-                poolCreationNonce++,
-                address(0)
-            )
-        );
+    function _createPool(IERC20[] memory poolTokens, uint256[] memory poolWeights) private returns (IWeightedPool) {
+        return
+            IWeightedPool(
+                weightedPoolFactory.create(
+                    "50/50 Pool",
+                    "50_50_POOL",
+                    InputHelpers.sortTokens(poolTokens),
+                    poolWeights,
+                    poolCreationNonce++,
+                    address(0)
+                )
+            );
     }
 
-    function _initializePool(
-        IWeightedPool pool,
-        IERC20[] memory poolTokens,
-        uint256[] memory initialBalances
-    ) private {
+    function _initializePool(IWeightedPool pool, IERC20[] memory poolTokens, uint256[] memory initialBalances) private {
         vm.startPrank(lp);
         for (uint256 i = 0; i < poolTokens.length; i++) {
             poolTokens[i].approve(address(vault), type(uint256).max);
         }
 
-        router.initialize(
-            address(pool),
-            poolTokens,
-            initialBalances,
-            0,
-            false,
-            bytes("")
-        );
+        router.initialize(address(pool), poolTokens, initialBalances, 0, false, bytes(""));
         vm.stopPrank();
     }
 }
