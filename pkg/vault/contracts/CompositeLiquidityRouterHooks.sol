@@ -607,7 +607,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
                 swapAmountIn = _wrapExactInAndUpdateTokenInData(params, isStaticCall, IERC4626(parentPoolToken));
             } else if (parentPoolTokenType != CompositeTokenType.ERC20) {
-                // Should not happen.
+                // Should not happen. Future-proofing against later addition of token types.
                 revert IVaultErrors.InvalidTokenType();
             }
 
@@ -649,6 +649,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     IERC4626(childPoolToken)
                 );
             } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
+                // Should not happen. Future-proofing against later addition of token types.
                 revert IVaultErrors.InvalidTokenType();
             }
 
