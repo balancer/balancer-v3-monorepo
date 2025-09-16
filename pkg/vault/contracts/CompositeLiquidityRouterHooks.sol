@@ -562,9 +562,10 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
         for (uint256 i = 0; i < numTokensOut; ++i) {
             address tokenOut = tokensOut[i];
+            // `indexOf` will revert if tokenOut is not in `_currentSwapTokensOut`.
             uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokenOut);
 
-            if (_currentSwapTokensOut().contains(tokenOut) == false || checkedTokenIndexes[tokenIndex]) {
+            if (checkedTokenIndexes[tokenIndex]) {
                 // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
                 revert ICompositeLiquidityRouterErrors.WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
             }
