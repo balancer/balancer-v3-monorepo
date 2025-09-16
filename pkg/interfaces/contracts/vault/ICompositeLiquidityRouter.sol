@@ -99,6 +99,10 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
      * or nested pools contain ERC4626 tokens that appear in the `tokensToWrap` list, they will be wrapped and their
      * underlying tokens pulled as input, and expected to appear in `tokensIn`. Otherwise, they will be treated as
      * regular tokens.
+     * 
+     * NB: Pools with "overlapping" tokens (i.e., both the parent and a child pool contain one or more of the tokens in
+     * `tokensIn`), are not supported! The gas cost to explicitly detect this rare edge case would be prohibitive, so
+     * behavior in this case is undefined.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
