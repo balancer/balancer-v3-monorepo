@@ -465,11 +465,13 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // If the pool is in Recovery Mode, do a recovery withdrawal.
         if (_vault.isPoolInRecoveryMode(params.pool)) {
+            // Pass zero limits here, as params.minAmountsOut corresponds to `tokensOut`: not the parent pool tokens.
+            // Limits will be checked at the end of the operation.
             parentPoolAmountsOut = _vault.removeLiquidityRecovery(
                 params.pool,
                 params.sender,
                 params.maxBptAmountIn,
-                params.minAmountsOut
+                new uint256[](parentPoolTokens.length)
             );
         } else {
             (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
@@ -560,9 +562,10 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
         for (uint256 i = 0; i < numTokensOut; ++i) {
             address tokenOut = tokensOut[i];
+            // `indexOf` will revert if tokenOut is not in `_currentSwapTokensOut`.
             uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokenOut);
 
-            if (_currentSwapTokensOut().contains(tokenOut) == false || checkedTokenIndexes[tokenIndex]) {
+            if (checkedTokenIndexes[tokenIndex]) {
                 // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
                 revert ICompositeLiquidityRouterErrors.WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
             }
@@ -604,7 +607,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
                 swapAmountIn = _wrapExactInAndUpdateTokenInData(params, isStaticCall, IERC4626(parentPoolToken));
             } else if (parentPoolTokenType != CompositeTokenType.ERC20) {
-                // Should not happen.
+                // Should not happen. Future-proofing against later addition of token types.
                 revert IVaultErrors.InvalidTokenType();
             }
 
@@ -646,6 +649,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     IERC4626(childPoolToken)
                 );
             } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
+                // Should not happen. Future-proofing against later addition of token types.
                 revert IVaultErrors.InvalidTokenType();
             }
 

@@ -134,7 +134,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         _prankStaticCall();
         (uint256[] memory queryAmountsIn, uint256 querySwapAmountOut) = addUnbalancedLiquidityViaSwapRouter
             .queryAddUnbalancedLiquidityViaSwapExactIn(pool, alice, addLiquidityParams, swapParams);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 ethBalanceBefore = address(alice).balance;
 
@@ -174,7 +174,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         expectedBalances[wethIdx] += tokenAmount;
         uint256 halfTokenAmount = tokenAmount / 2;
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 bptAmountOut = addUnbalancedLiquidityViaSwapRouter.queryAddLiquidityUnbalanced(
             pool,
@@ -192,7 +192,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             alice,
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
             memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
@@ -212,7 +212,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             });
 
         uint256 ethBalanceBefore = address(alice).balance;
-        snapshot = vm.snapshot();
+        snapshot = vm.snapshotState();
         vm.prank(alice);
         (uint256[] memory amountsIn, uint256 swapAmountIn) = addUnbalancedLiquidityViaSwapRouter
             .addUnbalancedLiquidityViaSwapExactOut{ value: wethIsEth ? tokenAmount : 0 }(
@@ -239,7 +239,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         assertApproxEqRel(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA_RATIO, "Dai balance mismatch");
         assertApproxEqRel(balancesAfter[wethIdx], expectedBalances[wethIdx], DELTA_RATIO, "WETH balance mismatch");
 
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
         _prankStaticCall();
         (uint256[] memory queryAmountsIn, uint256 querySwapAmountIn) = addUnbalancedLiquidityViaSwapRouter
             .queryAddUnbalancedLiquidityViaSwapExactOut(pool, alice, addLiquidityParams, swapParams);
