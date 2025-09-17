@@ -18,7 +18,7 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
  * Liquidity Bootstrapping Pools (LBPs) or other dynamic weight pool implementations.
  */
 contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
-    /// @dev Constructor delegates to parent - weights will be dynamically fetched via _getWeights override
+    /// @dev Constructor delegates to parent - weights will be dynamically fetched via _getWeights override.
     constructor(
         IVault vault_,
         IWeightedPool pool_,
@@ -34,6 +34,7 @@ contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
      * @notice Get current normalized weights from the pool dynamically.
      * @dev Overrides the parent implementation to fetch weights from the pool in real-time
      * instead of using cached weights from deployment time.
+
      * @return weights Array of current normalized weights from the pool
      */
     function _getWeights() internal view override returns (uint256[] memory) {

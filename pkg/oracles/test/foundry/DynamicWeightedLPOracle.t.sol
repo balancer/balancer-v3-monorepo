@@ -3,28 +3,22 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "@balancer-labs/v3-pool-weighted/contracts/test/WeightedPoolMock.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
+import { DynamicWeightedLPOracleMock } from "../../contracts/test/DynamicWeightedLPOracleMock.sol";
+import { DynamicWeightedLPOracle } from "../../contracts/DynamicWeightedLPOracle.sol";
+import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 import { WeightedLPOracleTest } from "./WeightedLPOracle.t.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
-import { DynamicWeightedLPOracle } from "../../contracts/DynamicWeightedLPOracle.sol";
-import { DynamicWeightedLPOracleMock } from "../../contracts/test/DynamicWeightedLPOracleMock.sol";
-import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 
 contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
-    using FixedPoint for uint256;
-    using CastingHelpers for address[];
-    using ArrayHelpers for *;
-
     uint256 constant TOKENS_NUM = 2;
 
     FeedMock sequencerUptimeFeed;
