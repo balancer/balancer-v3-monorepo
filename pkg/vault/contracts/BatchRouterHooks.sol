@@ -29,8 +29,7 @@ import { BatchRouterCommon } from "./BatchRouterCommon.sol";
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract BatchRouterHooks is BatchRouterCommon {
-    using CastingHelpers for *;
+abstract contract BatchRouterHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
