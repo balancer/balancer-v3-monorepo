@@ -700,33 +700,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         }
     }
 
-    function _swapExactOut(
-        bytes memory userData,
-        address pool,
-        IERC20 stepTokenIn,
-        IERC20 stepTokenOut,
-        uint256 stepExactAmountOut,
-        uint256 stepMaxAmountIn,
-        bool isLastStep
-    ) internal returns (uint256 amountIn) {
-        // No BPT involved in the operation: regular swap exact out.
-        (, amountIn, ) = _vault.swap(
-            VaultSwapParams({
-                kind: SwapKind.EXACT_OUT,
-                pool: pool,
-                tokenIn: stepTokenIn,
-                tokenOut: stepTokenOut,
-                amountGivenRaw: stepExactAmountOut,
-                limitRaw: stepMaxAmountIn,
-                userData: userData
-            })
-        );
-
-        if (isLastStep) {
-            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
-        }
-    }
-
     /***************************************************************************
                                      Queries
     ***************************************************************************/
