@@ -147,37 +147,29 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
     /**
      * @notice Get data about a specific round, using the roundId.
-     * @dev Declared in AggregatorV3Interface. This is unused, and always returns all zeros.
+     * @dev Declared in AggregatorV3Interface. This function is deprecated, and always returns all zeros.
      * @return roundId The round ID
      * @return answer The answer for this round
      * @return startedAt Timestamp when the round started
      * @return updatedAt Timestamp when the round was updated
      * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
      */
-    function getRoundData(
-        uint80 /* _roundId */
-    )
-        external
-        pure
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
-    {
+    function getRoundData(uint80) external pure returns (uint80, int256, uint256, uint256, uint80) {
         return (0, 0, 0, 0, 0);
     }
 
     /**
      * @notice Get the data from the latest round.
-     * @dev Declared in AggregatorV3Interface.
-     * @return roundId The round ID
+     * @dev Declared in AggregatorV3Interface. Note that `getFeedData` reviews all `updatedAt` timestamps and selects
+     * the earliest one to return as `minUpdatedAt`. That is the value returned by this function as `updatedAt`.
+     *
+     * @return roundId [Deprecated] The round ID (always 0)
      * @return answer The answer for this round
-     * @return startedAt Timestamp when the round started
-     * @return updatedAt Timestamp when the round was updated
+     * @return startedAt [Deprecated] Timestamp when the round started (always 0)
+     * @return updatedAt The oldest / least recent timestamp when a constituent feed was updated
      * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
      */
-    function latestRoundData()
-        external
-        view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
-    {
+    function latestRoundData() external view returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {
         (int256[] memory prices, , uint256 _updatedAt) = getFeedData();
 
         uint256 tvl = _computeTVL(prices);
@@ -334,6 +326,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
      * @dev The prices given do not come from the user, so we know the length is correct. Derived contracts should
      * accordingly never pass a user-provided price array directly to this function without length validation.
      * Note that it's still possible for price feeds to malfunction, so the price values still need validation.
+     * Also, it's important to use prices scaled to 18 decimals.
      *
      * @param prices A length-checked array of prices from the feeds, sorted in token registration order
      * @return tvl TVL (total value locked) calculated from the prices and other pool data

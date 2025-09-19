@@ -62,6 +62,16 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
     ) public override onlyVault returns (bool success) {
+        (IGyroECLPPool.EclpParams memory eclpParams, ) = IGyroECLPPool(pool).getECLPParams();
+
+        // The surge hook only works for pools with a rotation angle between 30 and 60 degrees. Outside of this range,
+        // the computation of the peak price cannot be approximated by sine/cosine. Notice that sin(30deg) = 0.5, and
+        // cos(60deg) = 0.5. Therefore, we can use 0.5 as the threshold for the sine and cosine, given that in the
+        // interval [30deg, 60deg], both sine and cosine are greater than 0.5.
+        if (eclpParams.s < 50e16 || eclpParams.c < 50e16) {
+            revert InvalidRotationAngle();
+        }
+
         success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         _setImbalanceSlopeBelowPeak(pool, _DEFAULT_IMBALANCE_SLOPE);
