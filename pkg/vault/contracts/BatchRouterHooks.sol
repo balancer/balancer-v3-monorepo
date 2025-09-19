@@ -95,7 +95,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
     ) internal virtual returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
-        if (_isPrepaid && EVMCallModeHelpers.isStaticCall() == false) {
+        if (_isPrepaid) {
             _prepayIfNeededExactIn(params);
         }
 
@@ -140,7 +140,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
-                    _ensureNotPrepaymentMode();
+                    // TODO: remove this restriction, adjust `_removeLiquidityExactIn` accordingly.
+                    _ensureNotPrepaid();
 
                     amountOut = _removeLiquidityExactIn(
                         params.userData,
@@ -154,7 +155,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
-                    _ensureNotPrepaymentMode();
+                    // TODO: remove this restriction, adjust `_addLiquidityExactIn` accordingly.
+                    _ensureNotPrepaid();
 
                     amountOut = _addLiquidityExactIn(
                         params.userData,
@@ -211,9 +213,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _currentSwapTokensOut().add(tokenOut);
-            _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -279,9 +279,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         amountOut = amountsOut[tokenIndex];
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _currentSwapTokensOut().add(tokenOut);
-            _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -343,9 +341,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _currentSwapTokensOut().add(tokenOut);
-            _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -382,15 +378,16 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            uint256 settledAmount = _settledTokenAmounts().tGet(tokensIn[i]);
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + settledAmount;
+            address tokenIn = tokensIn[i];
+            uint256 settledAmount = _settledTokenAmounts().tGet(tokenIn);
+            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokenIn) + settledAmount;
 
             if (settledAmount != 0) {
-                _settledTokenAmounts().tSet(tokensIn[i], 0);
+                _settledTokenAmounts().tSet(tokenIn, 0);
             }
 
             if (_isPrepaid) {
-                _currentSwapTokenInAmounts().tSet(tokensIn[i], 0);
+                _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             }
         }
     }
@@ -470,7 +467,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
-                    _ensureNotPrepaymentMode();
+                    // TODO: remove this restriction, adjust `_removeLiquidityExactOut` accordingly.
+                    _ensureNotPrepaid();
 
                     amountIn = _removeLiquidityExactOut(
                         params.userData,
@@ -483,7 +481,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
-                    _ensureNotPrepaymentMode();
+                    // TODO: remove this restriction, adjust `_addLiquidityExactOut` accordingly.
+                    _ensureNotPrepaid();
 
                     amountIn = _addLiquidityExactOut(
                         params.userData,
@@ -603,19 +602,20 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
+            _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
+
             // Refund unused portion of BPT to the user.
             if (amountIn < stepMaxAmountIn && sender != address(this)) {
                 stepTokenIn.safeTransfer(address(sender), stepMaxAmountIn - amountIn);
             }
-        } else if (amountIn < stepMaxAmountIn) {
-            // Refund unused portion of BPT flashloan to the Vault.
-            uint256 refundAmount = stepMaxAmountIn - amountIn;
-            stepTokenIn.safeTransfer(address(_vault), refundAmount);
-            _vault.settle(stepTokenIn, refundAmount);
-        }
-
-        if (isLastStep) {
-            _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
+        } else {
+            // First or intermediate steps
+            if (amountIn < stepMaxAmountIn) {
+                // Refund unused portion of BPT flashloan to the Vault.
+                uint256 refundAmount = stepMaxAmountIn - amountIn;
+                stepTokenIn.safeTransfer(address(_vault), refundAmount);
+                _vault.settle(stepTokenIn, refundAmount);
+            }
         }
     }
 
@@ -651,16 +651,16 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         amountIn = stepAmountsIn[tokenIndex];
 
-        uint256 amountOut = isLastStep ? stepExactAmountOut : amountIn;
+        uint256 stepSettlementAmount = isLastStep ? stepExactAmountOut : amountIn;
 
         // The first step executed determines the outputs for the path, since this is given out.
         if (isFirstStep) {
             // Instead of sending tokens back to the Vault, we can just discount it from whatever
             // the Vault owes the sender to make one less transfer.
-            _currentSwapTokenOutAmounts().tSub(address(tokenOut), amountOut);
+            _currentSwapTokenOutAmounts().tSub(address(tokenOut), stepSettlementAmount);
         } else {
             // If it's not the first step, BPT is minted to the Vault so we just get the credit.
-            _vault.settle(IERC20(pool), amountOut);
+            _vault.settle(IERC20(pool), stepSettlementAmount);
         }
 
         if (isLastStep) {
@@ -730,7 +730,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                                      Other
     ***************************************************************************/
 
-    function _ensureNotPrepaymentMode() internal view {
+    function _ensureNotPrepaid() internal view {
         if (_isPrepaid) {
             revert OperationNotSupported();
         }
@@ -749,9 +749,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
             address tokenIn = tokensIn[i];
             uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
 
-            if (EVMCallModeHelpers.isStaticCall() == false) {
-                _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
-            }
+            _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
         }
     }
