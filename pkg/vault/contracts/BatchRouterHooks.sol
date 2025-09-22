@@ -185,9 +185,9 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                     // amount for the token should be sent back to the sender later on.
                     pathAmountsOut[i] = amountOut;
                 } else {
-                    // Input for the next step is output of current step.
+                    // Input for the next step is the output of the current step.
                     stepExactAmountIn = amountOut;
-                    // The token in for the next step is the token out of the current step.
+                    // The tokenIn for the next step is the tokenOut of the current step.
                     stepTokenIn = step.tokenOut;
                 }
             }
@@ -230,9 +230,9 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
     ) internal returns (uint256 amountOut) {
         // Token in is BPT: remove liquidity - Single token exact in
 
-        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-        // required amount when performing the operation. These tokens might be the output of a previous
-        // step, in which case the user will have a BPT credit.
+        // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount
+        // when performing the operation. These tokens might be the output of a previous step, in which case
+        // the user will have a BPT credit.
         if (isFirstStep) {
             if (stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer
@@ -250,7 +250,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
             }
         } else {
             // If this is an intermediate step, we don't expect the sender to have BPT to burn.
-            // Then, we flashloan tokens here (which should in practice just use existing credit).
+            // So, we flashloan tokens here (which should in practice just use existing credit).
             _vault.sendTo(IERC20(pool), address(this), stepExactAmountIn);
         }
 
@@ -567,9 +567,9 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
     ) internal returns (uint256 amountIn) {
         // Token in is BPT: remove liquidity - Single token exact out
 
-        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-        // required amount when performing the operation. In this case, the BPT amount needed for the
-        // operation is not known in advance, so we take a flashloan for all the available reserves.
+        // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount
+        // when performing the operation. These tokens might be the output of a previous step, in which case
+        // the user will have a BPT credit.
         //
         // The last step is the one that defines the inputs for this path. The caller should have enough
         // BPT to burn already if that's the case, so we just skip this step if so.
@@ -588,8 +588,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, stepExactAmountOut);
 
-        // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
-        // Router is both owner and spender (which doesn't need approval).
+        // The Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
+        // the Router is both owner and spender, which doesn't require approval.
         (amountIn, , ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: pool,
