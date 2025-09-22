@@ -136,9 +136,10 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         StableSurgeHook.SurgeFeeData memory surgeFeeData = stableSurgeHook.getSurgeFeeData(pool);
 
         // Add USDC --> more unbalanced.
+        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(initialBalances);
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterAdd);
         assertTrue(
-            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            stableSurgeHook.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
             "Not surging after add"
         );
 
@@ -169,8 +170,12 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         StableSurgeHook.SurgeFeeData memory surgeFeeData = stableSurgeHook.getSurgeFeeData(pool);
 
         // Should not surge, close to balance
+        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(initialBalances);
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterAdd);
-        assertFalse(stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance), "Surging after add");
+        assertFalse(
+            stableSurgeHook.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
+            "Surging after add"
+        );
 
         // Does not revert
         vm.prank(alice);
@@ -195,9 +200,10 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         StableSurgeHook.SurgeFeeData memory surgeFeeData = stableSurgeHook.getSurgeFeeData(pool);
 
         // Remove DAI --> more unbalanced.
+        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(initialBalances);
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterRemove);
         assertTrue(
-            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            stableSurgeHook.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
             "Not surging after remove"
         );
 
@@ -231,9 +237,10 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         StableSurgeHook.SurgeFeeData memory surgeFeeData = stableSurgeHook.getSurgeFeeData(pool);
 
         // Should not surge, close to balance
+        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(initialBalances);
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterRemove);
         assertFalse(
-            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            stableSurgeHook.isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance),
             "Surging after remove"
         );
 

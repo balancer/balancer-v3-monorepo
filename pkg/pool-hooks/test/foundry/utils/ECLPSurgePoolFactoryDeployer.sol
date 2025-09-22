@@ -8,7 +8,6 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
-import { ECLPSurgeHook } from "../../../contracts/ECLPSurgeHook.sol";
 import { ECLPSurgePoolFactory } from "../../../contracts/ECLPSurgePoolFactory.sol";
 
 /**
@@ -43,7 +42,7 @@ contract ECLPSurgePoolFactoryDeployer is BaseContractsDeployer {
     }
 
     function deployECLPSurgePoolFactory(
-        ECLPSurgeHook eclpSurgeHook,
+        address eclpSurgeHook,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion

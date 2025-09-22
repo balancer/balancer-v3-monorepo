@@ -50,7 +50,12 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
             "Test"
         );
 
-        stablePoolFactory = deployStableSurgePoolFactory(stableSurgeHook, 365 days, FACTORY_VERSION, POOL_VERSION);
+        stablePoolFactory = deployStableSurgePoolFactory(
+            address(stableSurgeHook),
+            365 days,
+            FACTORY_VERSION,
+            POOL_VERSION
+        );
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

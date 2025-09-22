@@ -72,10 +72,10 @@ contract HyperEVMRateProviderFactoryTest is BaseVaultTest {
     function testCreateRateProvider() external {
         IHyperEVMRateProvider rateProvider;
 
-        uint256 snapId = vm.snapshot();
+        uint256 snapId = vm.snapshotState();
         rateProvider = _factory.create(_UETH_TOKEN_INDEX, _UETH_PAIR_INDEX);
         address rateProviderAddress = address(rateProvider);
-        vm.revertTo(snapId);
+        vm.revertToState(snapId);
 
         vm.expectEmit();
         emit IHyperEVMRateProviderFactory.RateProviderCreated(_UETH_TOKEN_INDEX, _UETH_PAIR_INDEX, rateProviderAddress);

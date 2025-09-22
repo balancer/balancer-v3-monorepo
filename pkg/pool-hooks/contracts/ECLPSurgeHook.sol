@@ -10,56 +10,45 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+
+import { SurgeHookCommon } from "./SurgeHookCommon.sol";
 
 /**
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthentication, Version {
+contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
-    struct SurgeFeeData {
-        uint64 thresholdPercentage;
-        uint64 maxSurgeFeePercentage;
+    struct ImbalanceSlopeData {
+        uint128 imbalanceSlopeBelowPeak;
+        uint128 imbalanceSlopeAbovePeak;
     }
 
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultMaxSurgeFeePercentage;
+    uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = uint128(FixedPoint.ONE);
 
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultSurgeThresholdPercentage;
+    // These limits are arbitrary. However, slopes smaller than 0.01 would mean a static fee charged for almost all
+    // swaps, while slopes larger than 100 would mean the max surge fee charged for almost all swaps. Therefore, values
+    // outside of these limits are unlikely to be useful.
+    uint128 public constant MIN_IMBALANCE_SLOPE = 0.01e18;
+    uint128 public constant MAX_IMBALANCE_SLOPE = 100e18;
 
-    // Store the current threshold and max fee for each pool.
-    mapping(address pool => SurgeFeeData data) internal _surgeFeePoolData;
-
-    modifier withValidPercentage(uint256 percentageValue) {
-        _ensureValidPercentage(percentageValue);
-        _;
-    }
+    // Store the current below and above peak slopes for each pool.
+    mapping(address pool => ImbalanceSlopeData data) internal _imbalanceSlopePoolData;
 
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage,
         string memory version
-    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
-        _ensureValidPercentage(defaultMaxSurgeFeePercentage);
-        _ensureValidPercentage(defaultSurgeThresholdPercentage);
-
-        _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
-        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
+    ) SurgeHookCommon(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage, version) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /***************************************************************************
@@ -67,181 +56,44 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     ***************************************************************************/
 
     /// @inheritdoc IHooks
-    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        hookFlags.shouldCallComputeDynamicSwapFee = true;
-        hookFlags.shouldCallAfterAddLiquidity = true;
-        hookFlags.shouldCallAfterRemoveLiquidity = true;
-    }
-
-    /// @inheritdoc IHooks
     function onRegister(
         address factory,
         address pool,
-        TokenConfig[] memory,
-        LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
-        // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
-        // in the future).
-        _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);
+        TokenConfig[] memory tokenConfig,
+        LiquidityManagement calldata liquidityManagement
+    ) public override onlyVault returns (bool success) {
+        success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
-        // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
-        _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
+        _setImbalanceSlopeBelowPeak(pool, _DEFAULT_IMBALANCE_SLOPE);
+        _setImbalanceSlopeAbovePeak(pool, _DEFAULT_IMBALANCE_SLOPE);
 
         emit ECLPSurgeHookRegistered(pool, factory);
-
-        return true;
-    }
-
-    /// @inheritdoc IHooks
-    function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view override returns (bool, uint256) {
-        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
-    }
-
-    /// @inheritdoc IHooks
-    function onAfterAddLiquidity(
-        address,
-        address pool,
-        AddLiquidityKind kind,
-        uint256[] memory amountsInScaled18,
-        uint256[] memory amountsInRaw,
-        uint256,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
-        // Proportional add is always fine.
-        if (kind == AddLiquidityKind.PROPORTIONAL) {
-            return (true, amountsInRaw);
-        }
-
-        // Rebuild old balances before adding liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsInRaw);
-    }
-
-    /// @inheritdoc IHooks
-    function onAfterRemoveLiquidity(
-        address,
-        address pool,
-        RemoveLiquidityKind kind,
-        uint256,
-        uint256[] memory amountsOutScaled18,
-        uint256[] memory amountsOutRaw,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Proportional remove is always fine.
-        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
-            return (true, amountsOutRaw);
-        }
-
-        // Rebuild old balances before removing liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsOutRaw);
     }
 
     /***************************************************************************
-                          ECLP Surge Hook Functions
+                          E-CLP Hook Getters and Setters
     ***************************************************************************/
 
     /// @inheritdoc IECLPSurgeHook
-    function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
-        return _defaultMaxSurgeFeePercentage;
+    function getImbalanceSlopes(address pool) external view returns (uint256, uint256) {
+        ImbalanceSlopeData memory imbalanceSlopeData = _imbalanceSlopePoolData[pool];
+        return (imbalanceSlopeData.imbalanceSlopeBelowPeak, imbalanceSlopeData.imbalanceSlopeAbovePeak);
     }
 
     /// @inheritdoc IECLPSurgeHook
-    function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
-        return _defaultSurgeThresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].maxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].thresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function setMaxSurgeFeePercentage(
+    function setImbalanceSlopeBelowPeak(
         address pool,
-        uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
+        uint256 newImbalanceSlopeBelowPeak
+    ) external onlySwapFeeManagerOrGovernance(pool) {
+        _setImbalanceSlopeBelowPeak(pool, newImbalanceSlopeBelowPeak);
     }
 
     /// @inheritdoc IECLPSurgeHook
-    function setSurgeThresholdPercentage(
+    function setImbalanceSlopeAbovePeak(
         address pool,
-        uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view returns (uint256 surgeFeePercentage) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (bool isSurging, uint256 newTotalImbalance) = _isSurgingSwap(
-            params,
-            pool,
-            staticSwapFeePercentage,
-            surgeFeeData
-        );
-
-        // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
-        //
-        // As you can see from the formula, if it’s unbalanced exactly at the threshold, the last term is 0,
-        // and the fee is just: static + 0 = static fee.
-        // As the unbalanced proportion term approaches 1, the fee surge approaches: static + max - static ~= max fee.
-        // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
-        // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
-        // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
-        if (isSurging) {
-            surgeFeePercentage =
-                staticSwapFeePercentage +
-                (surgeFeeData.maxSurgeFeePercentage - staticSwapFeePercentage).mulDown(
-                    (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
-                        uint256(surgeFeeData.thresholdPercentage).complement()
-                    )
-                );
-        } else {
-            surgeFeePercentage = staticSwapFeePercentage;
-        }
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function isSurgingSwap(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) external view returns (bool isSurging) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (isSurging, ) = _isSurgingSwap(params, pool, staticSwapFeePercentage, surgeFeeData);
+        uint256 newImbalanceSlopeAbovePeak
+    ) external onlySwapFeeManagerOrGovernance(pool) {
+        _setImbalanceSlopeAbovePeak(pool, newImbalanceSlopeAbovePeak);
     }
 
     /***************************************************************************
@@ -253,7 +105,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256 staticSwapFeePercentage,
         SurgeFeeData memory surgeFeeData
-    ) internal view returns (bool isSurging, uint256 newTotalImbalance) {
+    ) internal view override returns (bool isSurging, uint256 newTotalImbalance) {
         // If the max surge fee percentage is less than the static fee percentage, return false.
         // No matter where the imbalance is, surge is never lower than the static fee.
         if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
@@ -278,9 +130,11 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             newBalances[params.indexOut] -= params.amountGivenScaled18;
         }
 
-        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b);
+        ImbalanceSlopeData memory imbalanceSlopeData = _imbalanceSlopePoolData[pool];
 
-        newTotalImbalance = _computeImbalance(newBalances, eclpParams, a, b);
+        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
+
+        newTotalImbalance = _computeImbalance(newBalances, eclpParams, a, b, imbalanceSlopeData);
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
     }
 
@@ -288,8 +142,9 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256[] memory oldBalancesScaled18,
         uint256[] memory balancesScaled18
-    ) internal view returns (bool isSurging) {
+    ) internal view override returns (bool isSurging) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+        ImbalanceSlopeData memory imbalanceSlopeData = _imbalanceSlopePoolData[pool];
 
         (
             IGyroECLPPool.EclpParams memory eclpParams,
@@ -299,44 +154,18 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        (int256 a, int256 b) = _computeOffsetFromBalances(oldBalancesScaled18, eclpParams, derivedECLPParams);
-        oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b);
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(
+            oldBalancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b, imbalanceSlopeData);
 
         // Since the invariant is not the same after the liquidity change, we need to recompute the offset.
-        (a, b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
+        (a, b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
-    }
-
-    function _isSurging(
-        uint64 thresholdPercentage,
-        uint256 oldTotalImbalance,
-        uint256 newTotalImbalance
-    ) internal pure returns (bool isSurging) {
-        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
-        if (newTotalImbalance == 0) {
-            return false;
-        }
-
-        // Surging if imbalance grows and we're currently above the threshold.
-        return (newTotalImbalance > oldTotalImbalance && newTotalImbalance > thresholdPercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setMaxSurgeFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].maxSurgeFeePercentage = newMaxSurgeFeePercentage.toUint64();
-
-        emit MaxSurgeFeePercentageChanged(pool, newMaxSurgeFeePercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].thresholdPercentage = newSurgeThresholdPercentage.toUint64();
-
-        emit ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
     }
 
     /**
@@ -387,128 +216,65 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
-        int256 b
+        int256 b,
+        ImbalanceSlopeData memory imbalanceSlopeData
     ) internal pure returns (uint256 imbalance) {
         // On E-CLPs, the imbalance is a number from 0 to 1 that represents how far the current price is from the
         // peak liquidity price (the price in which the liquidity of the pool is maximized).
         // To reach this number, first we compute the peak price, which is sine/cosine (the tangent of the E-CLP
         // rotation angle). Then, we compute the current price. We check if the current price is above or below the
         // peak price:
-        // - If the current price is equal to the peak price, imbalance = 0 (the pool is perfectly balanced)
-        // - If the current price is below peak, imbalance = (peakPrice - currentPrice) / (peakPrice - alpha)
-        // - If the current price is above peak, imbalance = (currentPrice - peakPrice) / (beta - peakPrice)
+        // - currentPrice == peakPrice, imbalance = 0 (the pool is perfectly balanced)
+        // - currentPrice < peakPrice, imbalance = belowPeakSlope * (peakPrice - currentPrice) / (peakPrice - alpha)
+        // - currentPrice > peakPrice, imbalance = abovePeakSlope * (currentPrice - peakPrice) / (beta - peakPrice)
 
         // Compute current price
-        uint256 currentPrice = _computePrice(balancesScaled18, eclpParams, a, b);
+        uint256 currentPrice = GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
 
         // Compute peak price, defined by `sine / cosine`, which is the price where the pool has the largest liquidity.
         uint256 peakPrice = eclpParams.s.divDownMag(eclpParams.c).toUint256();
         // The price cannot be outside of pool range.
-        peakPrice = _clampPriceToPoolRange(peakPrice, eclpParams);
+        peakPrice = GyroECLPMath.clampPriceToPoolRange(peakPrice, eclpParams);
 
         if (currentPrice == peakPrice) {
             // If the currentPrice equals the peak price, the pool is perfectly balanced.
             return 0;
         } else if (currentPrice < peakPrice) {
-            return (peakPrice - currentPrice).divDown(peakPrice - eclpParams.alpha.toUint256());
+            imbalance =
+                ((peakPrice - currentPrice) * imbalanceSlopeData.imbalanceSlopeBelowPeak) /
+                (peakPrice - eclpParams.alpha.toUint256());
         } else {
-            return (currentPrice - peakPrice).divDown(eclpParams.beta.toUint256() - peakPrice);
-        }
-    }
-
-    function _computePrice(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) internal pure returns (uint256 price) {
-        // To compute the price, first we need to transform the real balances into balances of a circle centered at
-        // (0,0).
-        //
-        // The transformation is:
-        //
-        //     --   --    --           --   --     --
-        //     | x'' |    |  c/λ  -s/λ  | * | x - a |
-        //     | y'' | =  |   s     c   |   | y - b |
-        //     --   --    --           --   --     --
-        //
-        // With x'' and y'', we can compute the price as:
-        //
-        //                          --            --   --   --
-        //             [xll, yll] o |  c/λ   -s/λ  | * |  1  |
-        //                          |   s      c   |   |  0  |
-        //                          --            --   --   --
-        //    price =  -------------------------------------------
-        //                          --            --   --   --
-        //             [xll, yll] o |  c/λ   -s/λ  | * |  0  |
-        //                          |   s      c   |   |  1  |
-        //                          --            --   --   --
-
-        // Balances in the rotated ellipse centered at (0,0)
-        int256 xl = int256(balancesScaled18[0]) - a;
-        int256 yl = int256(balancesScaled18[1]) - b;
-
-        // Balances in the circle centered at (0,0)
-        int256 xll = (xl * eclpParams.c - yl * eclpParams.s) / eclpParams.lambda;
-        int256 yll = (xl * eclpParams.s + yl * eclpParams.c) / 1e18;
-
-        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
-        int256 numerator = yll.mulDownMag(eclpParams.s) + ((xll * eclpParams.c) / eclpParams.lambda);
-        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
-        int256 denominator = yll.mulDownMag(eclpParams.c) - ((xll * eclpParams.s) / eclpParams.lambda);
-
-        price = numerator.divDownMag(denominator).toUint256();
-        // The price cannot be outside of pool range.
-        price = _clampPriceToPoolRange(price, eclpParams);
-
-        return price;
-    }
-
-    function _computeOffsetFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal pure returns (int256 a, int256 b) {
-        IGyroECLPPool.Vector2 memory invariant;
-
-        {
-            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
-            // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
+            imbalance =
+                ((currentPrice - peakPrice) * imbalanceSlopeData.imbalanceSlopeAbovePeak) /
+                (eclpParams.beta.toUint256() - peakPrice);
         }
 
-        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
-        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
+        return imbalance > FixedPoint.ONE ? FixedPoint.ONE : imbalance;
     }
 
-    /**
-     * @notice Clamps the price to the pool range.
-     * @dev The pool price cannot be lower than alpha or higher than beta. So, we clamp it to the interval.
-     * @param price The price to clamp
-     * @param eclpParams The E-CLP parameters
-     * @return The clamped price
-     */
-    function _clampPriceToPoolRange(
-        uint256 price,
-        IGyroECLPPool.EclpParams memory eclpParams
-    ) internal pure returns (uint256) {
-        if (price < eclpParams.alpha.toUint256()) {
-            return eclpParams.alpha.toUint256();
-        } else if (price > eclpParams.beta.toUint256()) {
-            return eclpParams.beta.toUint256();
-        }
-        return price;
+    function _setImbalanceSlopeBelowPeak(address pool, uint256 newImbalanceSlopeBelowPeak) internal {
+        _ensureValidImbalanceSlope(newImbalanceSlopeBelowPeak);
+
+        // Since the slope is < MAX_IMBALANCE_SLOPE, which is a uint128 number, we can cast it to uint128.
+        uint128 newImbalanceSlopeBelowPeak128 = newImbalanceSlopeBelowPeak.toUint128();
+
+        _imbalanceSlopePoolData[pool].imbalanceSlopeBelowPeak = newImbalanceSlopeBelowPeak128;
+        emit ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak128);
     }
 
-    function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
-            revert InvalidPercentage();
+    function _setImbalanceSlopeAbovePeak(address pool, uint256 newImbalanceSlopeAbovePeak) internal {
+        _ensureValidImbalanceSlope(newImbalanceSlopeAbovePeak);
+
+        // Since the slope is < MAX_IMBALANCE_SLOPE, which is a uint128 number, we can cast it to uint128.
+        uint128 newImbalanceSlopeAbovePeak128 = newImbalanceSlopeAbovePeak.toUint128();
+
+        _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak = newImbalanceSlopeAbovePeak128;
+        emit ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak128);
+    }
+
+    function _ensureValidImbalanceSlope(uint256 newImbalanceSlope) internal pure {
+        if (newImbalanceSlope > MAX_IMBALANCE_SLOPE || newImbalanceSlope < MIN_IMBALANCE_SLOPE) {
+            revert InvalidImbalanceSlope();
         }
     }
 }
