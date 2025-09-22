@@ -39,7 +39,11 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         int256 a,
         int256 b
     ) external pure returns (uint256 imbalance) {
-        return _computeImbalance(balancesScaled18, eclpParams, a, b);
+        ImbalanceSlopeData memory imbalanceSlopeData = ImbalanceSlopeData({
+            imbalanceSlopeBelowPeak: 1e18,
+            imbalanceSlopeAbovePeak: 1e18
+        });
+        return _computeImbalance(balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
     }
 
     function computeSwap(
@@ -51,13 +55,27 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
     }
 
     function computeImbalanceFromBalances(
-        GyroECLPPool pool,
-        uint256[] memory balancesScaled18
+        address pool,
+        uint256[] memory balancesScaled18,
+        ImbalanceSlopeData memory imbalanceSlopeData
     ) external view returns (uint256 imbalance) {
-        (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedECLPParams) = pool
-            .getECLPParams();
+        (
+            IGyroECLPPool.EclpParams memory eclpParams,
+            IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+        ) = GyroECLPPool(pool).getECLPParams();
         (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return _computeImbalance(balancesScaled18, eclpParams, a, b);
+
+        return _computeImbalance(balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
+    }
+
+    function computeImbalanceFromBalancesAndParams(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams,
+        ImbalanceSlopeData memory imbalanceSlopeData
+    ) external pure returns (uint256) {
+        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return _computeImbalance(balancesScaled18, eclpParams, a, b, imbalanceSlopeData);
     }
 
     function manualSetSurgeMaxFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) external {
@@ -71,14 +89,5 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
     ) external pure returns (uint256) {
         (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
         return GyroECLPMath.computePrice(balancesScaled18, eclpParams, a, b);
-    }
-
-    function computeImbalanceFromBalancesAndParams(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) external pure returns (uint256) {
-        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return _computeImbalance(balancesScaled18, eclpParams, a, b);
     }
 }

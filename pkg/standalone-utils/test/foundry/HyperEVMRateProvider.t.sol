@@ -45,7 +45,7 @@ contract HyperEVMRateProviderTest is Test {
         hyperEVMRateProvider = new HyperEVMRateProvider(221, 151);
     }
 
-    function testGetRateHyperEVM() public view {
+    function testGetRate() public view {
         assertEq(hyperEVMRateProvider.getRate(), (_UETH_USD_RATE * 1e18) / 10 ** (8 - _UETH_SZ_DECIMALS), "Wrong rate");
     }
 
@@ -55,5 +55,23 @@ contract HyperEVMRateProviderTest is Test {
             1e18 / (10 ** (8 - _UETH_SZ_DECIMALS)),
             "Wrong spot price multiplier"
         );
+    }
+
+    function testGetRateZeroSpotPrice() public {
+        HypercorePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setData(abi.encode(0));
+        vm.expectRevert(abi.encodeWithSelector(HyperSpotPricePrecompile.SpotPriceIsZero.selector));
+        hyperEVMRateProvider.getRate();
+    }
+
+    function testGetRateRevert() public {
+        HypercorePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setShouldRevert(true);
+        vm.expectRevert(abi.encodeWithSelector(HyperSpotPricePrecompile.SpotPricePrecompileFailed.selector));
+        hyperEVMRateProvider.getRate();
+    }
+
+    function testCreateRateProviderRevertTokenInfo() public {
+        HypercorePrecompileMock(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS).setShouldRevert(true);
+        vm.expectRevert(abi.encodeWithSelector(HyperTokenInfoPrecompile.TokenInfoPrecompileFailed.selector));
+        new HyperEVMRateProvider(221, 151);
     }
 }

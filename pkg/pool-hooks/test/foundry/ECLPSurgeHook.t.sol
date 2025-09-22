@@ -17,32 +17,32 @@ contract ECLPSurgeHookTest is ECLPSurgeHookBaseTest {
         override
         returns (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedECLPParams)
     {
-        // The pool below is a WETH/USDC pool, with price interval from [3100, 4400]. The peak price is around 3758,
-        // so s/c must be 3758 and s^2 + c^2 = 1. Lambda was chosen arbitrarily.
+        // The pool has a price interval of [1.5, 2]. The peak price is around 1.73,
+        // so s/c must be 1.73 and s^2 + c^2 = 1. Lambda was chosen arbitrarily.
         eclpParams = IGyroECLPPool.EclpParams({
-            alpha: 3100000000000000000000,
-            beta: 4400000000000000000000,
-            c: 266047486094289,
-            s: 999999964609366945,
-            lambda: 20000000000000000000000
+            alpha: 1.5e18,
+            beta: 2e18,
+            c: 0.5e18,
+            s: 0.866025403784439000e18,
+            lambda: 5000000000000000000
         });
 
         // Derived params calculated offchain based on the params above, using the jupyter notebook file on
         // "pkg/pool-hooks/jupyter/SurgeECLP.ipynb".
         derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
             tauAlpha: IGyroECLPPool.Vector2({
-                x: -74906290317688162800819482607385924041,
-                y: 66249888081733516165500078448108672943
+                x: -30690318166048988038075742958735327232,
+                y: 95174074047855558443958259070940479488
             }),
             tauBeta: IGyroECLPPool.Vector2({
-                x: 61281617359500229793875202705993079582,
-                y: 79022549780450643715972436171311055791
+                x: 28744935033874503200864052705113407488,
+                y: 95779583993136743138661466794178379776
             }),
-            u: 36232449191667733617897641246115478,
-            v: 79022548876385493056482320848126240168,
-            w: 3398134415414370285204934569561736,
-            z: -74906280678135799137829029450497780483,
-            dSq: 99999999999999999958780685745704854600
+            u: 25736219575747051354722245276237561856,
+            v: 95628206506816527245215873647337537536,
+            w: 262193497428812948762834278931234816,
+            z: -15831504866068140020764829108410515456,
+            dSq: 100000000000000054417207617891776593920
         });
     }
 
@@ -57,12 +57,12 @@ contract ECLPSurgeHookTest is ECLPSurgeHookBaseTest {
     {
         // Balances computed so that imbalance is close to 0 (0.00004%).
         initialBalancesRaw = new uint256[](2);
-        initialBalancesRaw[wethIdx] = 0.1e18;
-        initialBalancesRaw[usdcIdx] = 491.03e18;
+        initialBalancesRaw[wethIdx] = 200e18;
+        initialBalancesRaw[usdcIdx] = 382.6e18;
         vault.manualSetPoolBalances(pool, initialBalancesRaw, initialBalancesRaw);
 
-        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesRaw);
-        assertLt(imbalance, 4e11, "Imbalance should be less than 0.00004%");
+        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalances(pool, initialBalancesRaw, _DEFAULT_SLOPE);
+        assertLt(imbalance, 3e12, "Imbalance should be less than 0.0003%");
 
         // No rate providers and 18 decimals, so raw and scaled18 are the same.
         return (initialBalancesRaw, initialBalancesRaw);

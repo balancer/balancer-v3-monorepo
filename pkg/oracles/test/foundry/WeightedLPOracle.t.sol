@@ -26,6 +26,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { WeightedLPOracleMock } from "../../contracts/test/WeightedLPOracleMock.sol";
 import { BaseLPOracleTest } from "./utils/BaseLPOracleTest.sol";
+import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer {
@@ -63,7 +64,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
 
     function deployOracle(
         IWeightedPool pool
-    ) internal returns (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
+    ) internal virtual returns (LPOracleBase oracle, AggregatorV3Interface[] memory feeds) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -151,7 +152,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
 
     function testDescription() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (LPOracleBase oracle, ) = deployOracle(pool);
 
         assertEq(oracle.description(), "WEIGHTED-TEST/USD", "Description does not match");
     }
@@ -164,7 +165,8 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (LPOracleBase _oracle, ) = deployOracle(pool);
+        WeightedLPOracleMock oracle = WeightedLPOracleMock(address(_oracle));
 
         uint256[] memory returnedWeights = oracle.getWeights();
 
@@ -180,7 +182,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
             [50e16, uint256(50e16)].toMemoryArray() // 50% weight for each token
         );
 
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (LPOracleBase oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
         uint256 tvlBefore = oracle.computeTVLGivenPrices(prices);
@@ -212,7 +214,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
             tokenConfigs
         );
 
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (LPOracleBase oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
         uint256 tvlBefore = oracle.computeTVLGivenPrices(prices);
@@ -270,7 +272,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (LPOracleBase oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);

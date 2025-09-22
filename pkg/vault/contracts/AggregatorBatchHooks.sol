@@ -33,16 +33,6 @@ contract AggregatorBatchHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    /**
-     * @notice Not enough tokens sent to cover the operation amount.
-     * @param senderCredits Amounts needed to cover the operation
-     * @param senderDebits Amounts sent by the sender
-     */
-    error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
-
-    /// @notice The operations with weth is not supported.
-    error WethOperationsNotSupported();
-
     constructor(
         IVault vault,
         IWETH weth,
@@ -66,7 +56,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
         // We expect the user to make a prepayment instead of using permit2.
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
-        _settlePaths(params.sender, false);
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapExactInHook(
@@ -109,10 +99,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
                 address tokenIn = tokensIn[i];
 
                 uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
-                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
-                if (tokenInCredit < amount) {
-                    revert InsufficientFunds(tokenIn, tokenInCredit, amount);
-                }
+                _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
 
                 _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             }
@@ -201,7 +188,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
         // We expect the user to make a prepayment instead of using permit2.
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
-        _settlePaths(params.sender, false);
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapExactOutHook(
@@ -246,10 +233,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
             uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
 
             if (EVMCallModeHelpers.isStaticCall() == false) {
-                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
-                if (tokenInCredit < amount) {
-                    revert InsufficientFunds(tokenIn, tokenInCredit, amount);
-                }
+                _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
             }
 
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);

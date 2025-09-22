@@ -13,7 +13,6 @@ import {
   Router,
   PoolFactoryMock,
   Vault,
-  AggregatorBatchRouter,
   ISenderGuard__factory,
   IVaultErrors__factory,
 } from '../typechain-types';
@@ -23,7 +22,6 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from './Permit2Deployer';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
-import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 import {
   ERC20TestToken,
   ERC20TestToken__factory,
@@ -31,6 +29,10 @@ import {
 } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import { BufferRouter } from '@balancer-labs/v3-pool-weighted/typechain-types';
+import {
+  SwapPathExactAmountInStruct,
+  SwapPathExactAmountOutStruct,
+} from '../typechain-types/contracts/AggregatorBatchHooks';
 
 const BATCH_ROUTER_VERSION = 'BatchRouter v9';
 const AGGREGATOR_BATCH_ROUTER_VERSION = 'AggregatorBatchRouter v9';
@@ -52,7 +54,7 @@ export class BatchSwapBaseTest {
   bufferRouter!: BufferRouter;
   basicRouter!: Router;
   router!: BatchRouter;
-  aggregatorRouter!: AggregatorBatchRouter;
+  aggregatorRouter!: BatchRouter;
 
   // Pools
   pools!: PoolMock[];
@@ -107,12 +109,12 @@ export class BatchSwapBaseTest {
   // ExactIn Swap
   pathAmountsOut!: bigint[];
   amountsOut!: bigint[];
-  pathsExactIn!: IBatchRouter.SwapPathExactAmountInStruct[];
+  pathsExactIn!: SwapPathExactAmountInStruct[];
 
   // ExactOut Swap
   pathAmountsIn!: bigint[];
   amountsIn!: bigint[];
-  pathsExactOut!: IBatchRouter.SwapPathExactAmountOutStruct[];
+  pathsExactOut!: SwapPathExactAmountOutStruct[];
 
   constructor(isPrepaid: boolean) {
     this.isPrepaid = isPrepaid;
@@ -139,8 +141,8 @@ export class BatchSwapBaseTest {
     this.router = await deploy('BatchRouter', {
       args: [this.vaultAddress, WETH, this.permit2, BATCH_ROUTER_VERSION],
     });
-    this.aggregatorRouter = await deploy('AggregatorBatchRouter', {
-      args: [this.vaultAddress, WETH, AGGREGATOR_BATCH_ROUTER_VERSION],
+    this.aggregatorRouter = await deploy('BatchRouter', {
+      args: [this.vaultAddress, WETH, ethers.ZeroAddress, AGGREGATOR_BATCH_ROUTER_VERSION],
     });
 
     this.factory = await deploy('PoolFactoryMock', { args: [this.vaultAddress, 12 * MONTH] });
