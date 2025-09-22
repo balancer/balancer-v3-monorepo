@@ -23,9 +23,13 @@ import {
 
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
-/// @notice Base BatchRouter contract with hooks for swaps and liquidity operations via the Vault.
-contract BatchRouterHooks is BatchRouterCommon {
-    using CastingHelpers for *;
+/**
+ * @notice Entrypoint for batch swaps, and batch swap queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
+ * settle with the Vault, and handle wrapping and unwrapping ETH.
+ */
+abstract contract BatchRouterHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
@@ -77,10 +81,12 @@ contract BatchRouterHooks is BatchRouterCommon {
         tokensOut = _currentSwapTokensOut().values();
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
-            amountsOut[i] =
-                _currentSwapTokenOutAmounts().tGet(tokensOut[i]) +
-                _settledTokenAmounts().tGet(tokensOut[i]);
-            _settledTokenAmounts().tSet(tokensOut[i], 0);
+            uint256 settledAmount = _settledTokenAmounts().tGet(tokensOut[i]);
+            amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]) + settledAmount;
+
+            if (settledAmount != 0) {
+                _settledTokenAmounts().tSet(tokensOut[i], 0);
+            }
         }
     }
 
@@ -88,6 +94,10 @@ contract BatchRouterHooks is BatchRouterCommon {
         SwapExactInHookParams calldata params
     ) internal virtual returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
+
+        if (_isPrepaid) {
+            _prepayIfNeededExactIn(params);
+        }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
@@ -97,15 +107,17 @@ contract BatchRouterHooks is BatchRouterCommon {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
-                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
-                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
-            } else {
-                // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
-                // in a set with unique addresses that can be iterated later on.
-                // For example, if all paths share the same token in, the set will end up with only one entry.
-                _currentSwapTokensIn().add(address(stepTokenIn));
-                _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+            if (_isPrepaid == false) {
+                if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
+                    // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
+                    _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
+                } else {
+                    // Paths may (or may not) share the same token in. To minimize token transfers,
+                    // we store the addresses in a set with unique addresses that can be iterated later on.
+                    // For example, if all paths share the same token in, the set will end up with only one entry.
+                    _currentSwapTokensIn().add(address(stepTokenIn));
+                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+                }
             }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
@@ -128,6 +140,9 @@ contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
+                    // TODO: remove this restriction, adjust `_removeLiquidityExactIn` accordingly.
+                    _ensureNotPrepaid();
+
                     amountOut = _removeLiquidityExactIn(
                         params.userData,
                         params.sender,
@@ -140,6 +155,9 @@ contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
+                    // TODO: remove this restriction, adjust `_addLiquidityExactIn` accordingly.
+                    _ensureNotPrepaid();
+
                     amountOut = _addLiquidityExactIn(
                         params.userData,
                         params.sender,
@@ -195,8 +213,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _updateSwapTokensOut(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -247,7 +264,6 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         // The Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
         // the Router is both owner and spender, which doesn't require approval.
-        //
         // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
         (, amountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
@@ -263,8 +279,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         amountOut = amountsOut[tokenIndex];
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _updateSwapTokensOut(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -326,8 +341,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
-            address tokenOut = address(stepTokenOut);
-            _updateSwapTokensOut(tokenOut, amountOut);
+            _updateSwapTokensOut(address(stepTokenOut), amountOut);
         }
     }
 
@@ -364,8 +378,17 @@ contract BatchRouterHooks is BatchRouterCommon {
         tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + _settledTokenAmounts().tGet(tokensIn[i]);
-            _settledTokenAmounts().tSet(tokensIn[i], 0);
+            address tokenIn = tokensIn[i];
+            uint256 settledAmount = _settledTokenAmounts().tGet(tokenIn);
+            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokenIn) + settledAmount;
+
+            if (settledAmount != 0) {
+                _settledTokenAmounts().tSet(tokenIn, 0);
+            }
+
+            if (_isPrepaid) {
+                _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            }
         }
     }
 
@@ -377,6 +400,10 @@ contract BatchRouterHooks is BatchRouterCommon {
         SwapExactOutHookParams calldata params
     ) internal virtual returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
+
+        if (_isPrepaid) {
+            _prepayIfNeededExactOut(params);
+        }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountOut memory path = params.paths[i];
@@ -440,6 +467,9 @@ contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
+                    // TODO: remove this restriction, adjust `_removeLiquidityExactOut` accordingly.
+                    _ensureNotPrepaid();
+
                     amountIn = _removeLiquidityExactOut(
                         params.userData,
                         params.sender,
@@ -451,6 +481,9 @@ contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
+                    // TODO: remove this restriction, adjust `_addLiquidityExactOut` accordingly.
+                    _ensureNotPrepaid();
+
                     amountIn = _addLiquidityExactOut(
                         params.userData,
                         params.sender,
@@ -470,6 +503,7 @@ contract BatchRouterHooks is BatchRouterCommon {
                         step.tokenOut,
                         stepExactAmountOut,
                         stepMaxAmountIn,
+                        path.maxAmountIn,
                         isLastStep
                     );
                 }
@@ -494,7 +528,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         uint256 maxAmountIn,
         bool isLastStep
     ) internal returns (uint256 amountIn) {
-        if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
+        if (_isPrepaid == false && isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
             // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
             _takeTokenIn(sender, stepTokenIn, pathMaxAmountIn, wethIsEth);
         }
@@ -510,7 +544,11 @@ contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
-            _settledTokenAmounts().tAdd(address(pathTokenIn), amountIn);
+            if (_isPrepaid) {
+                _currentSwapTokenInAmounts().tAdd(address(pathTokenIn), amountIn);
+            } else {
+                _settledTokenAmounts().tAdd(address(pathTokenIn), amountIn);
+            }
             // Since the token was taken in advance, returns to the user what is left from the
             // wrap/unwrap operation.
             _updateSwapTokensOut(address(stepTokenIn), maxAmountIn - amountIn);
@@ -564,13 +602,14 @@ contract BatchRouterHooks is BatchRouterCommon {
         );
 
         if (isLastStep) {
+            _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
+
             // Refund unused portion of BPT to the user.
             if (amountIn < stepMaxAmountIn && sender != address(this)) {
                 stepTokenIn.safeTransfer(address(sender), stepMaxAmountIn - amountIn);
             }
-
-            _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
         } else {
+            // First or intermediate steps
             if (amountIn < stepMaxAmountIn) {
                 // Refund unused portion of BPT flashloan to the Vault.
                 uint256 refundAmount = stepMaxAmountIn - amountIn;
@@ -612,21 +651,20 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         amountIn = stepAmountsIn[tokenIndex];
 
-        uint256 localStepExactAmountOut = stepExactAmountOut;
-        if (isLastStep) {
-            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
-        } else {
-            localStepExactAmountOut = amountIn;
-        }
+        uint256 stepSettlementAmount = isLastStep ? stepExactAmountOut : amountIn;
 
         // The first step executed determines the outputs for the path, since this is given out.
         if (isFirstStep) {
             // Instead of sending tokens back to the Vault, we can just discount it from whatever
             // the Vault owes the sender to make one less transfer.
-            _currentSwapTokenOutAmounts().tSub(address(tokenOut), localStepExactAmountOut);
+            _currentSwapTokenOutAmounts().tSub(address(tokenOut), stepSettlementAmount);
         } else {
             // If it's not the first step, BPT is minted to the Vault so we just get the credit.
-            _vault.settle(IERC20(pool), localStepExactAmountOut);
+            _vault.settle(IERC20(pool), stepSettlementAmount);
+        }
+
+        if (isLastStep) {
+            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
         }
     }
 
@@ -637,6 +675,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         IERC20 stepTokenOut,
         uint256 stepExactAmountOut,
         uint256 stepMaxAmountIn,
+        uint256 pathMaxAmountIn,
         bool isLastStep
     ) internal returns (uint256 amountIn) {
         // No BPT involved in the operation: regular swap exact out.
@@ -654,6 +693,10 @@ contract BatchRouterHooks is BatchRouterCommon {
 
         if (isLastStep) {
             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+
+            if (_isPrepaid) {
+                _updateSwapTokensOut(address(stepTokenIn), pathMaxAmountIn - amountIn);
+            }
         }
     }
 
@@ -681,5 +724,51 @@ contract BatchRouterHooks is BatchRouterCommon {
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
+    }
+
+    /***************************************************************************
+                                     Other
+    ***************************************************************************/
+
+    function _ensureNotPrepaid() internal view {
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+    }
+
+    function _prepayIfNeededExactIn(SwapExactInHookParams calldata params) internal {
+        // Register the token amounts expected to be paid by the sender upfront as settled
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+            _currentSwapTokensIn().add(address(path.tokenIn));
+            _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.exactAmountIn);
+        }
+
+        address[] memory tokensIn = _currentSwapTokensIn().values();
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            address tokenIn = tokensIn[i];
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+        }
+    }
+
+    function _prepayIfNeededExactOut(SwapExactOutHookParams calldata params) internal {
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            // Register the token amounts expected to be paid by the sender upfront as settled
+            SwapPathExactAmountOut memory path = params.paths[i];
+            _currentSwapTokensIn().add(address(path.tokenIn));
+            _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
+        }
+
+        address[] memory tokensIn = _currentSwapTokensIn().values();
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            address tokenIn = tokensIn[i];
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+        }
     }
 }

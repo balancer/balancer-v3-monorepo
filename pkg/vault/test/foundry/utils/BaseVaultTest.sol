@@ -103,7 +103,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
-    AggregatorBatchRouter internal aggregatorBatchRouter;
+    BatchRouterMock internal aggregatorBatchRouter;
     BufferRouterMock internal bufferRouter;
     RateProviderMock internal rateProvider;
     BasicAuthorizerMock internal authorizer;
@@ -182,11 +182,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        aggregatorBatchRouter = new AggregatorBatchRouter(
-            IVault(address(vault)),
-            weth,
-            AGGREGATOR_BATCH_ROUTER_VERSION
-        );
+        aggregatorBatchRouter = deployBatchRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
         vm.label(address(aggregatorBatchRouter), "aggregator batch router");
         compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
