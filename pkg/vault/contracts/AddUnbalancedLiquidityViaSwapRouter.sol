@@ -137,24 +137,24 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         uint256 exactInTokenIndex;
         uint256 exactMaxInTokenIndex;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (address(tokens[i]) == address(hookParams.operationParams.tokenExactIn)) {
+            if (address(tokens[i]) == address(hookParams.operationParams.exactToken)) {
                 exactInTokenIndex = i;
-            } else if (address(tokens[i]) == address(hookParams.operationParams.tokenMaxIn)) {
+            } else if (address(tokens[i]) == address(hookParams.operationParams.adjustableToken)) {
                 exactMaxInTokenIndex = i;
             }
         }
 
-        if (amountsIn[exactInTokenIndex] > hookParams.operationParams.exactAmountIn) {
-            uint256 swapAmount = amountsIn[exactInTokenIndex] - hookParams.operationParams.exactAmountIn;
+        if (amountsIn[exactInTokenIndex] > hookParams.operationParams.exactAmount) {
+            uint256 swapAmount = amountsIn[exactInTokenIndex] - hookParams.operationParams.exactAmount;
 
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: hookParams.pool,
-                    tokenIn: hookParams.operationParams.tokenMaxIn,
-                    tokenOut: hookParams.operationParams.tokenExactIn,
+                    tokenIn: hookParams.operationParams.adjustableToken,
+                    tokenOut: hookParams.operationParams.exactToken,
                     amountGivenRaw: swapAmount,
-                    limitRaw: hookParams.operationParams.maxAmountIn - amountsIn[exactMaxInTokenIndex],
+                    limitRaw: hookParams.operationParams.maxAdjustableAmount - amountsIn[exactMaxInTokenIndex],
                     userData: hookParams.operationParams.swapUserData
                 })
             );
@@ -166,14 +166,14 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
                 amountsIn[exactInTokenIndex] = 0;
                 amountsOut[exactInTokenIndex] = swapAmountOut - amountsIn[exactInTokenIndex];
             }
-        } else if (amountsIn[exactInTokenIndex] < hookParams.operationParams.exactAmountIn) {
-            uint256 swapAmount = hookParams.operationParams.exactAmountIn - amountsIn[exactInTokenIndex];
+        } else if (amountsIn[exactInTokenIndex] < hookParams.operationParams.exactAmount) {
+            uint256 swapAmount = hookParams.operationParams.exactAmount - amountsIn[exactInTokenIndex];
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: hookParams.pool,
-                    tokenIn: hookParams.operationParams.tokenExactIn,
-                    tokenOut: hookParams.operationParams.tokenMaxIn,
+                    tokenIn: hookParams.operationParams.exactToken,
+                    tokenOut: hookParams.operationParams.adjustableToken,
                     amountGivenRaw: swapAmount,
                     limitRaw: 0,
                     userData: hookParams.operationParams.swapUserData

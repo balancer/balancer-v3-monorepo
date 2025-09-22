@@ -77,17 +77,17 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     }
 
     function testAddProportionalAndSwapExactIn__Fuzz(
-        uint256 exactAmountIn,
-        uint256 maxAmountIn,
+        uint256 exactAmount,
+        uint256 maxAdjustableAmount,
         uint256 liquidityRatio
     ) public {
         bool wethIsEth = false;
         uint256[] memory balancesBefore = vault.getCurrentLiveBalances(pool);
-        exactAmountIn = bound(exactAmountIn, 1e6, balancesBefore[wethIdx] / 2);
-        maxAmountIn = exactAmountIn * 10;
+        exactAmount = bound(exactAmount, 1e6, balancesBefore[wethIdx] / 2);
+        maxAdjustableAmount = exactAmount * 10;
         liquidityRatio = bound(liquidityRatio, 0.1e18, 5e18);
 
-        uint256 addLiquidityAmount = exactAmountIn.mulDown(liquidityRatio);
+        uint256 addLiquidityAmount = exactAmount.mulDown(liquidityRatio);
 
         // Get expected BPT out for the add liquidity from the standard router
         uint256 snapshot = vm.snapshotState();
@@ -105,10 +105,10 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             memory params = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams({
                 proportionalMaxAmountsIn: [addLiquidityAmount, addLiquidityAmount].toMemoryArray(),
                 exactProportionalBptAmountOut: expectedBptAmountOut,
-                tokenExactIn: weth,
-                tokenMaxIn: dai,
-                exactAmountIn: exactAmountIn,
-                maxAmountIn: maxAmountIn,
+                exactToken: weth,
+                adjustableToken: dai,
+                exactAmount: exactAmount,
+                maxAdjustableAmount: maxAdjustableAmount,
                 addLiquidityUserData: bytes(""),
                 swapUserData: bytes("")
             });
@@ -128,14 +128,14 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         bool _wethIsEth = wethIsEth;
         vm.prank(alice);
         uint256[] memory amountsIn = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwap{
-            value: _wethIsEth ? exactAmountIn : 0
+            value: _wethIsEth ? exactAmount : 0
         }(pool, MAX_UINT256, _wethIsEth, params);
 
         // Check ETH balance
         if (_wethIsEth) {
             assertApproxEqAbs(
                 address(alice).balance,
-                ethBalanceBefore - exactAmountIn,
+                ethBalanceBefore - exactAmount,
                 ETH_DELTA,
                 "ETH balance mismatch (wethIsEth)"
             );
@@ -144,17 +144,17 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         }
 
         uint256[] memory _balancesBefore = balancesBefore;
-        uint256 _exactAmountIn = exactAmountIn;
-        uint256 _maxAmountIn = maxAmountIn;
+        uint256 _exactAmount = exactAmount;
+        uint256 _maxAdjustableAmount = maxAdjustableAmount;
         // Compute expected balances with real balances
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
         assertApproxEqRel(
             balancesAfter[wethIdx],
-            _balancesBefore[wethIdx] + _exactAmountIn,
+            _balancesBefore[wethIdx] + _exactAmount,
             DELTA_RATIO,
             "WETH balance mismatch"
         );
-        assertLe(balancesAfter[daiIdx], _balancesBefore[daiIdx] + _maxAmountIn, "DAI balance mismatch");
+        assertLe(balancesAfter[daiIdx], _balancesBefore[daiIdx] + _maxAdjustableAmount, "DAI balance mismatch");
 
         // Compare real amounts in with query amounts in
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");

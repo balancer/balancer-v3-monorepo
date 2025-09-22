@@ -11,10 +11,10 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     struct AddLiquidityAndSwapParams {
         uint256[] proportionalMaxAmountsIn;
         uint256 exactProportionalBptAmountOut;
-        IERC20 tokenExactIn;
-        IERC20 tokenMaxIn;
-        uint256 exactAmountIn;
-        uint256 maxAmountIn;
+        IERC20 exactToken;
+        IERC20 adjustableToken;
+        uint256 exactAmount;
+        uint256 maxAdjustableAmount;
         bytes addLiquidityUserData;
         bytes swapUserData;
     }
