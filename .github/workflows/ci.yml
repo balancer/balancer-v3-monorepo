@@ -288,5 +288,5 @@ jobs:
         with:
           name: coverage-reports
           path: |
-            packages/*/coverage-genhtml/
-            packages/*/lcov-filtered.info
+            pkg/*/coverage-genhtml/
+            pkg/*/lcov-filtered.info
