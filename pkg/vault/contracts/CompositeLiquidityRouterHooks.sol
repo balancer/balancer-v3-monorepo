@@ -310,7 +310,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(settlementToken, amountIn, maxAmountIn);
+            revert IVaultErrors.AmountInAboveMax(settlementToken, actualAmountIn, maxAmountIn);
         }
 
         if (isStaticCall == false) {
