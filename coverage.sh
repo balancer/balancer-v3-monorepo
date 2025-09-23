@@ -39,19 +39,19 @@ function merge() {
 
   if [[ "$1" == 'forge' ]]; then
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
       --output-file lcov-merged.info
   elif [[ "$1" == 'hardhat' ]]; then
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
       --output-file lcov-merged.info
   elif [[ "$1" == 'all' ]]; then
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
       --add-tracefile lcov-hardhat.info \
@@ -65,7 +65,7 @@ function filter_and_display() {
   if [[ $CURRENT_PACKAGE == "vault" ]]; then
     # Filter out node_modules, test, and mock files
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --ignore-errors unused \
       --rc derive_function_end_line=0 \
       --remove lcov-merged.info \
@@ -74,7 +74,7 @@ function filter_and_display() {
   else
     # Filter out node_modules, test, mock files and vault contracts
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --ignore-errors unused \
       --rc derive_function_end_line=0 \
       --remove lcov-merged.info \
@@ -86,16 +86,15 @@ function filter_and_display() {
 
   # Generate summary
   lcov \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
     --list lcov-filtered.info
 
   echo 'Generating HTML report...'
 
-  # Open more granular breakdown in browser
   rm -rf coverage-genhtml/
   genhtml \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
     --output-directory coverage-genhtml \
     lcov-filtered.info
@@ -103,6 +102,7 @@ function filter_and_display() {
   if [[ "$CI" == "true" ]]; then
     echo 'Coverage HTML generated at coverage-genhtml/index.html'
   else
+    # Open more granular breakdown in browser
     echo 'Opening browser...'
     open coverage-genhtml/index.html
   fi
