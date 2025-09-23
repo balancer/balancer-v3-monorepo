@@ -90,7 +90,7 @@ function filter_and_display() {
     --rc derive_function_end_line=0 \
     --list lcov-filtered.info
 
-  echo 'Display!'
+  echo 'Generating HTML report...'
 
   # Open more granular breakdown in browser
   rm -rf coverage-genhtml/
@@ -99,7 +99,13 @@ function filter_and_display() {
     --rc derive_function_end_line=0 \
     --output-directory coverage-genhtml \
     lcov-filtered.info
-  open coverage-genhtml/index.html
+
+  if [[ "$CI" == "true" ]]; then
+    echo 'Coverage HTML generated at coverage-genhtml/index.html'
+  else
+    echo 'Opening browser...'
+    open coverage-genhtml/index.html
+  fi
 }
 
 # Script
@@ -121,4 +127,10 @@ merge "$1"
 filter_and_display
 
 # Delete temp files
-rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
+if [[ "$CI" == "true" ]]; then
+  # CI: Keep lcov-filtered.info and coverage-genhtml/ for artifacts
+  rm -rf lcov-forge.info lcov-hardhat.info lcov-merged.info lcov-*.info-e coverage/ lcov.info coverage.json
+else
+  # Local: delete all lcov files, keep HTML
+  rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
+fi
