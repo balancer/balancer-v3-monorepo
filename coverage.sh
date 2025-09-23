@@ -96,6 +96,7 @@ function filter_and_display() {
   genhtml \
     --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
+    --ignore-errors category \
     --output-directory coverage-genhtml \
     lcov-filtered.info
 
