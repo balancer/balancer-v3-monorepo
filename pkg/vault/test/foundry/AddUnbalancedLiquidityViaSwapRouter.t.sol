@@ -76,25 +76,18 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         poolArgs = abi.encode(vault, name, symbol);
     }
 
-    function testAddProportionalAndSwapExactIn__Fuzz(
-        uint256 exactAmount,
-        uint256 maxAdjustableAmount,
-        uint256 liquidityRatio
-    ) public {
+    function testAddProportionalAndSwapExactIn__Fuzz(uint256 exactAmount, uint256 maxAdjustableAmount) public {
         bool wethIsEth = false;
         uint256[] memory balancesBefore = vault.getCurrentLiveBalances(pool);
         exactAmount = bound(exactAmount, 1e6, balancesBefore[wethIdx] / 2);
         maxAdjustableAmount = exactAmount * 10;
-        liquidityRatio = bound(liquidityRatio, 0.1e18, 5e18);
-
-        uint256 addLiquidityAmount = exactAmount.mulDown(liquidityRatio);
 
         // Get expected BPT out for the add liquidity from the standard router
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 expectedBptAmountOut = addUnbalancedLiquidityViaSwapRouter.queryAddLiquidityUnbalanced(
             pool,
-            [addLiquidityAmount, addLiquidityAmount].toMemoryArray(),
+            [exactAmount, maxAdjustableAmount].toMemoryArray(),
             alice,
             bytes("")
         );
@@ -103,10 +96,8 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         // Create add liquidity and swap params
         IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams
             memory params = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams({
-                proportionalMaxAmountsIn: [addLiquidityAmount, addLiquidityAmount].toMemoryArray(),
-                exactProportionalBptAmountOut: expectedBptAmountOut,
+                minBptAmountOut: expectedBptAmountOut,
                 exactToken: weth,
-                adjustableToken: dai,
                 exactAmount: exactAmount,
                 maxAdjustableAmount: maxAdjustableAmount,
                 addLiquidityUserData: bytes(""),
@@ -154,7 +145,12 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             DELTA_RATIO,
             "WETH balance mismatch"
         );
-        assertLe(balancesAfter[daiIdx], _balancesBefore[daiIdx] + _maxAdjustableAmount, "DAI balance mismatch");
+        assertApproxEqRel(
+            balancesAfter[daiIdx],
+            _balancesBefore[daiIdx] + _maxAdjustableAmount,
+            DELTA_RATIO,
+            "DAI balance mismatch"
+        );
 
         // Compare real amounts in with query amounts in
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");

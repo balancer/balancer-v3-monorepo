@@ -9,10 +9,8 @@ import "./RouterTypes.sol";
 /// @notice Router interface for adding unbalanced liquidity via a combination of a proportional add and a swap.
 interface IAddUnbalancedLiquidityViaSwapRouter {
     struct AddLiquidityAndSwapParams {
-        uint256[] proportionalMaxAmountsIn;
-        uint256 exactProportionalBptAmountOut;
+        uint256 minBptAmountOut;
         IERC20 exactToken;
-        IERC20 adjustableToken;
         uint256 exactAmount;
         uint256 maxAdjustableAmount;
         bytes addLiquidityUserData;
