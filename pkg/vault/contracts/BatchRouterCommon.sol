@@ -117,7 +117,6 @@ abstract contract BatchRouterCommon is RouterCommon {
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             _currentSwapTokensIn().remove(tokenIn);
-            _settledTokenAmounts().tSet(tokenIn, 0);
         }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
@@ -127,7 +126,6 @@ abstract contract BatchRouterCommon is RouterCommon {
 
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
-            _settledTokenAmounts().tSet(tokenOut, 0);
             _currentSwapTokensOut().remove(tokenOut);
         }
 
