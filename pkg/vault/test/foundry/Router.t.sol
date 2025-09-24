@@ -555,16 +555,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
 
         vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(wethPool),
-            weth,
-            dai,
-            ethAmountIn,
-            0,
-            0,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(address(wethPool), weth, dai, ethAmountIn, 0, 0, false, bytes(""));
     }
 
     function testSwapExactInWETH() public {
