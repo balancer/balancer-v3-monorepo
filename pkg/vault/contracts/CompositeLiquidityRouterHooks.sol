@@ -433,11 +433,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _addLiquidityToParentPool(
-            params,
-            isStaticCall,
-            tokensToWrap
-        );
+        (
+            IERC20[] memory parentPoolTokens,
+            uint256[] memory amountsIn,
+            bool parentPoolNeedsLiquidity
+        ) = _addLiquidityToParentPool(params, isStaticCall, tokensToWrap);
 
         if (parentPoolNeedsLiquidity) {
             // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
@@ -446,8 +446,19 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             );
         }
 
-        // Settle the amounts in.
         if (isStaticCall == false) {
+            // Clear settled amounts for all tokens that were processed.
+            for (uint256 i = 0; i < parentPoolTokens.length; ++i) {
+                _settledTokenAmounts().tSet(address(parentPoolTokens[i]), 0);
+            }
+
+            // Also clear for all input tokens (including child pool tokens).
+            address[] memory currentTokensIn = _currentSwapTokensIn().values();
+            for (uint256 i = 0; i < currentTokensIn.length; ++i) {
+                _settledTokenAmounts().tSet(currentTokensIn[i], 0);
+            }
+
+            // Settle the amounts in.
             _settlePaths(params.sender, params.wethIsEth);
         }
     }
@@ -592,8 +603,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         AddLiquidityHookParams calldata params,
         bool isStaticCall,
         address[] memory tokensToWrap
-    ) internal returns (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+    ) internal returns (IERC20[] memory parentPoolTokens, uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
+        parentPoolTokens = _vault.getPoolTokens(params.pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
         amountsIn = new uint256[](numParentPoolTokens);
 
