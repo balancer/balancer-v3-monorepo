@@ -188,8 +188,8 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
 
             // Since the ratio between the min price and max price cannot be higher than PRICE_RATIO_LIMIT, we need a
             // way to test different price ranges. `priceBase` will define what will be the minimum possible price, so
-            // the prices in the price array will be in the interval [priceBase, priceBase * PRICE_RATIO_LIMIT / 2].
-            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / (PRICE_RATIO_LIMIT / 2));
+            // the prices in the price array will be in the interval [priceBase, priceBase * PRICE_RATIO_LIMIT].
+            uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / PRICE_RATIO_LIMIT);
 
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
@@ -197,11 +197,11 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
-                // The prices will be in the interval [priceBase, priceBase * PRICE_RATIO_LIMIT / 2]. It means, we are
+                // The prices will be in the interval [priceBase, priceBase * PRICE_RATIO_LIMIT]. It means, we are
                 // sure that the ratio between the maximum and minimum prices is less than PRICE_RATIO_LIMIT, and the
-                // oracle will not revert.
+                // oracle will not revert. We restrict the max price more to guarantee K convergence.
                 prices[i] =
-                    bound(pricesRaw[i], priceBase, ((priceBase * PRICE_RATIO_LIMIT) / 2).mulDown(0.99e18)) /
+                    bound(pricesRaw[i], priceBase, ((priceBase * PRICE_RATIO_LIMIT) / 2).mulDown(99e16)) /
                     (10 ** (18 - tokenDecimals));
 
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
