@@ -23,6 +23,8 @@ const viaIR = !(process.env.COVERAGE === 'true' ? true : false);
 export const DEFAULT_OPTIMIZER_STEPS =
   'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
+const optimizerSteps = process.env.COVERAGE === 'true' ? ':' : DEFAULT_OPTIMIZER_STEPS;
+
 export const compilers: SolcConfig[] = [
   {
     version: '0.8.26',
@@ -34,7 +36,7 @@ export const compilers: SolcConfig[] = [
         runs: 9999,
         details: {
           yulDetails: {
-            optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
+            optimizerSteps: optimizerSteps,
           },
         },
       },
@@ -50,7 +52,7 @@ export const compilers: SolcConfig[] = [
         runs: 9999,
         details: {
           yulDetails: {
-            optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
+            optimizerSteps: optimizerSteps,
           },
         },
       },
@@ -122,7 +124,7 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
           runs: contractSettings[contract].runs,
           details: {
             yulDetails: {
-              optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
+              optimizerSteps: optimizerSteps,
             },
           },
         },
