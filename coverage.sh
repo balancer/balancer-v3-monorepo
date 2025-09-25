@@ -28,6 +28,8 @@ function hardhat_coverage() {
   # generates coverage/lcov.info
   COVERAGE=true yarn hardhat coverage
 
+  export CURRENT_PACKAGE=$(basename "$PWD")
+
   # Foundry uses relative paths but Hardhat uses absolute paths.
   # Convert absolute paths to relative paths for consistency.
   sed -i -e "s/\/.*$CURRENT_PACKAGE.//g" coverage/lcov.info
@@ -38,16 +40,13 @@ function merge() {
   echo 'Merging coverage files...'
 
   if [[ "$1" == 'forge' ]]; then
-    lcov \
-      --rc branch_coverage=1 \
-      --rc derive_function_end_line=0 \
-      --add-tracefile lcov-forge.info \
-      --output-file lcov-merged.info
+    # For forge-only, just copy the file instead of merging
+    cp lcov-forge.info lcov-merged.info
   elif [[ "$1" == 'hardhat' ]]; then
     lcov \
       --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
-      --add-tracefile lcov-forge.info \
+      --add-tracefile lcov-hardhat.info \
       --output-file lcov-merged.info
   elif [[ "$1" == 'all' ]]; then
     lcov \
@@ -96,7 +95,6 @@ function filter_and_display() {
   genhtml \
     --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
-    --ignore-errors category \
     --output-directory coverage-genhtml \
     lcov-filtered.info
 
