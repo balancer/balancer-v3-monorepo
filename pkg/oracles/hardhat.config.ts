@@ -12,4 +12,7 @@ export default {
     compilers: hardhatBaseConfig.compilers,
   },
   warnings: hardhatBaseConfig.warnings,
+  mocha: {
+    timeout: process.env.COVERAGE ? 300000 : 40000, // 5 minutes for coverage, 40s normal
+  },
 };
