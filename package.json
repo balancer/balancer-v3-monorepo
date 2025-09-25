@@ -50,7 +50,7 @@
     "test": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test",
     "test:hardhat": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test:hardhat",
     "test:forge": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test:forge",
-    "coverage": "yarn workspaces foreach --parallel --jobs unlimited --verbose run coverage",
+    "coverage": "yarn workspaces foreach --parallel --jobs unlimited --verbose run coverage:all",
     "gas": "yarn workspaces foreach --parallel --jobs unlimited --verbose run gas",
     "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install https://github.com/crytic/slither/releases/download/0.10.1/0.10.1.zip'",
     "slither": "yarn workspaces foreach --parallel --jobs unlimited --verbose run slither"
