@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IPoolHelperCommon } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolHelperCommon.sol";
 
 import { PoolHelperMock } from "../../contracts/test/PoolHelperMock.sol";
@@ -30,7 +31,7 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
     }
 
     function testCreatePoolSetPermissioned() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, lp));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         poolHelper.createPoolSet(lp);
     }
@@ -151,7 +152,7 @@ contract PoolHelperCommonTest is BasePoolHelperTest {
     }
 
     function testDestroyPoolSetPermissions() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, lp));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         poolHelper.destroyPoolSet(alicePoolSetId);
     }
