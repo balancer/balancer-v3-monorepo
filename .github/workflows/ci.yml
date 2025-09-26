@@ -272,9 +272,6 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     needs: lint-and-build
-    strategy:
-      # Run coverage jobs one at a time to avoid Solc conflicts
-      max-parallel: 1
     steps:
       - uses: actions/checkout@v5
       - name: Set up environment
