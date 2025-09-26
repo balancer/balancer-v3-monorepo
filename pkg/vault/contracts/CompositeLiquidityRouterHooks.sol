@@ -414,6 +414,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
+        address[] memory processedTokens = _processedTokensIn().values();
+        for (uint256 i = 0; i < processedTokens.length; ++i) {
+            _processedTokensIn().remove(processedTokens[i]);
+        }
+
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
@@ -433,11 +438,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        (
-            IERC20[] memory parentPoolTokens,
-            uint256[] memory amountsIn,
-            bool parentPoolNeedsLiquidity
-        ) = _addLiquidityToParentPool(params, isStaticCall, tokensToWrap);
+        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _addLiquidityToParentPool(
+            params,
+            isStaticCall,
+            tokensToWrap
+        );
 
         if (parentPoolNeedsLiquidity) {
             // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
@@ -447,17 +452,6 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            // Clear settled amounts for all tokens that were processed.
-            for (uint256 i = 0; i < parentPoolTokens.length; ++i) {
-                _settledTokenAmounts().tSet(address(parentPoolTokens[i]), 0);
-            }
-
-            // Also clear for all input tokens (including child pool tokens).
-            address[] memory currentTokensIn = _currentSwapTokensIn().values();
-            for (uint256 i = 0; i < currentTokensIn.length; ++i) {
-                _settledTokenAmounts().tSet(currentTokensIn[i], 0);
-            }
-
             // Settle the amounts in.
             _settlePaths(params.sender, params.wethIsEth);
         }
@@ -603,8 +597,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         AddLiquidityHookParams calldata params,
         bool isStaticCall,
         address[] memory tokensToWrap
-    ) internal returns (IERC20[] memory parentPoolTokens, uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
-        parentPoolTokens = _vault.getPoolTokens(params.pool);
+    ) internal returns (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
         amountsIn = new uint256[](numParentPoolTokens);
 
@@ -626,7 +620,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 parentPoolNeedsLiquidity = true;
 
                 amountsIn[i] = swapAmountIn;
-                _settledTokenAmounts().tSet(parentPoolToken, swapAmountIn);
+                _processedTokensIn().add(parentPoolToken);
             }
         }
     }
@@ -647,11 +641,6 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             address childPoolToken = address(childPoolTokens[i]);
             CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(childPoolToken, tokensToWrap);
             uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(childPoolToken);
-            uint256 childTokenSettledAmount;
-
-            if (swapAmountIn > 0) {
-                childTokenSettledAmount = _settledTokenAmounts().tGet(childPoolToken);
-            }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
                 swapAmountIn = _wrapExactInAndUpdateTokenInData(
@@ -664,11 +653,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 revert IVaultErrors.InvalidTokenType();
             }
 
-            if (swapAmountIn > 0 && childTokenSettledAmount == 0) {
+            if (swapAmountIn > 0 && _processedTokensIn().contains(childPoolToken) == false) {
                 childPoolNeedsLiquidity = true;
 
                 childPoolAmountsIn[i] = swapAmountIn;
-                _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
+                _processedTokensIn().add(childPoolToken);
             }
         }
 
