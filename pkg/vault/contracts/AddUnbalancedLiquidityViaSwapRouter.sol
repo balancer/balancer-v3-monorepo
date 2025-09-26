@@ -14,7 +14,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/IAddUnbalancedLiquidityViaSwapRouter.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { RouterQueries } from "./RouterQueries.sol";
+import { RouterHooks } from "./RouterHooks.sol";
 
 /**
  * @notice Enable adding and removing liquidity unbalanced on pools that do not support it natively.
@@ -22,7 +22,7 @@ import { RouterQueries } from "./RouterQueries.sol";
  * It factors out the unbalanced adds into two operations: a proportional add and a swap, executes them using
  * the standard router, then checks the limits.
  */
-contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiquidityViaSwapRouter {
+contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiquidityViaSwapRouter {
     using ArrayHelpers for *;
 
     constructor(
@@ -30,7 +30,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         IPermit2 permit2,
         IWETH weth,
         string memory routerVersion
-    ) RouterQueries(vault, weth, permit2, routerVersion) {
+    ) RouterHooks(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

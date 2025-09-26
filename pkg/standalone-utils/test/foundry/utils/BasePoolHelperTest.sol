@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IPoolHelperCommon } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolHelperCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
@@ -84,7 +85,7 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
     }
 
     function testAddPoolWithoutPermission() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, lp));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         poolHelper.addPoolsToSet(alicePoolSetId, new address[](0));
     }
@@ -121,7 +122,7 @@ abstract contract BasePoolHelperTest is BaseVaultTest {
     function testRemovePoolWithoutPermission() public {
         address[] memory pools = _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, lp));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         poolHelper.removePoolsFromSet(alicePoolSetId, pools);
     }

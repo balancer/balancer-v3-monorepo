@@ -85,7 +85,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         // Get expected BPT out for the add liquidity from the standard router
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
-        uint256 expectedBptAmountOut = addUnbalancedLiquidityViaSwapRouter.queryAddLiquidityUnbalanced(
+        uint256 expectedBptAmountOut = router.queryAddLiquidityUnbalanced(
             pool,
             [exactAmount, maxAdjustableAmount].toMemoryArray(),
             alice,

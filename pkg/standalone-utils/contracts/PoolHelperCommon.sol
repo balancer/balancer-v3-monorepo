@@ -57,7 +57,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     /// @inheritdoc IPoolHelperCommon
     function createPoolSet(
         address initialManager
-    ) external onlyOwner withValidManager(initialManager) returns (uint256) {
+    ) external authenticate withValidManager(initialManager) returns (uint256) {
         return _createPoolSet(initialManager);
     }
 
@@ -65,7 +65,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     function createPoolSet(
         address initialManager,
         address[] memory newPools
-    ) external onlyOwner withValidManager(initialManager) returns (uint256 poolSetId) {
+    ) external authenticate withValidManager(initialManager) returns (uint256 poolSetId) {
         poolSetId = _createPoolSet(initialManager);
 
         if (newPools.length > 0) {
@@ -84,7 +84,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     }
 
     /// @inheritdoc IPoolHelperCommon
-    function destroyPoolSet(uint256 poolSetId) external onlyOwner withValidPoolSet(poolSetId) {
+    function destroyPoolSet(uint256 poolSetId) external authenticate withValidPoolSet(poolSetId) {
         EnumerableSet.AddressSet storage poolSet = _poolSets[poolSetId];
 
         // Remove all pools from the set.
@@ -131,7 +131,10 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     ***************************************************************************/
 
     /// @inheritdoc IPoolHelperCommon
-    function addPoolsToSet(uint256 poolSetId, address[] memory newPools) public onlyOwner withValidPoolSet(poolSetId) {
+    function addPoolsToSet(
+        uint256 poolSetId,
+        address[] memory newPools
+    ) public authenticate withValidPoolSet(poolSetId) {
         uint256 numPools = newPools.length;
 
         for (uint256 i = 0; i < numPools; i++) {
@@ -157,7 +160,7 @@ abstract contract PoolHelperCommon is IPoolHelperCommon, OwnableAuthentication {
     function removePoolsFromSet(
         uint256 poolSetId,
         address[] memory pools
-    ) public onlyOwner withValidPoolSet(poolSetId) {
+    ) public authenticate withValidPoolSet(poolSetId) {
         uint256 numPools = pools.length;
 
         for (uint256 i = 0; i < numPools; i++) {
