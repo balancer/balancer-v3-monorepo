@@ -144,8 +144,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterQueries, IAddUnbalancedLiq
         amountsOut = new uint256[](tokens.length);
         uint256[] memory maxAmountsIn = new uint256[](tokens.length);
 
-        uint256 exactTokenIndex = hookParams.operationParams.exactToken == tokens[0] ? 0 : 1;
-        uint256 adjustableTokenIndex = exactTokenIndex == 0 ? 1 : 0;
+(uint256 exactTokenIndex, uint256 adjustableTokenIndex) = hookParams.operationParams.exactToken == tokens[0] ? (0, 1) : (1, 0);
 
         maxAmountsIn[exactTokenIndex] = hookParams.operationParams.maxAdjustableAmount;
         maxAmountsIn[adjustableTokenIndex] = hookParams.operationParams.maxAdjustableAmount;
