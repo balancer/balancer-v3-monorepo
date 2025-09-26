@@ -26,6 +26,20 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     }
 
     /**
+     * @notice The amountIn for the exact token does not match the exactAmount specified.
+     * @param amountIn The total token amount in
+     * @param exactAmount The amount that was expected
+     */
+    error AmountInDoesNotMatchExact(uint256 amountIn, uint256 exactAmount);
+
+    /**
+     * @notice The amountIn for the adjustable token exceeds the maxAdjustableAmount specified.
+     * @param amountIn The total token amount in
+     * @param maxAdjustableAmount The amount of the limit that has been exceeded
+     */
+    error AmountInAboveMaxAdjustableAmount(uint256 amountIn, uint256 maxAdjustableAmount);
+
+    /**
      * @notice Adds liquidity to a pool with proportional token amounts and swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
