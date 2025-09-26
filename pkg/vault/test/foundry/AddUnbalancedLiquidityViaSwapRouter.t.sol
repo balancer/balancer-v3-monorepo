@@ -105,7 +105,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         uint256 halfTokenAmount = tokenAmount / 2;
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
-        uint256 expectedBptAmountOut = addUnbalancedLiquidityViaSwapRouter.queryAddLiquidityUnbalanced(
+        uint256 expectedBptAmountOut = router.queryAddLiquidityUnbalanced(
             pool,
             [halfTokenAmount, halfTokenAmount].toMemoryArray(),
             alice,
@@ -176,7 +176,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
 
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
-        uint256 bptAmountOut = addUnbalancedLiquidityViaSwapRouter.queryAddLiquidityUnbalanced(
+        uint256 bptAmountOut = router.queryAddLiquidityUnbalanced(
             pool,
             [halfTokenAmount, halfTokenAmount].toMemoryArray(),
             alice,
@@ -184,7 +184,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         );
 
         _prankStaticCall();
-        uint256 expectedSwapAmountOut = addUnbalancedLiquidityViaSwapRouter.querySwapSingleTokenExactIn(
+        uint256 expectedSwapAmountOut = router.querySwapSingleTokenExactIn(
             pool,
             weth,
             dai,
