@@ -52,6 +52,7 @@ function merge() {
     lcov \
       --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
+      --ignore-errors format,corrupt \
       --add-tracefile lcov-forge.info \
       --add-tracefile lcov-hardhat.info \
       --output-file lcov-merged.info
