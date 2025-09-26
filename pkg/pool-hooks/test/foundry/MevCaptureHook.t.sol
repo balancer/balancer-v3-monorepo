@@ -644,7 +644,6 @@ contract MevCaptureHookTest is BaseVaultTest {
         _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
-        uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
         // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
         uint256 gasPriceDelta = MAX_UINT64 - baseFee - priorityThreshold;
 
