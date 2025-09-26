@@ -324,12 +324,6 @@ abstract contract RouterHooks is RouterCommon {
     }
 
     function _swapSingleTokenHook(SwapSingleTokenHookParams calldata params) internal returns (uint256) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert SwapDeadline();
-        }
-
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (_isPrepaid == false || (params.wethIsEth && params.tokenIn == _weth)) {

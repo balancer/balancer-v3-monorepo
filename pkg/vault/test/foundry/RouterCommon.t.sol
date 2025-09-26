@@ -7,8 +7,10 @@ import "forge-std/Test.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
@@ -24,6 +26,8 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterCommonTest is BaseVaultTest {
+    using Address for address payable;
+
     ReentrancyAttack internal reentrancyAttack;
     RouterCommonMock internal routerMock;
 
@@ -209,6 +213,12 @@ contract RouterCommonTest is BaseVaultTest {
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         routerMock.manualPermitBatchReentrancy(permitBatch, permitSignatures, permit2Batch, permit2Signature);
+    }
+
+    function testSendEth() public {
+        vm.expectRevert(ISenderGuard.EthTransfer.selector);
+        vm.prank(alice);
+        payable(address(routerMock)).sendValue(1 ether);
     }
 
     struct EthStateTest {

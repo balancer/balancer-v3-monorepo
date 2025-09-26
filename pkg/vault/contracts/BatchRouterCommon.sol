@@ -36,6 +36,7 @@ abstract contract BatchRouterCommon is RouterCommon {
     bytes32 private immutable _CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT =
         _calculateBatchRouterStorageSlot("currentSwapTokenOutAmounts");
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
+    bytes32 private immutable _PROCESSED_TOKENS_IN_SLOT = _calculateBatchRouterStorageSlot("processedTokensIn");
 
     // solhint-enable var-name-mixedcase
     // solhint-disable no-inline-assembly
@@ -60,6 +61,14 @@ abstract contract BatchRouterCommon is RouterCommon {
 
     function _currentSwapTokensOut() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
         bytes32 slot = _CURRENT_SWAP_TOKEN_OUT_SLOT;
+        assembly ("memory-safe") {
+            enumerableSet.slot := slot
+        }
+    }
+
+    // Used in the CLR to keep track of input tokens that have already been processed in nested pools.
+    function _processedTokensIn() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
+        bytes32 slot = _PROCESSED_TOKENS_IN_SLOT;
         assembly ("memory-safe") {
             enumerableSet.slot := slot
         }
@@ -121,7 +130,9 @@ abstract contract BatchRouterCommon is RouterCommon {
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
+
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
+
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
             _currentSwapTokensOut().remove(tokenOut);
