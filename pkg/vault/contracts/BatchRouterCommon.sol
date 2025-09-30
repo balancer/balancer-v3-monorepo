@@ -130,9 +130,7 @@ abstract contract BatchRouterCommon is RouterCommon {
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
-
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
-
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
             _currentSwapTokensOut().remove(tokenOut);
