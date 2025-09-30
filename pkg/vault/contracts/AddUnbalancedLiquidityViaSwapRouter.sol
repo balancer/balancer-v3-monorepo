@@ -5,8 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -23,8 +21,6 @@ import { RouterHooks } from "./RouterHooks.sol";
  * the standard router, then checks the limits.
  */
 contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiquidityViaSwapRouter {
-    using ArrayHelpers for *;
-
     constructor(
         IVault vault,
         IPermit2 permit2,
@@ -102,11 +98,8 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         IERC20[] memory tokens;
         (tokens, amountsIn) = _computeAddUnbalancedLiquidityViaSwap(hookParams);
 
-        // In this case, the pools have two tokens,
-        // but we use a 'for' loop instead of getting the needed indexes because it's simpler.
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            _takeTokenIn(hookParams.sender, tokens[i], amountsIn[i], hookParams.wethIsEth);
-        }
+        _takeTokenIn(hookParams.sender, tokens[0], amountsIn[0], hookParams.wethIsEth);
+        _takeTokenIn(hookParams.sender, tokens[1], amountsIn[1], hookParams.wethIsEth);
 
         _returnEth(hookParams.sender);
     }
@@ -147,18 +140,21 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             ? (0, 1)
             : (1, 0);
 
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = _MAX_AMOUNT;
+        maxAmountsIn[1] = _MAX_AMOUNT;
+
         (amountsIn, , ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: hookParams.pool,
                 to: hookParams.sender,
-                maxAmountsIn: [_MAX_AMOUNT, _MAX_AMOUNT].toMemoryArray(),
+                maxAmountsIn: maxAmountsIn,
                 minBptAmountOut: hookParams.operationParams.minBptAmountOut,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: hookParams.operationParams.addLiquidityUserData
             })
         );
 
-        uint256 limit = hookParams.operationParams.maxAdjustableAmount - amountsIn[adjustableTokenIndex];
         if (amountsIn[exactTokenIndex] > hookParams.operationParams.exactAmount) {
             uint256 swapAmount = amountsIn[exactTokenIndex] - hookParams.operationParams.exactAmount;
 
@@ -169,7 +165,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     tokenIn: tokens[adjustableTokenIndex],
                     tokenOut: hookParams.operationParams.exactToken,
                     amountGivenRaw: swapAmount,
-                    limitRaw: limit,
+                    limitRaw: _MAX_AMOUNT,
                     userData: hookParams.operationParams.swapUserData
                 })
             );
@@ -186,7 +182,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     tokenIn: hookParams.operationParams.exactToken,
                     tokenOut: tokens[adjustableTokenIndex],
                     amountGivenRaw: swapAmount,
-                    limitRaw: limit,
+                    limitRaw: _MAX_AMOUNT,
                     userData: hookParams.operationParams.swapUserData
                 })
             );

@@ -76,8 +76,11 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         poolArgs = abi.encode(vault, name, symbol);
     }
 
-    function testAddProportionalAndSwapExactIn__Fuzz(uint256 exactAmount, uint256 maxAdjustableAmount) public {
-        bool wethIsEth = false;
+    function testAddProportionalAndSwapExactIn__Fuzz(
+        uint256 exactAmount,
+        uint256 maxAdjustableAmount,
+        bool wethIsEth
+    ) public {
         uint256[] memory balancesBefore = vault.getCurrentLiveBalances(pool);
         exactAmount = bound(exactAmount, 1e6, balancesBefore[wethIdx] / 2);
         maxAdjustableAmount = exactAmount * 10;
@@ -154,5 +157,42 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
 
         // Compare real amounts in with query amounts in
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");
+    }
+
+    function testAddProportionalAndSwapExactInRevertLimitExceeded() public {
+        uint256 exactAmount = 1e6;
+        uint256 maxAdjustableAmount = exactAmount * 10;
+
+        // Get expected BPT out for the add liquidity from the standard router
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256 expectedBptAmountOut = router.queryAddLiquidityUnbalanced(
+            pool,
+            [exactAmount * 10, maxAdjustableAmount * 10].toMemoryArray(),
+            alice,
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        // Create add liquidity and swap params
+        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams
+            memory params = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityAndSwapParams({
+                minBptAmountOut: expectedBptAmountOut,
+                exactToken: weth,
+                exactAmount: exactAmount,
+                maxAdjustableAmount: maxAdjustableAmount,
+                addLiquidityUserData: bytes(""),
+                swapUserData: bytes("")
+            });
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAddUnbalancedLiquidityViaSwapRouter.AmountInAboveMaxAdjustableAmount.selector,
+                108999998,
+                maxAdjustableAmount
+            )
+        );
+        addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwap(pool, MAX_UINT256, false, params);
     }
 }
