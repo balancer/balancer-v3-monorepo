@@ -511,7 +511,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
             : DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR;
@@ -561,7 +561,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
             : DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR;
@@ -611,7 +611,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 givenAmount = DEFAULT_AMOUNT;
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - ADD_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
 
@@ -680,7 +680,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
@@ -724,7 +724,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
@@ -768,7 +768,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
@@ -809,7 +809,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT
@@ -873,7 +873,7 @@ contract BatchRouterE2ETest is BaseBatchRouterE2ETest {
         _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind.EXACT_OUT, USE_ETH_TRUE);
     }
 
-    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal virtual {
+    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind kind, bool wethIsEth) internal {
         uint256 limit = kind == SwapKind.EXACT_IN ? DEFAULT_AMOUNT - REMOVE_LIQUIDITY_ROUNDING_ERROR : DEFAULT_AMOUNT;
         uint256 givenAmount = kind == SwapKind.EXACT_IN
             ? DEFAULT_AMOUNT

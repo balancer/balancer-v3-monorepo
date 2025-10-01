@@ -140,9 +140,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
-                    // TODO: remove this restriction, adjust `_removeLiquidityExactIn` accordingly.
-                    _ensureNotPrepaid();
-
                     amountOut = _removeLiquidityExactIn(
                         params.userData,
                         params.sender,
@@ -155,9 +152,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
-                    // TODO: remove this restriction, adjust `_addLiquidityExactIn` accordingly.
-                    _ensureNotPrepaid();
-
                     amountOut = _addLiquidityExactIn(
                         params.userData,
                         params.sender,
@@ -234,7 +228,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         // when performing the operation. These tokens might be the output of a previous step, in which case
         // the user will have a BPT credit.
         if (isFirstStep) {
-            if (stepExactAmountIn > 0 && sender != address(this)) {
+            if (_isPrepaid == false && stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                 // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                 // skip this step (useful for queries).
@@ -467,9 +461,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
-                    // TODO: remove this restriction, adjust `_removeLiquidityExactOut` accordingly.
-                    _ensureNotPrepaid();
-
                     amountIn = _removeLiquidityExactOut(
                         params.userData,
                         params.sender,
@@ -481,9 +472,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
-                    // TODO: remove this restriction, adjust `_addLiquidityExactOut` accordingly.
-                    _ensureNotPrepaid();
-
                     amountIn = _addLiquidityExactOut(
                         params.userData,
                         params.sender,
@@ -576,7 +564,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         if (isLastStep == false) {
             stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
             _vault.sendTo(IERC20(pool), address(this), stepMaxAmountIn);
-        } else if (sender != address(this)) {
+        } else if (_isPrepaid == false && sender != address(this)) {
             // The last step being executed is the first step in the swap path, meaning that it's the one
             // that defines the inputs of the path.
             //
@@ -665,6 +653,10 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         if (isLastStep) {
             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+
+            if (_isPrepaid) {
+                _updateSwapTokensOut(address(stepTokenIn), stepMaxAmountIn - amountIn);
+            }
         }
     }
 
@@ -729,12 +721,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
     /***************************************************************************
                                      Other
     ***************************************************************************/
-
-    function _ensureNotPrepaid() internal view {
-        if (_isPrepaid) {
-            revert OperationNotSupported();
-        }
-    }
 
     function _prepayIfNeededExactIn(SwapExactInHookParams calldata params) internal {
         // Register the token amounts expected to be paid by the sender upfront as settled
