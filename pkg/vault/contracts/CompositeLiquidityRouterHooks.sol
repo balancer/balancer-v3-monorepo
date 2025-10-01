@@ -36,6 +36,10 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
+    // Used to keep track of input tokens that have already been processed in nested pools.
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _PROCESSED_TOKENS_IN_SLOT = _calculateBatchRouterStorageSlot("processedTokensIn");
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -769,5 +773,13 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         return false;
+    }
+
+    // solhint-disable no-inline-assembly
+    function _processedTokensIn() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
+        bytes32 slot = _PROCESSED_TOKENS_IN_SLOT;
+        assembly ("memory-safe") {
+            enumerableSet.slot := slot
+        }
     }
 }
