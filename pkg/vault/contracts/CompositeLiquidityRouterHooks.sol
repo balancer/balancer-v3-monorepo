@@ -415,8 +415,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
         address[] memory processedTokens = _processedTokensIn().values();
-        for (uint256 i = 0; i < processedTokens.length; ++i) {
-            _processedTokensIn().remove(processedTokens[i]);
+        for (uint256 i = processedTokens.length; i > 0; --i) {
+            _processedTokensIn().remove(processedTokens[i - 1]);
         }
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
