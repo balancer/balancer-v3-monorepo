@@ -36,6 +36,10 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
+    // Used to keep track of input tokens that have already been processed in nested pools.
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _PROCESSED_TOKENS_IN_SLOT = _calculateBatchRouterStorageSlot("processedTokensIn");
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -310,7 +314,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(settlementToken, amountIn, maxAmountIn);
+            revert IVaultErrors.AmountInAboveMax(settlementToken, actualAmountIn, maxAmountIn);
         }
 
         if (isStaticCall == false) {
@@ -414,6 +418,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
+        address[] memory processedTokens = _processedTokensIn().values();
+        for (uint256 i = processedTokens.length; i > 0; --i) {
+            _processedTokensIn().remove(processedTokens[i - 1]);
+        }
+
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
@@ -446,8 +455,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             );
         }
 
-        // Settle the amounts in.
         if (isStaticCall == false) {
+            // Settle the amounts in.
             _settlePaths(params.sender, params.wethIsEth);
         }
     }
@@ -615,7 +624,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 parentPoolNeedsLiquidity = true;
 
                 amountsIn[i] = swapAmountIn;
-                _settledTokenAmounts().tSet(parentPoolToken, swapAmountIn);
+                _processedTokensIn().add(parentPoolToken);
             }
         }
     }
@@ -636,11 +645,6 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             address childPoolToken = address(childPoolTokens[i]);
             CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(childPoolToken, tokensToWrap);
             uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(childPoolToken);
-            uint256 childTokenSettledAmount;
-
-            if (swapAmountIn > 0) {
-                childTokenSettledAmount = _settledTokenAmounts().tGet(childPoolToken);
-            }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
                 swapAmountIn = _wrapExactInAndUpdateTokenInData(
@@ -653,11 +657,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 revert IVaultErrors.InvalidTokenType();
             }
 
-            if (swapAmountIn > 0 && childTokenSettledAmount == 0) {
+            if (swapAmountIn > 0 && _processedTokensIn().contains(childPoolToken) == false) {
                 childPoolNeedsLiquidity = true;
 
                 childPoolAmountsIn[i] = swapAmountIn;
-                _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
+                _processedTokensIn().add(childPoolToken);
             }
         }
 
@@ -769,5 +773,13 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         return false;
+    }
+
+    // solhint-disable no-inline-assembly
+    function _processedTokensIn() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
+        bytes32 slot = _PROCESSED_TOKENS_IN_SLOT;
+        assembly ("memory-safe") {
+            enumerableSet.slot := slot
+        }
     }
 }
