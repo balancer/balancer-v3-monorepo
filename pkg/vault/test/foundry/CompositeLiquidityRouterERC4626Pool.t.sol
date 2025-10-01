@@ -10,9 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    ICompositeLiquidityRouterQueries
-} from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -43,7 +41,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     uint256 internal partialWethIdx;
     address internal partialErc4626Pool;
 
-    ICompositeLiquidityRouterQueries internal queryClrRouter;
+    ICompositeLiquidityRouter internal queryClrRouter;
 
     function setUp() public virtual override {
         BaseERC4626BufferTest.setUp();
@@ -100,8 +98,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function initQueryClrRouter() internal virtual returns (ICompositeLiquidityRouterQueries) {
-        return ICompositeLiquidityRouterQueries(address(compositeLiquidityRouter));
+    function initQueryClrRouter() internal virtual returns (ICompositeLiquidityRouter) {
+        return ICompositeLiquidityRouter(address(compositeLiquidityRouter));
     }
 
     function testAddLiquidityUnbalancedToERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
