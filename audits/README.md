@@ -19,6 +19,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | Stable Surge Factory / Hook       | Certora       | [`2025-01-30`](./certora/2025-01-30.pdf)             |
 | MEV Capture Hook                  | Certora       | [`2025-02-07`](./certora/2025-02-07.pdf)             |
 | Liquidity Bootstrapping Pool      | Certora       | [`2025-02-17`](./certora/2025-02-17.pdf)             |
+| LP Oracles                        | Certora       | [`2025-08-19`](./certora/2025-08-19.pdf)             |
 
 ## Addenda
   

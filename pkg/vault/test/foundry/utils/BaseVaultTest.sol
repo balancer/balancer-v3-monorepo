@@ -23,7 +23,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
-import { AggregatorBatchRouter } from "../../../contracts/AggregatorBatchRouter.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
