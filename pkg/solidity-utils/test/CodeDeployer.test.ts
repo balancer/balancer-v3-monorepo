@@ -32,6 +32,13 @@ describe('CodeDeployer', function () {
   });
 
   context('with code over 24kB long', () => {
+    before(function () {
+      // Skip this test during coverage - instrumentation interferes with size limits.
+      if (process.env.COVERAGE) {
+        this.skip();
+      }
+    });
+
     it('reverts', async () => {
       const data = `0x${'00'.repeat(24 * 1024 + 1)}`;
       await expect(factory.deploy(data, false)).to.be.revertedWithCustomError(
