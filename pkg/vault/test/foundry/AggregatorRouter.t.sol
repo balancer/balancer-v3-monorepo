@@ -611,7 +611,8 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), maxAmountsIn[usdcIdx] / 2);
         weth.transfer(address(vault), maxAmountsIn[wethIdx] / 2);
 
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
+        // WETH is checked first due to token sorting, so it will be the one that fails.
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
         aggregatorRouter.addLiquidityProportional(pool, maxAmountsIn, exactBptAmountOut, false, bytes(""));
         vm.stopPrank();
     }
@@ -661,7 +662,8 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), exactAmountsIn[usdcIdx] / 2);
         weth.transfer(address(vault), exactAmountsIn[wethIdx] / 2);
 
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
+        // WETH is checked first due to token sorting, so it will be the one that fails.
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
         aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
         vm.stopPrank();
     }

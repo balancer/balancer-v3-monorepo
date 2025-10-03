@@ -59,6 +59,7 @@ abstract contract BaseTest is Test {
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
+    ERC20TestToken internal usdt;
     WETHTestToken internal weth;
     ERC20TestToken internal wsteth;
     ERC20TestToken internal veBAL;
@@ -118,6 +119,7 @@ abstract contract BaseTest is Test {
         dai = createERC20("DAI", 18);
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         usdc = createERC20("USDC", 18);
+        usdt = createERC20("USDT", 18);
         wsteth = createERC20("WSTETH", 18);
         weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
@@ -130,6 +132,7 @@ abstract contract BaseTest is Test {
         // Fill the token list.
         tokens.push(dai);
         tokens.push(usdc);
+        tokens.push(usdt);
         tokens.push(weth);
         tokens.push(wsteth);
         oddDecimalTokens.push(usdc6Decimals);
