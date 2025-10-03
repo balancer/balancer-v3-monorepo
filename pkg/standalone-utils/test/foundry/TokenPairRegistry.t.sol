@@ -177,7 +177,13 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     }
 
     function testBufferAddSimplePath() external {
-        _expectEmitPathAddedEvents(address(weth), address(waWETH));
+        // Order is always underlying first; does not depend on token addresses.
+        vm.expectEmit();
+        emit ITokenPairRegistry.PathAdded(address(weth), address(waWETH), 1);
+
+        vm.expectEmit();
+        emit ITokenPairRegistry.PathAdded(address(waWETH), address(weth), 1);
+
         vm.prank(admin);
         registry.addSimplePath(address(waWETH));
 
@@ -406,14 +412,19 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     function testBufferRemoveSimplePath() external {
         registry.getPaths(address(weth), address(waWETH));
 
-        vm.startPrank(admin);
+        vm.prank(admin);
         registry.addSimplePath(address(waWETH));
-        vm.stopPrank();
 
         assertEq(registry.getPathCount(address(weth), address(waWETH)), 1, "Wrong path count weth / waWETH");
         assertEq(registry.getPathCount(address(waWETH), address(weth)), 1, "Wrong path count waWETH / weth");
 
-        _expectEmitPathRemovedEvents(address(weth), address(waWETH));
+        // Order is always underlying first; does not depend on token addresses.
+        vm.expectEmit();
+        emit ITokenPairRegistry.PathRemoved(address(weth), address(waWETH), 0);
+
+        vm.expectEmit();
+        emit ITokenPairRegistry.PathRemoved(address(waWETH), address(weth), 0);
+
         vm.prank(admin);
         registry.removeSimplePath(address(waWETH));
         assertEq(
