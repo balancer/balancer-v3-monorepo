@@ -208,11 +208,6 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
             });
 
         vm.expectRevert(IUnbalancedAddViaSwapRouter.NotTwoTokenPool.selector);
-        unbalancedAddViaSwapRouter.addLiquidityUnbalanced(
-            threePool,
-            MAX_UINT256,
-            false,
-            params
-        );
+        unbalancedAddViaSwapRouter.addLiquidityUnbalanced(threePool, MAX_UINT256, false, params);
     }
 }
