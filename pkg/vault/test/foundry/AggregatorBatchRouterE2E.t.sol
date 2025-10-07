@@ -145,7 +145,15 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
+            if (
+                address(pathsExactIn[i].tokenIn) == pathsExactIn[i].steps[0].pool &&
+                pathsExactIn[i].steps[0].isBuffer == false
+            ) {
+                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
+                pathsExactIn[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactIn[i].exactAmountIn);
+            } else {
+                pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
+            }
         }
     }
 
@@ -156,55 +164,12 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
+            if (address(pathsExactOut[i].tokenIn) == pathsExactOut[i].steps[0].pool) {
+                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
+                pathsExactOut[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactOut[i].maxAmountIn);
+            } else {
+                pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
+            }
         }
-    }
-
-    /***************************************************************************
-                                    Add Liquidity
-    ***************************************************************************/
-
-    function _testJoinSwapSinglePathAndInitialAddLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testJoinSwapSinglePathAndIntermediateAddLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testJoinSwapMultiPathAndInitialFinalAddLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    /***************************************************************************
-                                    Remove Liquidity
-    ***************************************************************************/
-
-    function _testExitSwapSinglePathAndInitialRemoveLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testExitSwapSinglePathAndIntermediateRemoveLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testExitSwapSinglePathAndFinalRemoveLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testExitSwapMultiPathAndFinalRemoveLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
-    }
-
-    function _testExitSwapMultiPathAndIntermediateRemoveLiquidityStep(SwapKind, bool) internal override {
-        // Add/Remove liquidity operations are unsupported by the aggregate router.
-        vm.skip(true);
     }
 }
