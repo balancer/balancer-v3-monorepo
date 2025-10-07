@@ -36,7 +36,13 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
-    // Used to keep track of input tokens that have already been processed in nested pools.
+    // Used to keep track of input tokens that have already been processed in nested pools. This is distinct from
+    // `_currentSwapTokensIn`, which keeps track of the input tokens in a batch swap / liquidity operation (e.g.,
+    // preventing duplicate inputs like [USDC, DAI, USDC].
+    //
+    // `_processedTokensIn` guarantees that the unique tokens in [USDC, DAI] are not duplicated during nested pool
+    // traversal (e.g., parent and child pools both contain DAI).
+    //
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _PROCESSED_TOKENS_IN_SLOT = _calculateBatchRouterStorageSlot("processedTokensIn");
 
@@ -418,6 +424,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
+        // Clear any stale processed token flags from previous operations (e.g., from a query call).
+        // This ensures each operation starts with a clean state, so that one tx may contain multiple CLR operations.
         address[] memory processedTokens = _processedTokensIn().values();
         for (uint256 i = processedTokens.length; i > 0; --i) {
             _processedTokensIn().remove(processedTokens[i - 1]);
@@ -657,7 +665,12 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 revert IVaultErrors.InvalidTokenType();
             }
 
-            if (swapAmountIn > 0 && _processedTokensIn().contains(childPoolToken) == false) {
+            if (swapAmountIn > 0) {
+                // Ensure this token was not already processed at a different level of the pool hierarchy.
+                if (_processedTokensIn().contains(childPoolToken)) {
+                    revert ICompositeLiquidityRouterErrors.DuplicateTokenIn(childPoolToken);
+                }
+
                 childPoolNeedsLiquidity = true;
 
                 childPoolAmountsIn[i] = swapAmountIn;
