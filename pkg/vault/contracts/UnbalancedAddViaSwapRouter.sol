@@ -129,6 +129,11 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
      * - EXACT_IN swap of `exactToken` for `adjustableToken`: remove some adjustable token to make up the deficit
      * - No limit check needed: we're returning `adjustableToken`, not taking more
      *
+     * - NOTE: This branch seems to be unreachable with standard constant-product pools. The proportional add logic
+     *   always maintains pool ratios, making it extremely unlikely for the proportional add to contribute less
+     *   `exactToken` than requested when using minBptAmountOut derived from the standard router. The branch exists as
+     *   defensive code, but in practice `SwapLimit` will be triggered first.
+     *
      * Final result: Net contribution of `exactToken` exactly equals exactAmountIn
      */
     function _computeAddLiquidityUnbalancedViaSwap(
@@ -177,6 +182,7 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
             amountsIn[adjustableTokenIndex] += swapAmountIn;
             amountsIn[exactTokenIndex] -= swapAmountOut;
         } else if (amountsIn[exactTokenIndex] < hookParams.operationParams.exactAmount) {
+            // This branch, where the proportional add creates a deficit of the exact token, should not happen.
             uint256 swapAmount = hookParams.operationParams.exactAmount - amountsIn[exactTokenIndex];
 
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
@@ -196,6 +202,7 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
         }
 
         if (amountsIn[exactTokenIndex] != hookParams.operationParams.exactAmount) {
+            // This should never happen, given the swap logic.
             revert AmountInDoesNotMatchExact(amountsIn[exactTokenIndex], hookParams.operationParams.exactAmount);
         } else if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
             revert AmountInAboveMaxAdjustableAmount(
