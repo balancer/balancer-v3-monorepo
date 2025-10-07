@@ -13,7 +13,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -226,15 +225,16 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount
         // when performing the operation. These tokens might be the output of a previous step, in which case
-        // the user will have a BPT credit.
+        // the user will have a BPT credit. In the prepaid case, we assume BPT tokens are transferred to the
+        // Router, and not the Vault.
         if (isFirstStep) {
             if (_isPrepaid == false && stepExactAmountIn > 0 && sender != address(this)) {
-                // If this is the first step, the sender must have the tokens. Therefore, we can transfer
-                // them to the Router, which acts as an intermediary. If the sender is the Router, we just
-                // skip this step (useful for queries).
+                // If this is the first step, the sender must have the tokens. Therefore, we can transfer them to the
+                // Router, which acts as an intermediary. If the sender is the Router, we just skip this step (useful
+                // for queries).
                 //
-                // This saves one permit(1) approval for the BPT to the Router; if we burned tokens
-                // directly from the sender we would need their approval.
+                // This saves one permit(1) approval for the BPT to the Router; if we burned tokens directly from
+                // the sender, we would need their approval.
                 _permit2.transferFrom(sender, address(this), stepExactAmountIn.toUint160(), address(stepTokenIn));
             }
 
@@ -557,7 +557,8 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount when
         // performing the operation. In this case, the BPT amount needed for the operation is not known in advance,
-        // so we take a flashloan for all the available reserves.
+        // so we take a flashloan for all the available reserves. In the prepaid case, we assume BPT tokens were
+        // transferred to the Router, and not the Vault.
         //
         // The last step is the one that defines the inputs for this path. The caller should have enough
         // BPT to burn already if that's the case, so we just skip this step if so.
