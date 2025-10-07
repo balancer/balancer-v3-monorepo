@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import {
     IUnbalancedAddViaSwapRouter
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedAddViaSwapRouter.sol";
@@ -209,5 +210,20 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
 
         vm.expectRevert(IUnbalancedAddViaSwapRouter.NotTwoTokenPool.selector);
         unbalancedAddViaSwapRouter.addLiquidityUnbalanced(threePool, MAX_UINT256, false, params);
+    }
+
+    function testSwapAfterDeadline() public {
+        IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
+            .AddLiquidityAndSwapParams({
+                minBptAmountOut: 0,
+                exactToken: weth,
+                exactAmount: 1e18,
+                maxAdjustableAmount: MAX_UINT256,
+                addLiquidityUserData: bytes(""),
+                swapUserData: bytes("")
+            });
+
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
+        unbalancedAddViaSwapRouter.addLiquidityUnbalanced(pool, 0, false, params);
     }
 }
