@@ -37,9 +37,11 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     }
 
     // Used to keep track of input tokens that have already been processed in nested pools. This is distinct from
-    // `_currentSwapTokensIn`, which keeps track of the input tokens in a batch swap (e.g., preventing
-    // [USDC, DAI, USDC] inputs). `_processedTokensIn` guarantees that the unique tokens in [USDC, DAI] are not
-    // duplicated during nested pool traversal (e.g., parent and child pools both contain DAI).
+    // `_currentSwapTokensIn`, which keeps track of the input tokens in a batch swap / liquidity operation (e.g.,
+    // preventing duplicate inputs like [USDC, DAI, USDC].
+    //
+    // `_processedTokensIn` guarantees that the unique tokens in [USDC, DAI] are not duplicated during nested pool
+    // traversal (e.g., parent and child pools both contain DAI).
     //
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _PROCESSED_TOKENS_IN_SLOT = _calculateBatchRouterStorageSlot("processedTokensIn");
