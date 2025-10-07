@@ -124,7 +124,7 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external payable virtual returns (bytes[] memory results) {
+    ) external payable virtual returns (bytes[] memory) {
         if (_isPrepaid) {
             revert OperationNotSupported();
         }
@@ -207,7 +207,6 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
         }
-        return results;
     }
 
     function _getSignatureParts(bytes memory signature) private pure returns (SignatureParts memory signatureParts) {

@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -548,6 +549,13 @@ contract RouterTest is BaseVaultTest {
             beforeBalances.yieldFeeAmounts[usdcIdx],
             "Vault USDC Yield Fee amount changed"
         );
+    }
+
+    function testSwapDeadline() public {
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(address(wethPool), weth, dai, ethAmountIn, 0, 0, false, bytes(""));
     }
 
     function testSwapExactInWETH() public {

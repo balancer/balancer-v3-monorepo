@@ -7,7 +7,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -72,7 +71,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IRouterQueries.queryAddLiquidityUnbalanced.selector,
+                        IRouter.queryAddLiquidityUnbalanced.selector,
                         pool,
                         exactAmountsIn,
                         sender,
@@ -93,7 +92,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IRouterQueries.queryRemoveLiquidityProportional.selector,
+                        IRouter.queryRemoveLiquidityProportional.selector,
                         pool,
                         bptAmountOut,
                         sender,
@@ -116,7 +115,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IRouterQueries.querySwapSingleTokenExactIn.selector,
+                        IRouter.querySwapSingleTokenExactIn.selector,
                         pool,
                         tokenIn,
                         tokenOut,
@@ -141,7 +140,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IRouterQueries.querySwapSingleTokenExactOut.selector,
+                        IRouter.querySwapSingleTokenExactOut.selector,
                         pool,
                         tokenIn,
                         tokenOut,

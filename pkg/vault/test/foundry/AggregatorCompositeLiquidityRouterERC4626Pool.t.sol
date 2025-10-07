@@ -5,16 +5,14 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import {
-    ICompositeLiquidityRouterQueries
-} from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
 contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
-    function initQueryClrRouter() internal view override returns (ICompositeLiquidityRouterQueries) {
-        return ICompositeLiquidityRouterQueries(address(aggregatorCompositeLiquidityRouter));
+    function initQueryClrRouter() internal view override returns (ICompositeLiquidityRouter) {
+        return ICompositeLiquidityRouter(address(aggregatorCompositeLiquidityRouter));
     }
 
     function testCompositeLiquidityRouterVersion() public view override {

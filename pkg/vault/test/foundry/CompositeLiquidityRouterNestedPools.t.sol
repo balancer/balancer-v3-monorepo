@@ -8,9 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    ICompositeLiquidityRouterQueries
-} from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import {
     ICompositeLiquidityRouterErrors
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
@@ -113,8 +111,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         _initPool(poolToInitialize, sortedAmountsIn, 0);
     }
 
-    function initQueryClrRouter() internal virtual returns (ICompositeLiquidityRouterQueries) {
-        return ICompositeLiquidityRouterQueries(address(compositeLiquidityRouter));
+    function initQueryClrRouter() internal virtual returns (ICompositeLiquidityRouter) {
+        return ICompositeLiquidityRouter(address(compositeLiquidityRouter));
     }
 
     /*******************************************************************************
