@@ -8,19 +8,19 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
-    IAddUnbalancedLiquidityViaSwapRouter
-} from "@balancer-labs/v3-interfaces/contracts/vault/IAddUnbalancedLiquidityViaSwapRouter.sol";
+    IUnbalancedAddViaSwapRouter
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedAddViaSwapRouter.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterHooks } from "./RouterHooks.sol";
 
 /**
- * @notice Enable adding and removing liquidity unbalanced on pools that do not support it natively.
+ * @notice Enable adding liquidity unbalanced to two-token pools that do not support it natively.
  * @dev This extends the standard `Router` in order to call shared internal hook implementation functions.
  * It factors out the unbalanced adds into two operations: a proportional add and a swap, executes them using
  * the standard router, then checks the limits.
  */
-contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiquidityViaSwapRouter {
+contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter {
     constructor(
         IVault vault,
         IPermit2 permit2,
@@ -30,8 +30,8 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
-    function addUnbalancedLiquidityViaSwap(
+    /// @inheritdoc IUnbalancedAddViaSwapRouter
+    function addLiquidityUnbalanced(
         address pool,
         uint256 deadline,
         bool wethIsEth,
@@ -41,7 +41,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
+                        UnbalancedAddViaSwapRouter.addLiquidityUnbalancedHook,
                         AddLiquidityAndSwapHookParams({
                             pool: pool,
                             sender: msg.sender,
@@ -59,7 +59,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                                    Queries
     ***************************************************************************/
 
-    function queryAddUnbalancedLiquidityViaSwap(
+    function queryAddLiquidityUnbalanced(
         address pool,
         address sender,
         AddLiquidityAndSwapParams calldata params
@@ -68,7 +68,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
+                        UnbalancedAddViaSwapRouter.queryAddLiquidityUnbalancedHook,
                         AddLiquidityAndSwapHookParams({
                             pool: pool,
                             sender: address(this), // Queries use the router as the sender
@@ -86,7 +86,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                                    Hooks
     ***************************************************************************/
 
-    function addUnbalancedLiquidityViaSwapHook(
+    function addLiquidityUnbalancedHook(
         AddLiquidityAndSwapHookParams calldata hookParams
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
@@ -96,7 +96,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         }
 
         IERC20[] memory tokens;
-        (tokens, amountsIn) = _computeAddUnbalancedLiquidityViaSwap(hookParams);
+        (tokens, amountsIn) = _computeAddLiquidityUnbalancedViaSwap(hookParams);
 
         _takeTokenIn(hookParams.sender, tokens[0], amountsIn[0], hookParams.wethIsEth);
         _takeTokenIn(hookParams.sender, tokens[1], amountsIn[1], hookParams.wethIsEth);
@@ -104,10 +104,10 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         _returnEth(hookParams.sender);
     }
 
-    function queryAddUnbalancedLiquidityViaSwapHook(
+    function queryAddLiquidityUnbalancedHook(
         AddLiquidityAndSwapHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
-        (, amountsIn) = _computeAddUnbalancedLiquidityViaSwap(params);
+        (, amountsIn) = _computeAddLiquidityUnbalancedViaSwap(params);
     }
 
     /**
@@ -129,12 +129,21 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
      * - EXACT_IN swap of `exactToken` for `adjustableToken`: remove some adjustable token to make up the deficit
      * - No limit check needed: we're returning `adjustableToken`, not taking more
      *
+     * - NOTE: This branch seems to be unreachable with standard constant-product pools. The proportional add logic
+     *   always maintains pool ratios, making it extremely unlikely for the proportional add to contribute less
+     *   `exactToken` than requested when using minBptAmountOut derived from the standard router. The branch exists as
+     *   defensive code, but in practice `SwapLimit` will be triggered first.
+     *
      * Final result: Net contribution of `exactToken` exactly equals exactAmountIn
      */
-    function _computeAddUnbalancedLiquidityViaSwap(
+    function _computeAddLiquidityUnbalancedViaSwap(
         AddLiquidityAndSwapHookParams calldata hookParams
     ) private returns (IERC20[] memory tokens, uint256[] memory amountsIn) {
         tokens = _vault.getPoolTokens(hookParams.pool);
+
+        if (tokens.length != 2) {
+            revert NotTwoTokenPool();
+        }
 
         (uint256 exactTokenIndex, uint256 adjustableTokenIndex) = hookParams.operationParams.exactToken == tokens[0]
             ? (0, 1)
@@ -173,6 +182,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             amountsIn[adjustableTokenIndex] += swapAmountIn;
             amountsIn[exactTokenIndex] -= swapAmountOut;
         } else if (amountsIn[exactTokenIndex] < hookParams.operationParams.exactAmount) {
+            // This branch, where the proportional add creates a deficit of the exact token, should not happen.
             uint256 swapAmount = hookParams.operationParams.exactAmount - amountsIn[exactTokenIndex];
 
             (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
@@ -192,6 +202,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         }
 
         if (amountsIn[exactTokenIndex] != hookParams.operationParams.exactAmount) {
+            // This should never happen, given the swap logic.
             revert AmountInDoesNotMatchExact(amountsIn[exactTokenIndex], hookParams.operationParams.exactAmount);
         } else if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
             revert AmountInAboveMaxAdjustableAmount(
