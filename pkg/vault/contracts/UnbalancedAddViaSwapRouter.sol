@@ -23,8 +23,8 @@ import { RouterHooks } from "./RouterHooks.sol";
 contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter {
     constructor(
         IVault vault,
-        IPermit2 permit2,
         IWETH weth,
+        IPermit2 permit2,
         string memory routerVersion
     ) RouterHooks(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks

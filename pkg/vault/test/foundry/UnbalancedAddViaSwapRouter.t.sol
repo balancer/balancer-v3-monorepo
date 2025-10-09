@@ -42,7 +42,7 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        unbalancedAddViaSwapRouter = new UnbalancedAddViaSwapRouter(IVault(address(vault)), permit2, weth, version);
+        unbalancedAddViaSwapRouter = new UnbalancedAddViaSwapRouter(IVault(address(vault)), weth, permit2, version);
 
         vm.startPrank(alice);
         for (uint256 i = 0; i < tokens.length; ++i) {
