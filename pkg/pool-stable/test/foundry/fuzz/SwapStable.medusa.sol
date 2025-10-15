@@ -25,19 +25,21 @@ contract SwapStableMedusaTest is SwapMedusaTest {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        StablePool newPool = StablePool(
-            factory.create(
-                "Stable Pool",
-                "STABLE",
-                vault.buildTokenConfig(tokens),
-                _AMPLIFICATION_PARAMETER,
-                roleAccounts,
-                DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the test constructor
-                address(0), // No hooks
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                // NOTE: sends a unique salt.
-                bytes32(poolCreationNonce++)
+        newPool = address(
+            StablePool(
+                factory.create(
+                    "Stable Pool",
+                    "STABLE",
+                    vault.buildTokenConfig(tokens),
+                    _AMPLIFICATION_PARAMETER,
+                    roleAccounts,
+                    DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the test constructor
+                    address(0), // No hooks
+                    false, // Do not enable donations
+                    false, // Do not disable unbalanced add/remove liquidity
+                    // NOTE: sends a unique salt.
+                    bytes32(poolCreationNonce++)
+                )
             )
         );
 
