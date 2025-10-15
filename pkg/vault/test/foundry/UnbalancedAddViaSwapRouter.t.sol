@@ -96,7 +96,7 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
         // Create add liquidity and swap params
         IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
             .AddLiquidityAndSwapParams({
-                minBptAmountOut: expectedBptAmountOut,
+                exactBptAmountOut: expectedBptAmountOut,
                 exactToken: weth,
                 exactAmount: exactAmount,
                 maxAdjustableAmount: maxAdjustableAmount,
@@ -170,7 +170,7 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
         // Create add liquidity and swap params
         IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
             .AddLiquidityAndSwapParams({
-                minBptAmountOut: expectedBptAmountOut,
+                exactBptAmountOut: expectedBptAmountOut,
                 exactToken: weth,
                 exactAmount: exactAmount,
                 maxAdjustableAmount: maxAdjustableAmount,
@@ -200,7 +200,7 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
 
         IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
             .AddLiquidityAndSwapParams({
-                minBptAmountOut: 0,
+                exactBptAmountOut: 0,
                 exactToken: weth,
                 exactAmount: 1e18,
                 maxAdjustableAmount: MAX_UINT256,
@@ -215,7 +215,7 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
     function testSwapAfterDeadline() public {
         IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
             .AddLiquidityAndSwapParams({
-                minBptAmountOut: 0,
+                exactBptAmountOut: 0,
                 exactToken: weth,
                 exactAmount: 1e18,
                 maxAdjustableAmount: MAX_UINT256,
