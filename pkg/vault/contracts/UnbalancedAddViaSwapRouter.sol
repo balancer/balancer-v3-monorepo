@@ -158,7 +158,7 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
                 pool: hookParams.pool,
                 to: hookParams.sender,
                 maxAmountsIn: maxAmountsIn,
-                minBptAmountOut: hookParams.operationParams.minBptAmountOut,
+                minBptAmountOut: hookParams.operationParams.exactBptAmountOut,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: hookParams.operationParams.addLiquidityUserData
             })
