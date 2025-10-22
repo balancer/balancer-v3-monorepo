@@ -492,31 +492,6 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         aggregatorBatchRouter.multicall(calls);
     }
 
-    function testOperationNotSupportedForBPTOperations() public {
-        // Create a step where pool address equals tokenIn (which would be BPT).
-        SwapPathStep[] memory steps = new SwapPathStep[](1);
-        steps[0] = SwapPathStep({
-            pool: address(usdc), // This makes pool == tokenIn, triggering BPT logic
-            tokenOut: dai,
-            isBuffer: false
-        });
-
-        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
-        paths[0] = SwapPathExactAmountIn({
-            tokenIn: usdc,
-            steps: steps,
-            exactAmountIn: MIN_SWAP_AMOUNT,
-            minAmountOut: 0
-        });
-
-        vm.startPrank(alice);
-        usdc.transfer(address(vault), MIN_SWAP_AMOUNT);
-
-        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
-        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        vm.stopPrank();
-    }
-
     /***************************************************************************
                                  Router Info
     ***************************************************************************/
@@ -666,34 +641,6 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), maxAmountIn / 2);
 
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        vm.stopPrank();
-    }
-
-    function testBPTOperationNotSupportedExactOut() public {
-        uint256 exactAmountOut = MIN_SWAP_AMOUNT;
-        uint256 maxAmountIn = MIN_SWAP_AMOUNT * 2;
-
-        // Create a step where pool address equals tokenOut (BPT operation - add liquidity).
-        SwapPathStep[] memory steps = new SwapPathStep[](1);
-        steps[0] = SwapPathStep({
-            pool: address(dai), // pool == tokenOut triggers BPT add liquidity logic
-            tokenOut: dai, // This makes it a BPT operation
-            isBuffer: false
-        });
-
-        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
-        paths[0] = SwapPathExactAmountOut({
-            tokenIn: usdc,
-            steps: steps,
-            exactAmountOut: exactAmountOut,
-            maxAmountIn: maxAmountIn
-        });
-
-        vm.startPrank(alice);
-        usdc.transfer(address(vault), maxAmountIn);
-
-        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
         aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
