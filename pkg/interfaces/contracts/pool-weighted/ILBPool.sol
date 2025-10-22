@@ -34,6 +34,7 @@ struct LBPParams {
     uint256 startTime;
     uint256 endTime;
     bool blockProjectTokenSwapsIn;
+    uint256 reserveTokenVirtualBalance;
 }
 
 /**

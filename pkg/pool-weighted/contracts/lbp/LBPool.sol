@@ -64,6 +64,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
 
+    uint256 private immutable _reserveTokenVirtualBalance;
+
     uint256 private immutable _lockDurationAfterMigration;
     uint256 private immutable _bptPercentageToMigrate;
     uint256 private immutable _migrationWeightProjectToken;
@@ -98,6 +100,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     /// @notice THe LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
+
+    /// @notice Virtual balance set for reserve token while project token swaps in are allowed.
+    error VirtualBalanceNonZeroWithProjectTokenSwapsIn();
 
     /// @notice LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
     error NotImplemented();
@@ -149,6 +154,12 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
         _projectTokenEndWeight = lbpParams.projectTokenEndWeight;
         _reserveTokenEndWeight = lbpParams.reserveTokenEndWeight;
+
+        if (lbpParams.reserveTokenVirtualBalance > 0 && lbpParams.blockProjectTokenSwapsIn == false) {
+            revert VirtualBalanceNonZeroWithProjectTokenSwapsIn();
+        }
+
+        _reserveTokenVirtualBalance = lbpParams.reserveTokenVirtualBalance;
 
         (_projectTokenIndex, _reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken ? (0, 1) : (1, 0);
 
@@ -320,6 +331,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         if (_blockProjectTokenSwapsIn && request.indexOut != _projectTokenIndex) {
             revert SwapOfProjectTokenIn();
         }
+
+        request.balancesScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalance;
 
         return super.onSwap(request);
     }
