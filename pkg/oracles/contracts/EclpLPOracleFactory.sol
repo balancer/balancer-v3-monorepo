@@ -22,13 +22,14 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
      */
     event EclpLPOracleCreated(IGyroECLPPool indexed pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
 
+    /// @notice Hardcode `shouldUseBlockTimeForOldestFeedUpdate` to false here, as it is not used in this oracle type.
     constructor(
         IVault vault,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 resyncWindow,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, resyncWindow, factoryVersion, oracleVersion) {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, resyncWindow, factoryVersion, false, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

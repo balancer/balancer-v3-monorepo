@@ -27,8 +27,18 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         string memory factoryVersion,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeResyncWindow, factoryVersion, oracleVersion) {
+    )
+        LPOracleFactoryBase(
+            vault,
+            sequencerUptimeFeed,
+            uptimeResyncWindow,
+            factoryVersion,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            oracleVersion
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -43,6 +53,7 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
             feeds,
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
+            _shouldUseBlockTimeForOldestFeedUpdate,
             _oracleVersion
         );
         emit StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);

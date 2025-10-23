@@ -29,6 +29,7 @@ contract EclpLPOracle is LPOracleBase {
     /// @notice One of the token prices is too small.
     error TokenPriceTooSmall();
 
+    /// @notice Hardcode `shouldUseBlockTimeForOldestFeedUpdate` to false here, as it is not used in this oracle type.
     constructor(
         IVault vault_,
         IGyroECLPPool pool_,
@@ -36,7 +37,7 @@ contract EclpLPOracle is LPOracleBase {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         uint256 version_
-    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
+    ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, sequencerUptimeFeed, uptimeResyncWindow, false, version_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
