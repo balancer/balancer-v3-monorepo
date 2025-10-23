@@ -99,7 +99,15 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new StableLPOracleMock(IVault(address(vault)), pool, feeds, uptimeFeed, UPTIME_RESYNC_WINDOW, VERSION);
+        oracle = new StableLPOracleMock(
+            IVault(address(vault)),
+            pool,
+            feeds,
+            uptimeFeed,
+            UPTIME_RESYNC_WINDOW,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            VERSION
+        );
     }
 
     function createAndInitPool() internal returns (IStablePool) {

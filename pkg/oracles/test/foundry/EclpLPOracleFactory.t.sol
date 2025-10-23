@@ -29,6 +29,10 @@ contract EclpLPOracleFactoryTest is GyroEclpPoolDeployer, LPOracleFactoryBaseTes
         _eclpPoolFactory = deployGyroECLPPoolFactory(IVault(address(vault)));
     }
 
+    function supportsBlockTimeFeedUpdate() internal pure override returns (bool) {
+        return false;
+    }
+
     function testCreateEmitsEvent() external {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);

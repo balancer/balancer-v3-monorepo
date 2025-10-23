@@ -24,7 +24,10 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
 
     ILPOracleFactoryBase internal _factory;
+    ILPOracleFactoryBase internal _factoryUseBlockTime;
     FeedMock internal _uptimeFeed;
+
+    bool _shouldUseBlockTimeForOldestFeedUpdate;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -35,10 +38,20 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
         _factory = _createOracleFactory();
 
+        if (supportsBlockTimeFeedUpdate()) {
+            _shouldUseBlockTimeForOldestFeedUpdate = true;
+            _factoryUseBlockTime = _createOracleFactory();
+        }
+
         authorizer.grantRole(
             IAuthentication(address(_factory)).getActionId(ILPOracleFactoryBase.disable.selector),
             admin
         );
+    }
+
+    // Override this for derived test contracts for oracles that don't support shouldUseBlockTimeForOldestFeedUpdate.
+    function supportsBlockTimeFeedUpdate() internal pure virtual returns (bool) {
+        return true;
     }
 
     function testOracleFactoryVersion() public view {
@@ -151,6 +164,20 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
             UPTIME_RESYNC_WINDOW,
             "Wrong uptime resync window"
         );
+    }
+
+    function testBlockTimeUpdateFlag() public view {
+        assertFalse(
+            ISequencerUptimeFeed(address(_factory)).getShouldUseBlockTimeForOldestFeedUpdate(),
+            "BlockTime flag should be false"
+        );
+
+        if (supportsBlockTimeFeedUpdate()) {
+            assertTrue(
+                ISequencerUptimeFeed(address(_factoryUseBlockTime)).getShouldUseBlockTimeForOldestFeedUpdate(),
+                "BlockTime flag should be true"
+            );
+        }
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {

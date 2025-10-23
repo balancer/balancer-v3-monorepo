@@ -97,6 +97,7 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
                         _uptimeFeed,
                         UPTIME_RESYNC_WINDOW,
                         ORACLE_FACTORY_VERSION,
+                        _shouldUseBlockTimeForOldestFeedUpdate,
                         ORACLE_VERSION
                     )
                 )

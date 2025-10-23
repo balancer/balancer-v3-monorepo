@@ -79,6 +79,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
             feeds,
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
+            shouldUseBlockTimeForOldestFeedUpdate,
             VERSION
         );
     }

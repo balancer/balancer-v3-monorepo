@@ -59,6 +59,10 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
         oracle = new DynamicWeightedLPOracleMock(vault, pool, feeds, uptimeFeed, UPTIME_RESYNC_WINDOW, VERSION);
     }
 
+    function supportsBlockTimeFeedUpdate() internal pure override returns (bool) {
+        return false;
+    }
+
     function testGetDynamicWeights() public {
         (WeightedPoolMock pool, uint256[] memory expectedWeights) = _createAndInitPool();
         (LPOracleBase _oracle, ) = deployOracle(pool);
