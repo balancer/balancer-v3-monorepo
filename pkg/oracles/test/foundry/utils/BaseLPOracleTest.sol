@@ -24,6 +24,7 @@ interface ILPOracleBaseMock {
 // Common test contract for LP Oracles, encompassing the sequencer uptime feed and related tests.
 abstract contract BaseLPOracleTest is BaseVaultTest {
     uint256 constant MIN_TOKENS = 2;
+    uint256 constant VAULT_MAX_TOKENS = 8;
     uint256 constant VERSION = 123;
 
     uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
@@ -34,6 +35,8 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     FeedMock uptimeFeed;
 
     IERC20[] sortedTokens;
+
+    bool shouldUseBlockTimeForOldestFeedUpdate;
 
     function setUp() public virtual override {
         for (uint256 i = 0; i < getMaxTokens(); i++) {
@@ -56,6 +59,10 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function createOracle() internal returns (IBasePool) {
         return createOracle(2);
+    }
+
+    function setShouldUseBlockTimeForOldestFeedUpdate(bool shouldUseBlockTimeForOldestFeedUpdate_) public {
+        shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate_;
     }
 
     function testDecimals() public {
@@ -123,26 +130,41 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         }
     }
 
+    // Override this for derived test contracts for oracles that don't support shouldUseBlockTimeForOldestFeedUpdate.
+    function supportsBlockTimeFeedUpdate() internal pure virtual returns (bool) {
+        return true;
+    }
+
     function testGetFeedData__Fuzz(
         uint256 totalTokens,
-        uint256[8] memory answersRaw,
-        uint256[8] memory updateTimestampsRaw
+        uint256[VAULT_MAX_TOKENS] memory answersRaw,
+        uint256[VAULT_MAX_TOKENS] memory updateTimestampsRaw,
+        bool useBlockTimeForOldestFeedUpdate
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
+        useBlockTimeForOldestFeedUpdate = useBlockTimeForOldestFeedUpdate && supportsBlockTimeFeedUpdate();
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
+        uint256 minUpdateTimestamp = useBlockTimeForOldestFeedUpdate ? block.timestamp : MAX_UINT256;
+
         uint256[] memory answers = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
             answers[i] = bound(answersRaw[i], 1, MAX_UINT128);
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
-            if (updateTimestamps[i] < minUpdateTimestamp) {
+            if (useBlockTimeForOldestFeedUpdate == false && updateTimestamps[i] < minUpdateTimestamp) {
                 minUpdateTimestamp = updateTimestamps[i];
             }
         }
 
+        setShouldUseBlockTimeForOldestFeedUpdate(useBlockTimeForOldestFeedUpdate);
+
         createOracle(totalTokens);
+        assertEq(
+            oracle.getShouldUseBlockTimeForOldestFeedUpdate(),
+            useBlockTimeForOldestFeedUpdate,
+            "BlockTime flag mismatch"
+        );
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
