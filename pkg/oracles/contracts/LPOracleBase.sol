@@ -36,6 +36,8 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
     uint256 internal immutable _uptimeResyncWindow;
 
+    bool internal immutable _shouldUseBlockTimeForOldestFeedUpdate;
+
     IVault internal immutable _vault;
     uint256 internal immutable _version;
     uint256 internal immutable _totalTokens;
@@ -65,11 +67,13 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 version_
     ) {
         _version = version_;
         _vault = vault_;
         pool = pool_;
+        _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
 
         // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
@@ -210,14 +214,19 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         prices = new int256[](totalTokens);
         updatedAt = new uint256[](totalTokens);
 
-        minUpdatedAt = type(uint256).max;
+        if (_shouldUseBlockTimeForOldestFeedUpdate) {
+            // solhint-disable-next-line not-rely-on-time
+            minUpdatedAt = block.timestamp;
+        } else {
+            minUpdatedAt = type(uint256).max;
+        }
 
         for (uint256 i = 0; i < totalTokens; i++) {
             (, int256 answer, , uint256 feedUpdatedAt, ) = feeds[i].latestRoundData();
             prices[i] = answer * feedDecimalScalingFactors[i].toInt256();
             updatedAt[i] = feedUpdatedAt;
 
-            if (feedUpdatedAt < minUpdatedAt) {
+            if (_shouldUseBlockTimeForOldestFeedUpdate == false && feedUpdatedAt < minUpdatedAt) {
                 minUpdatedAt = feedUpdatedAt;
             }
         }
@@ -239,13 +248,18 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     }
 
     /// @inheritdoc ISequencerUptimeFeed
-    function getSequencerUptimeFeed() external view returns (AggregatorV3Interface sequencerUptimeFeed) {
+    function getSequencerUptimeFeed() external view returns (AggregatorV3Interface) {
         return _sequencerUptimeFeed;
     }
 
     /// @inheritdoc ISequencerUptimeFeed
-    function getUptimeResyncWindow() external view returns (uint256 uptimeResyncWindow) {
+    function getUptimeResyncWindow() external view returns (uint256) {
         return _uptimeResyncWindow;
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool) {
+        return _shouldUseBlockTimeForOldestFeedUpdate;
     }
 
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {

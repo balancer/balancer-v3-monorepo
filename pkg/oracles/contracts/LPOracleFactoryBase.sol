@@ -25,6 +25,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     // accurately reflect the state. These values are passed to the oracle contracts on creation.
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
     uint256 internal immutable _uptimeResyncWindow;
+    bool internal immutable _shouldUseBlockTimeForOldestFeedUpdate;
 
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
@@ -37,11 +38,13 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         string memory factoryVersion,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 oracleVersion
     ) SingletonAuthentication(vault) Version(factoryVersion) {
         // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
         _uptimeResyncWindow = uptimeResyncWindow;
+        _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
 
         _oracleVersion = oracleVersion;
     }
@@ -93,6 +96,11 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     /// @inheritdoc ISequencerUptimeFeed
     function getUptimeResyncWindow() external view returns (uint256 uptimeResyncWindow) {
         return _uptimeResyncWindow;
+    }
+
+    /// @inheritdoc ISequencerUptimeFeed
+    function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool) {
+        return _shouldUseBlockTimeForOldestFeedUpdate;
     }
 
     /// @inheritdoc ILPOracleFactoryBase
