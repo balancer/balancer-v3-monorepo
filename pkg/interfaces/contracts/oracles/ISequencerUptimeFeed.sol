@@ -45,5 +45,8 @@ interface ISequencerUptimeFeed {
      *
      * @return shouldUseBlockTimeForOldestFeedUpdate True returns currentTime; false computes minUpdatedAt
      */
-    function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool shouldUseBlockTimeForOldestFeedUpdate);
+    function getShouldUseBlockTimeForOldestFeedUpdate()
+        external
+        view
+        returns (bool shouldUseBlockTimeForOldestFeedUpdate);
 }
