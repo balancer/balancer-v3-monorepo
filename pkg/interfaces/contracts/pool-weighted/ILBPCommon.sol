@@ -78,6 +78,15 @@ interface ILBPCommon is IBasePool {
     function getTokenIndices() external view returns (uint256 projectTokenIndex, uint256 reserveTokenIndex);
 
     /**
+     * @notice Indicate whether project tokens can be sold back into the pool.
+     * @dev Note that theoretically, anyone holding project tokens could create a new pool alongside the LBP that did
+     * allow "selling" project tokens. This restriction only applies to the primary LBP.
+     *
+     * @return isProjectTokenSwapInBlocked If true, acquired project tokens cannot be traded for reserve in this pool
+     */
+    function isProjectTokenSwapInBlocked() external view returns (bool isProjectTokenSwapInBlocked);
+
+    /**
      * @notice Returns the trusted router, which is used to initialize and seed the pool.
      * @return trustedRouter Address of the trusted router (i.e., one that reliably reports the sender)
      */
@@ -90,6 +99,12 @@ interface ILBPCommon is IBasePool {
     function getMigrationRouter() external view returns (address migrationRouter);
 
     /**
+     * @notice Retrieve the migration parameters for an LBP.
+     * @return migrationParams The migration parameters (duration, successor Weighted Pool config)
+     */
+    function getMigrationParameters() external view returns (MigrationParams memory migrationParams);
+
+    /**
      * @notice Indicate whether or not swaps are enabled for this pool.
      * @dev For LBPs, swaps are enabled during the token sale, between the start and end times. Note that this does
      * not check whether the pool or Vault is paused, which can only happen through governance action. This can be
@@ -98,19 +113,4 @@ interface ILBPCommon is IBasePool {
      * @return isSwapEnabled True if the sale is in progress
      */
     function isSwapEnabled() external view returns (bool isSwapEnabled);
-
-    /**
-     * @notice Indicate whether project tokens can be sold back into the pool.
-     * @dev Note that theoretically, anyone holding project tokens could create a new pool alongside the LBP that did
-     * allow "selling" project tokens. This restriction only applies to the primary LBP.
-     *
-     * @return isProjectTokenSwapInBlocked If true, acquired project tokens cannot be traded for reserve in this pool
-     */
-    function isProjectTokenSwapInBlocked() external view returns (bool isProjectTokenSwapInBlocked);
-
-    /**
-     * @notice Retrieve the migration parameters for an LBP.
-     * @return migrationParams The migration parameters (duration, successor Weighted Pool config)
-     */
-    function getMigrationParameters() external view returns (MigrationParams memory migrationParams);
 }

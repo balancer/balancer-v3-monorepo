@@ -99,16 +99,6 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /// @inheritdoc ILBPCommon
-    function getTrustedRouter() external view returns (address) {
-        return _trustedRouter;
-    }
-
-    /// @inheritdoc ILBPCommon
-    function getMigrationRouter() external view returns (address) {
-        return _migrationRouter;
-    }
-
-    /// @inheritdoc ILBPCommon
     function getProjectToken() external view returns (IERC20) {
         return _projectToken;
     }
@@ -124,13 +114,13 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /// @inheritdoc ILBPCommon
-    function isSwapEnabled() external view returns (bool) {
-        return _isSwapEnabled();
+    function getTrustedRouter() external view returns (address) {
+        return _trustedRouter;
     }
 
     /// @inheritdoc ILBPCommon
-    function isProjectTokenSwapInBlocked() external view returns (bool) {
-        return _blockProjectTokenSwapsIn;
+    function getMigrationRouter() external view returns (address) {
+        return _migrationRouter;
     }
 
     /// @inheritdoc ILBPCommon
@@ -142,6 +132,16 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
                 migrationWeightProjectToken: _migrationWeightProjectToken,
                 migrationWeightReserveToken: _migrationWeightReserveToken
             });
+    }
+
+    /// @inheritdoc ILBPCommon
+    function isSwapEnabled() external view returns (bool) {
+        return _isSwapEnabled();
+    }
+
+    /// @inheritdoc ILBPCommon
+    function isProjectTokenSwapInBlocked() external view returns (bool) {
+        return _blockProjectTokenSwapsIn;
     }
 
     /*******************************************************************************
