@@ -138,40 +138,24 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     function testGetFeedData__Fuzz(
         uint256 totalTokens,
         uint256[VAULT_MAX_TOKENS] memory answersRaw,
-        uint256[VAULT_MAX_TOKENS] memory updateTimestampsRaw,
-        bool useBlockTimeForOldestFeedUpdate
+        uint256[VAULT_MAX_TOKENS] memory updateTimestampsRaw
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
-        useBlockTimeForOldestFeedUpdate = useBlockTimeForOldestFeedUpdate && supportsBlockTimeFeedUpdate();
 
-        uint256 minUpdateTimestamp = useBlockTimeForOldestFeedUpdate ? block.timestamp : MAX_UINT256;
+        createOracle(totalTokens);
 
         uint256[] memory answers = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
             answers[i] = bound(answersRaw[i], 1, MAX_UINT128);
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
-
-            if (useBlockTimeForOldestFeedUpdate == false && updateTimestamps[i] < minUpdateTimestamp) {
-                minUpdateTimestamp = updateTimestamps[i];
-            }
         }
-
-        setShouldUseBlockTimeForOldestFeedUpdate(useBlockTimeForOldestFeedUpdate);
-
-        createOracle(totalTokens);
-        assertEq(
-            oracle.getShouldUseBlockTimeForOldestFeedUpdate(),
-            useBlockTimeForOldestFeedUpdate,
-            "BlockTime flag mismatch"
-        );
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
-            .getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps) = oracle.getFeedData();
         for (uint256 i = 0; i < totalTokens; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
@@ -181,7 +165,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
             assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
     function testComputeTVL__Fuzz(
@@ -191,16 +174,11 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
         uint256[] memory answers = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
             answers[i] = bound(answersRaw[i], 5e17, 5e18); // 0.5 to 5 for stable assets
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
-
-            if (updateTimestamps[i] < minUpdateTimestamp) {
-                minUpdateTimestamp = updateTimestamps[i];
-            }
         }
 
         // Create a pool with 18-decimal tokens, so that we don't overflow.
@@ -210,8 +188,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
-            .getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps) = oracle.getFeedData();
         for (uint256 i = 0; i < totalTokens; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
@@ -221,7 +198,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
             assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
 
         uint256 tvlWithPrices = oracle.computeTVLGivenPrices(returnedAnswers);
         uint256 tvl = oracle.computeTVL();

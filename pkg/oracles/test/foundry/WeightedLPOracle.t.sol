@@ -50,7 +50,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
     }
 
     // From BaseLPOracleTest
-    function getMaxTokens() public pure override returns (uint256) {
+    function getMaxTokens() public pure virtual override returns (uint256) {
         return MAX_TOKENS;
     }
 

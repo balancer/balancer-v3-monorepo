@@ -197,16 +197,11 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256[NUM_TOKENS] memory answersRaw,
         uint256[NUM_TOKENS] memory updateTimestampsRaw
     ) public {
-        uint256 minUpdateTimestamp = MAX_UINT256;
         uint256[] memory answers = new uint256[](NUM_TOKENS);
         uint256[] memory updateTimestamps = new uint256[](NUM_TOKENS);
         for (uint256 i = 0; i < NUM_TOKENS; i++) {
             answers[i] = bound(answersRaw[i], 1, MAX_UINT128);
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
-
-            if (updateTimestamps[i] < minUpdateTimestamp) {
-                minUpdateTimestamp = updateTimestamps[i];
-            }
         }
 
         IGyroECLPPool pool = createAndInitPool();
@@ -216,8 +211,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 minTimestamp) = oracle
-            .getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps) = oracle.getFeedData();
         for (uint256 i = 0; i < NUM_TOKENS; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
@@ -226,7 +220,6 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             );
             assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
-        assertEq(minTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
     function testComputeTVL__Fuzz(
