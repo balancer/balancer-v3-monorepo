@@ -8,6 +8,10 @@ import { IBasePool } from "../vault/IBasePool.sol";
 
 /**
  * @notice Parameters common to all LBP types.
+ * @dev These parameters are immutable, representing the configuration of a single token sale, running from `startTime`
+ * to `endTime`. Swaps may only occur while the sale is active. If `blockProjectTokenSwapsIn` is true, users may only
+ * purchase project tokens with the reserve currency.
+ *
  * @param name The name of the pool
  * @param symbol The symbol of the pool
  * @param owner Address of the LBP owner (and sole LP)
