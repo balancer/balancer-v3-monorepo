@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -150,7 +151,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
 
     function _createLBPoolWithMigration(
         address poolCreator,
-        uint256 bptLockDuration,
+        uint256 lockDurationAfterMigration,
         uint256 bptPercentageToMigrate,
         uint256 migrationWeightProjectToken,
         uint256 migrationWeightReserveToken
@@ -158,41 +159,53 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
         string memory name = "LBPool";
         string memory symbol = "LBP";
 
-        LBPParams memory lbpParams = LBPParams({
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: name,
+            symbol: symbol,
             owner: bob,
             projectToken: projectToken,
             reserveToken: reserveToken,
-            projectTokenStartWeight: startWeights[projectIdx],
-            reserveTokenStartWeight: startWeights[reserveIdx],
-            projectTokenEndWeight: endWeights[projectIdx],
-            reserveTokenEndWeight: endWeights[reserveIdx],
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
             blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
         });
 
-        // stack-too-deep
+        MigrationParams memory migrationParams = MigrationParams({
+            lockDurationAfterMigration: lockDurationAfterMigration,
+            bptPercentageToMigrate: bptPercentageToMigrate,
+            migrationWeightProjectToken: migrationWeightProjectToken,
+            migrationWeightReserveToken: migrationWeightReserveToken
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx]
+        });
+
+        // Copy to local variable to free up parameter stack slot before operations that create temporaries.
         uint256 salt = _saltCounter++;
         address poolCreator_ = poolCreator;
-        uint256 bptLockDuration_ = bptLockDuration;
-        uint256 bptPercentageToMigrate_ = bptPercentageToMigrate;
-        uint256 migrationWeightProjectToken_ = migrationWeightProjectToken;
-        uint256 migrationWeightReserveToken_ = migrationWeightReserveToken;
 
         newPool = lbPoolFactory.createWithMigration(
-            name,
-            symbol,
+            lbpCommonParams,
+            migrationParams,
             lbpParams,
             swapFee,
             bytes32(salt),
-            poolCreator_,
-            bptLockDuration_,
-            bptPercentageToMigrate_,
-            migrationWeightProjectToken_,
-            migrationWeightReserveToken_
+            poolCreator_
         );
 
-        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
+        poolArgs = abi.encode(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            vault,
+            address(router),
+            address(migrationRouter),
+            poolVersion
+        );
 
         return (newPool, poolArgs);
     }
@@ -207,28 +220,40 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
         uint32 endTime,
         bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
-        string memory name = "LBPool";
-        string memory symbol = "LBP";
-
-        LBPParams memory lbpParams = LBPParams({
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
             owner: bob,
             projectToken: projectToken,
             reserveToken: reserveToken,
-            projectTokenStartWeight: projectTokenStartWeight,
-            reserveTokenStartWeight: reserveTokenStartWeight,
-            projectTokenEndWeight: projectTokenEndWeight,
-            reserveTokenEndWeight: reserveTokenEndWeight,
             startTime: startTime,
             endTime: endTime,
             blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
         });
 
-        // stack-too-deep
-        uint256 salt = _saltCounter++;
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: projectTokenStartWeight,
+            reserveTokenStartWeight: reserveTokenStartWeight,
+            projectTokenEndWeight: projectTokenEndWeight,
+            reserveTokenEndWeight: reserveTokenEndWeight
+        });
+
+        MigrationParams memory migrationParams;
+
+        // Copy to local variable to free up parameter stack slot before operations that create temporaries.
         address poolCreator_ = poolCreator;
+        uint256 salt = _saltCounter++;
 
-        newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(salt), poolCreator_);
+        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_);
 
-        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
+        poolArgs = abi.encode(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            vault,
+            address(router),
+            address(migrationRouter),
+            poolVersion
+        );
     }
 }
