@@ -228,14 +228,19 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         // the user will have a BPT credit. In the prepaid case, we assume BPT tokens are transferred to the
         // Router, and not the Vault.
         if (isFirstStep) {
-            if (_isPrepaid == false && stepExactAmountIn > 0 && sender != address(this)) {
+            if (stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer them to the
                 // Router, which acts as an intermediary. If the sender is the Router, we just skip this step (useful
                 // for queries).
-                //
-                // This saves one permit(1) approval for the BPT to the Router; if we burned tokens directly from
-                // the sender, we would need their approval.
-                _permit2.transferFrom(sender, address(this), stepExactAmountIn.toUint160(), address(stepTokenIn));
+                if (_isPrepaid) {
+                    // Get credit and pull the tokens.
+                    _vault.settle(stepTokenIn, stepExactAmountIn);
+                    _vault.sendTo(stepTokenIn, address(this), stepExactAmountIn);
+                } else {
+                    // This saves one permit(1) approval for the BPT to the Router; if we burned tokens directly from
+                    // the sender, we would need their approval.
+                    _permit2.transferFrom(sender, address(this), stepExactAmountIn.toUint160(), address(stepTokenIn));
+                }
             }
 
             // BPT is burned instantly, so we don't need to send it back later.
@@ -565,14 +570,21 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
         if (isLastStep == false) {
             stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
             _vault.sendTo(IERC20(pool), address(this), stepMaxAmountIn);
-        } else if (_isPrepaid == false && sender != address(this)) {
+        } else if (sender != address(this)) {
             // The last step being executed is the first step in the swap path, meaning that it's the one
             // that defines the inputs of the path.
             //
             // In that case, the sender must have the tokens. Therefore, we can transfer them
             // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
             // step (useful for queries).
-            _permit2.transferFrom(sender, address(this), stepMaxAmountIn.toUint160(), address(stepTokenIn));
+            if (_isPrepaid) {
+                // Get credit and pull the tokens.
+                _vault.settle(stepTokenIn, stepMaxAmountIn);
+                _vault.sendTo(stepTokenIn, address(this), stepMaxAmountIn);
+
+            } else {
+                _permit2.transferFrom(sender, address(this), stepMaxAmountIn.toUint160(), address(stepTokenIn));
+            }
         }
 
         (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, stepExactAmountOut);
