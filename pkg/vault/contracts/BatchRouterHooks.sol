@@ -581,7 +581,6 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
                 // Get credit and pull the tokens.
                 _vault.settle(stepTokenIn, stepMaxAmountIn);
                 _vault.sendTo(stepTokenIn, address(this), stepMaxAmountIn);
-
             } else {
                 _permit2.transferFrom(sender, address(this), stepMaxAmountIn.toUint160(), address(stepTokenIn));
             }
