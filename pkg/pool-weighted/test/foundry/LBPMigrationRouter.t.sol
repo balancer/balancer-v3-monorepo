@@ -224,31 +224,46 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
         (IERC20[] memory lbpTokens, TokenInfo[] memory lbpTokenInfo, , uint256[] memory lbpBalancesBefore) = vault
             .getPoolTokenInfo(pool);
+        vm.stopPrank();
 
         IWeightedPool weightedPool;
         uint256[] memory exactAmountsIn;
         uint256 bptAmountOut;
         {
+            ILBPMigrationRouter.WeightedPoolParams memory weightedPoolParams = ILBPMigrationRouter.WeightedPoolParams({
+                name: POOL_NAME,
+                symbol: POOL_SYMBOL,
+                roleAccounts: PoolRoleAccounts({
+                    pauseManager: makeAddr("pauseManager"),
+                    swapFeeManager: makeAddr("swapFeeManager"),
+                    poolCreator: ZERO_ADDRESS
+                }),
+                swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                poolHooksContract: ZERO_ADDRESS,
+                enableDonation: false,
+                disableUnbalancedLiquidity: false,
+                salt: ZERO_BYTES32
+            });
+
             // Check event vs returned values first.
             uint256 snapshotId = vm.snapshotState();
+            _prankStaticCall();
+            (uint256[] memory expectedExactAmountsIn, uint256 expectedBptAmountOut) = migrationRouter
+                .queryMigrateLiquidity(ILBPool(pool), bob, excessReceiver, weightedPoolParams);
+
+            vm.revertToState(snapshotId);
+            vm.startPrank(bob);
+
             (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
                 ILBPool(pool),
                 excessReceiver,
-                ILBPMigrationRouter.WeightedPoolParams({
-                    name: POOL_NAME,
-                    symbol: POOL_SYMBOL,
-                    roleAccounts: PoolRoleAccounts({
-                        pauseManager: makeAddr("pauseManager"),
-                        swapFeeManager: makeAddr("swapFeeManager"),
-                        poolCreator: ZERO_ADDRESS
-                    }),
-                    swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                    poolHooksContract: ZERO_ADDRESS,
-                    enableDonation: false,
-                    disableUnbalancedLiquidity: false,
-                    salt: ZERO_BYTES32
-                })
+                weightedPoolParams
             );
+
+            for (uint256 i = 0; i < exactAmountsIn.length; ++i) {
+                assertEq(exactAmountsIn[i], expectedExactAmountsIn[i], "ExactAmountsIn mismatch from query");
+            }
+            assertEq(bptAmountOut, expectedBptAmountOut, "Expected BPT amount out mismatch from query");
 
             vm.revertToState(snapshotId);
         }

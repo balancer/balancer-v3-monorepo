@@ -7,8 +7,9 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { ILBPCommon, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -237,7 +238,7 @@ contract LBPoolTest is BaseLBPTest {
     ********************************************************/
 
     function testGetTrustedRouter() public view {
-        assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
+        assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
     function testGetMigrationParams() public view {
@@ -272,14 +273,47 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
         assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New project token weight mismatch");
         assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
+
+        MigrationParams memory migrationParams = ILBPCommon(pool).getMigrationParameters();
+        assertEq(
+            migrationParams.lockDurationAfterMigration,
+            initBptLockDuration,
+            "BPT lock duration mismatch (params)"
+        );
+        assertEq(
+            migrationParams.bptPercentageToMigrate,
+            initBptPercentageToMigrate,
+            "Share to migrate mismatch (params)"
+        );
+        assertEq(
+            migrationParams.migrationWeightProjectToken,
+            initNewWeightProjectToken,
+            "New project token weight mismatch (params)"
+        );
+        assertEq(
+            migrationParams.migrationWeightReserveToken,
+            initNewWeightReserveToken,
+            "New reserve token weight mismatch (params)"
+        );
     }
 
     function testGetProjectToken() public view {
-        assertEq(address(ILBPool(pool).getProjectToken()), address(projectToken), "Wrong project token");
+        assertEq(address(ILBPCommon(pool).getProjectToken()), address(projectToken), "Wrong project token");
     }
 
     function testGetReserveToken() public view {
-        assertEq(address(ILBPool(pool).getReserveToken()), address(reserveToken), "Wrong reserve token");
+        assertEq(address(ILBPCommon(pool).getReserveToken()), address(reserveToken), "Wrong reserve token");
+    }
+
+    function testGetProjectIndices() public view {
+        (uint256 expectedProjectTokenIndex, uint256 expectedReserveTokenIndex) = projectToken < reserveToken
+            ? (0, 1)
+            : (1, 0);
+
+        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = ILBPCommon(pool).getTokenIndices();
+
+        assertEq(projectTokenIndex, expectedProjectTokenIndex, "Wrong project token index");
+        assertEq(reserveTokenIndex, expectedReserveTokenIndex, "Wrong reserve token index");
     }
 
     function testGradualWeightUpdateParams() public {
@@ -842,6 +876,8 @@ contract LBPoolTest is BaseLBPTest {
             40e16 // New weight for reserve token (40%)
         );
         initPool();
+
+        assertEq(ILBPCommon(pool).getMigrationRouter(), address(migrationRouter), "Wrong migration router");
 
         // Warp to after end time, where removing liquidity is allowed.
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
