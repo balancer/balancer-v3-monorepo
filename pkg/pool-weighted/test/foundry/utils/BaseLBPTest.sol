@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -16,11 +16,11 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
-import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
 import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
-import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
 import { WeightedPoolContractsDeployer } from "./WeightedPoolContractsDeployer.sol";
+import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
+import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
+import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
 
 contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;

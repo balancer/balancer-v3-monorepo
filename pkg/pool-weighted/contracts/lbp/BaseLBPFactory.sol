@@ -13,9 +13,9 @@ import {
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /**
- * @notice LBPool Factory.
- * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
- * with parameters specified on deployment.
+ * @notice Base contract for LBP factories.
+ * @dev This is a factory for LBPools, allowing only two tokens and restricting the LBP to a single token sale, with
+ * common parameters specified on deployment. Derived LBP factories may have additional type-specific features.
  */
 abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Version {
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
@@ -29,6 +29,7 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
     // a very short lock time would have a similar effect.
     uint256 internal constant _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
 
+    // The pool version and router addresses are stored in the factory and passed down to the pools on deployment.
     string internal _poolVersion;
 
     address internal immutable _trustedRouter;
@@ -108,6 +109,7 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
         return _migrationRouter;
     }
 
+    // Helper function to create a `TokenConfig` array from the two LBP tokens.
     function _buildTokenConfig(
         IERC20 projectToken,
         IERC20 reserveToken

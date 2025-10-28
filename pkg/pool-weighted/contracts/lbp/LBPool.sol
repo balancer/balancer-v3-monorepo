@@ -90,14 +90,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         emit GradualWeightUpdateScheduled(_startTime, _endTime, startWeights, endWeights);
     }
 
-    /**
-     * @notice Return start time and end time, as well as starting and ending weights as arrays.
-     * @dev The current weights should be retrieved via `getNormalizedWeights()`.
-     * @return startTime The starting timestamp of any ongoing weight change
-     * @return endTime The ending timestamp of any ongoing weight change
-     * @return startWeights The "initial" weights, sorted in token registration order
-     * @return endWeights The "destination" weights, sorted in token registration order
-     */
+    /// @inheritdoc ILBPool
     function getGradualWeightUpdateParams()
         public
         view

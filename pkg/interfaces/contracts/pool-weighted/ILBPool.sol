@@ -24,6 +24,7 @@ struct LBPParams {
 
 /**
  * @notice Parameters passed down from the factory and passed to the pool on deployment.
+ * @dev This struct was factored out initially because of stack-too-deep, but also makes the interface cleaner.
  * @param vault The address of the Balancer Vault
  * @param trustedRouter The address of the trusted router (i.e., one that reliably stores the real sender)
  * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
@@ -104,6 +105,19 @@ struct LBPoolDynamicData {
 
 /// @notice Interface for standard LBPools - base LBP functions, plus immutable/dynamic field getters.
 interface ILBPool is ILBPCommon {
+    /**
+     * @notice Return start time and end time, as well as starting and ending weights as arrays.
+     * @dev The current weights should be retrieved via `getNormalizedWeights()`.
+     * @return startTime The starting timestamp of any ongoing weight change
+     * @return endTime The ending timestamp of any ongoing weight change
+     * @return startWeights The "initial" weights, sorted in token registration order
+     * @return endWeights The "destination" weights, sorted in token registration order
+     */
+    function getGradualWeightUpdateParams()
+        external
+        view
+        returns (uint256 startTime, uint256 endTime, uint256[] memory startWeights, uint256[] memory endWeights);
+
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic LBP parameters
