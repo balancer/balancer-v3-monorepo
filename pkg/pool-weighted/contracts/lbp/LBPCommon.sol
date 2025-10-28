@@ -114,6 +114,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /// @inheritdoc ILBPCommon
+    function isProjectTokenSwapInBlocked() external view returns (bool) {
+        return _blockProjectTokenSwapsIn;
+    }
+
+    /// @inheritdoc ILBPCommon
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
     }
@@ -137,11 +142,6 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     /// @inheritdoc ILBPCommon
     function isSwapEnabled() external view returns (bool) {
         return _isSwapEnabled();
-    }
-
-    /// @inheritdoc ILBPCommon
-    function isProjectTokenSwapInBlocked() external view returns (bool) {
-        return _blockProjectTokenSwapsIn;
     }
 
     /*******************************************************************************
