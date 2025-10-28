@@ -63,7 +63,7 @@ struct LBPoolImmutableData {
     uint256 projectTokenIndex;
     uint256 reserveTokenIndex;
     bool isProjectTokenSwapInBlocked;
-    // Weighted LBPool specific parameters
+    // LBPool-specific parameters (weight transitions)
     uint256[] startWeights;
     uint256[] endWeights;
     // Migration parameters (if migrationRouter == address(0), the pool does not support migration).
@@ -98,7 +98,7 @@ struct LBPoolDynamicData {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool isSwapEnabled;
-    // Weighted LBPool specific parameters
+    // LBPool-specific parameters
     uint256[] normalizedWeights;
 }
 

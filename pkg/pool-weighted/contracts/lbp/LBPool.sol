@@ -59,7 +59,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         FactoryParams memory factoryParams
     )
         LBPCommon(
-            _buildLBPCommonParams(lbpCommonParams, lbpParams),
+            _buildLBPCommonParams(lbpCommonParams, lbpParams), // May adjust startTime as a side effect
             migrationParams,
             factoryParams.trustedRouter,
             factoryParams.migrationRouter
@@ -249,7 +249,8 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             });
     }
 
-    // Build the required struct for initializing the underlying WeightedPool. Called on construction.
+    // Build and validate LBPCommonParams for initializing LBPCommon. Called on construction.
+    // Validates weights and adjusts startTime if needed.
     function _buildLBPCommonParams(
         LBPCommonParams memory lbpCommonParams,
         LBPParams memory lbpParams

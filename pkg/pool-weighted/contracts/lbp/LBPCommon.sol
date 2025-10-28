@@ -61,7 +61,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     /// @notice The pool does not allow adding liquidity except during initialization and before the weight update.
     error AddingLiquidityNotAllowed();
 
-    /// @notice THe LBP configuration prohibits selling the project token back into the pool.
+    /// @notice The LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
 
     /// @notice Only allow adding liquidity (including initialization) before the sale.

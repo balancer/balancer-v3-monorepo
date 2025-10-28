@@ -31,8 +31,12 @@ struct LBPCommonParams {
     uint256 endTime;
     bool blockProjectTokenSwapsIn;
 }
+
 /**
  * @notice Parameters related to migration to a Weighted Pool after the sale is completed.
+ * @dev `bptPercentageToMigrate` is immutable to provide a liquidity guarantee to token buyers. Choose its value
+ * carefully: a lower percentage with a shorter lock may be preferable if sale performance is uncertain.
+ *
  * @param lockDurationAfterMigration The duration for which the BPT will be locked after migration
  * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
  * @param migrationWeightProjectToken The weight of the project token
