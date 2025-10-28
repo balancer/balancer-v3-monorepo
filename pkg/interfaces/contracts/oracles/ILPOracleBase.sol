@@ -31,19 +31,16 @@ interface ILPOracleBase {
 
     /**
      * @notice Gets the latest feed data.
-     * @dev The feeds might have different update frequencies; e.g., one updates hourly, and another daily. For most
-     * applications, the "oldest" (i.e., least up-to-date) timestamp is a common way to represent the overall state,
-     * so it is returned for convenience as `minUpdatedAt`. However, some use cases may require more sophisticated
-     * analysis, so `updatedAt` returns all values.
+     * @dev The feeds might have different update frequencies; e.g., one updates hourly, and another daily.
+     * Some use cases may require sophisticated analysis, so `updatedAt` returns all values.
      *
      * @return prices An array of latest prices from the feeds
      * @return updatedAt An array of timestamps corresponding to the last update of each feed
-     * @return minUpdatedAt The oldest / least recent timestamp (the value returned by `latestRoundData`)
      */
     function getFeedData()
         external
         view
-        returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt);
+        returns (int256[] memory prices, uint256[] memory updatedAt);
 
     /**
      * @notice Gets the list of feeds used by the oracle.

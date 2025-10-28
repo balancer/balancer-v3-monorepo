@@ -62,7 +62,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
     constructor(
-        IVault vault_,
+        IVault vault,
         IBasePool pool_,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
@@ -71,7 +71,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         uint256 version_
     ) {
         _version = version_;
-        _vault = vault_;
+        _vault = vault;
         pool = pool_;
         _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
 
@@ -79,7 +79,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         _sequencerUptimeFeed = sequencerUptimeFeed;
         _uptimeResyncWindow = uptimeResyncWindow;
 
-        IERC20[] memory tokens = vault_.getPoolTokens(address(pool_));
+        IERC20[] memory tokens = vault.getPoolTokens(address(pool_));
         uint totalTokens = tokens.length;
 
         _totalTokens = totalTokens;
@@ -165,28 +165,43 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     /**
      * @notice Get the data from the latest round.
      * @dev Declared in AggregatorV3Interface. Note that `getFeedData` reviews all `updatedAt` timestamps and selects
-     * the earliest one to return as `minUpdatedAt`. That is the value returned by this function as `updatedAt`.
+     * the earliest one to return as `minUpdatedAt`. That is the value returned by this function as `updatedAt`, unless
+     * the `_shouldUseBlockTimeForOldestFeedUpdate` flag is set, in which case it returns the current time.
      *
      * @return roundId [Deprecated] The round ID (always 0)
      * @return answer The answer for this round
      * @return startedAt [Deprecated] Timestamp when the round started (always 0)
-     * @return updatedAt The oldest / least recent timestamp when a constituent feed was updated
+     * @return updatedAt The oldest / least recent timestamp when a constituent feed was updated (or current timestamp)
      * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
      */
-    function latestRoundData() external view returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {
-        (int256[] memory prices, , uint256 _updatedAt) = getFeedData();
+    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
+        (int256[] memory prices, uint256[] memory updatedAt) = getFeedData();
 
         uint256 tvl = _computeTVL(prices);
         uint256 totalSupply = _vault.totalSupply(address(pool));
 
         uint256 lpPrice = tvl.divUp(totalSupply);
+        uint256 minUpdatedAt;
 
-        return (0, lpPrice.toInt256(), 0, _updatedAt, 0);
+        if (_shouldUseBlockTimeForOldestFeedUpdate) {
+            // solhint-disable-next-line not-rely-on-time
+            minUpdatedAt = block.timestamp;
+        } else {
+            minUpdatedAt = type(uint256).max;
+
+            for (uint256 i = 0; i < _totalTokens; i++) {
+                if (_shouldUseBlockTimeForOldestFeedUpdate == false && updatedAt[i] < minUpdatedAt) {
+                    minUpdatedAt = updatedAt[i];
+                }
+            }
+        }
+
+        return (0, lpPrice.toInt256(), 0, minUpdatedAt, 0);
     }
 
     /// @inheritdoc ILPOracleBase
     function computeTVL() public view returns (uint256) {
-        (int256[] memory prices, , ) = getFeedData();
+        (int256[] memory prices, ) = getFeedData();
 
         return _computeTVL(prices);
     }
@@ -200,11 +215,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     }
 
     /// @inheritdoc ILPOracleBase
-    function getFeedData()
-        public
-        view
-        returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt)
-    {
+    function getFeedData() public view returns (int256[] memory prices, uint256[] memory updatedAt) {
         _ensureSequencerUptime();
 
         uint256 totalTokens = _totalTokens;
@@ -214,21 +225,10 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         prices = new int256[](totalTokens);
         updatedAt = new uint256[](totalTokens);
 
-        if (_shouldUseBlockTimeForOldestFeedUpdate) {
-            // solhint-disable-next-line not-rely-on-time
-            minUpdatedAt = block.timestamp;
-        } else {
-            minUpdatedAt = type(uint256).max;
-        }
-
         for (uint256 i = 0; i < totalTokens; i++) {
             (, int256 answer, , uint256 feedUpdatedAt, ) = feeds[i].latestRoundData();
             prices[i] = answer * feedDecimalScalingFactors[i].toInt256();
             updatedAt[i] = feedUpdatedAt;
-
-            if (_shouldUseBlockTimeForOldestFeedUpdate == false && feedUpdatedAt < minUpdatedAt) {
-                minUpdatedAt = feedUpdatedAt;
-            }
         }
     }
 
