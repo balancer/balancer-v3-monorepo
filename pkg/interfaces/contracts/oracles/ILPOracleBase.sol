@@ -37,10 +37,7 @@ interface ILPOracleBase {
      * @return prices An array of latest prices from the feeds
      * @return updatedAt An array of timestamps corresponding to the last update of each feed
      */
-    function getFeedData()
-        external
-        view
-        returns (int256[] memory prices, uint256[] memory updatedAt);
+    function getFeedData() external view returns (int256[] memory prices, uint256[] memory updatedAt);
 
     /**
      * @notice Gets the list of feeds used by the oracle.
