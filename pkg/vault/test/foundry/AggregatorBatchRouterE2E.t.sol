@@ -145,15 +145,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            if (
-                address(pathsExactIn[i].tokenIn) == pathsExactIn[i].steps[0].pool &&
-                pathsExactIn[i].steps[0].isBuffer == false
-            ) {
-                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
-                pathsExactIn[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactIn[i].exactAmountIn);
-            } else {
-                pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
-            }
+            pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
         }
     }
 
@@ -164,12 +156,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            if (address(pathsExactOut[i].tokenIn) == pathsExactOut[i].steps[0].pool) {
-                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
-                pathsExactOut[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactOut[i].maxAmountIn);
-            } else {
-                pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
-            }
+            pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
         }
     }
 }

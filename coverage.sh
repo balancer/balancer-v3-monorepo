@@ -28,6 +28,8 @@ function hardhat_coverage() {
   # generates coverage/lcov.info
   COVERAGE=true yarn hardhat coverage
 
+  export CURRENT_PACKAGE=$(basename "$PWD")
+
   # Foundry uses relative paths but Hardhat uses absolute paths.
   # Convert absolute paths to relative paths for consistency.
   sed -i -e "s/\/.*$CURRENT_PACKAGE.//g" coverage/lcov.info
@@ -38,21 +40,19 @@ function merge() {
   echo 'Merging coverage files...'
 
   if [[ "$1" == 'forge' ]]; then
-    lcov \
-      --rc lcov_branch_coverage=1 \
-      --rc derive_function_end_line=0 \
-      --add-tracefile lcov-forge.info \
-      --output-file lcov-merged.info
+    # For forge-only, just copy the file instead of merging
+    cp lcov-forge.info lcov-merged.info
   elif [[ "$1" == 'hardhat' ]]; then
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
-      --add-tracefile lcov-forge.info \
+      --add-tracefile lcov-hardhat.info \
       --output-file lcov-merged.info
   elif [[ "$1" == 'all' ]]; then
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --rc derive_function_end_line=0 \
+      --ignore-errors format,corrupt \
       --add-tracefile lcov-forge.info \
       --add-tracefile lcov-hardhat.info \
       --output-file lcov-merged.info
@@ -65,7 +65,7 @@ function filter_and_display() {
   if [[ $CURRENT_PACKAGE == "vault" ]]; then
     # Filter out node_modules, test, and mock files
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --ignore-errors unused \
       --rc derive_function_end_line=0 \
       --remove lcov-merged.info \
@@ -74,7 +74,7 @@ function filter_and_display() {
   else
     # Filter out node_modules, test, mock files and vault contracts
     lcov \
-      --rc lcov_branch_coverage=1 \
+      --rc branch_coverage=1 \
       --ignore-errors unused \
       --rc derive_function_end_line=0 \
       --remove lcov-merged.info \
@@ -86,20 +86,27 @@ function filter_and_display() {
 
   # Generate summary
   lcov \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
     --list lcov-filtered.info
 
-  echo 'Display!'
+  echo 'Generating HTML report...'
 
-  # Open more granular breakdown in browser
   rm -rf coverage-genhtml/
   genhtml \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --rc derive_function_end_line=0 \
+    --ignore-errors category \
     --output-directory coverage-genhtml \
     lcov-filtered.info
-  open coverage-genhtml/index.html
+
+  if [[ "$CI" == "true" ]]; then
+    echo 'Coverage HTML generated at coverage-genhtml/index.html'
+  else
+    # Open more granular breakdown in browser
+    echo 'Opening browser...'
+    open coverage-genhtml/index.html
+  fi
 }
 
 # Script
@@ -121,4 +128,10 @@ merge "$1"
 filter_and_display
 
 # Delete temp files
-rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
+if [[ "$CI" == "true" ]]; then
+  # CI: Keep lcov-filtered.info and coverage-genhtml/ for artifacts
+  rm -rf lcov-forge.info lcov-hardhat.info lcov-merged.info lcov-*.info-e coverage/ lcov.info coverage.json
+else
+  # Local: delete all lcov files, keep HTML
+  rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
+fi
