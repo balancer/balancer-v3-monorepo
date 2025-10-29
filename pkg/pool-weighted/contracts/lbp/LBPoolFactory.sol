@@ -15,7 +15,7 @@ import { LBPoolLib } from "../lib/LBPoolLib.sol";
 import { LBPool } from "./LBPool.sol";
 
 /**
- * @notice LBPool Factory.
+ * @notice Factory for Weighted LBPools.
  * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
  * with parameters specified on deployment.
  */
