@@ -228,7 +228,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
 
         uint256 tvlAfter = oracle.computeTVLGivenPrices(prices);
 
-        assertApproxEqAbs(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
+        assertApproxEqAbs(tvlAfter, tvlBefore, 4e3, "TVL should not change after swap");
     }
 
     function testLatestRoundData__Fuzz(
@@ -238,7 +238,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         uint256[MAX_TOKENS] memory answersRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
     ) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);

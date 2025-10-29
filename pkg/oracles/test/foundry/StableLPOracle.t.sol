@@ -183,7 +183,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw
     ) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
         amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         uint256[] memory prices = new uint256[](totalTokens);
@@ -275,7 +275,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         uint256[MAX_TOKENS] memory pricesRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
     ) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
