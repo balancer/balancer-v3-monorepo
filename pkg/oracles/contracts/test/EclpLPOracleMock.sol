@@ -15,7 +15,7 @@ contract EclpLPOracleMock is EclpLPOracle {
         IGyroECLPPool pool_,
         AggregatorV3Interface[] memory feeds,
         uint256 version_
-    ) EclpLPOracle(vault_, pool_, feeds, AggregatorV3Interface(address(0)), 0, version_) {
+    ) EclpLPOracle(vault_, pool_, feeds, AggregatorV3Interface(address(0)), 0, false, version_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
