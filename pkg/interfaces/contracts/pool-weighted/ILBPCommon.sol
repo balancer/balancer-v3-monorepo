@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "../vault/IBasePool.sol";
+import { IVault } from "../vault/IVault.sol";
 
 /**
  * @notice Parameters common to all LBP types.
@@ -47,6 +48,21 @@ struct MigrationParams {
     uint256 bptPercentageToMigrate;
     uint256 migrationWeightProjectToken;
     uint256 migrationWeightReserveToken;
+}
+
+/**
+ * @notice Parameters passed down from the factory and passed to the pool on deployment.
+ * @dev This struct was factored out initially because of stack-too-deep, but also makes the interface cleaner.
+ * @param vault The address of the Balancer Vault
+ * @param trustedRouter The address of the trusted router (i.e., one that reliably stores the real sender)
+ * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
+ * @param poolVersion The pool version deployed by the factory
+ */
+struct FactoryParams {
+    IVault vault;
+    address trustedRouter;
+    address migrationRouter;
+    string poolVersion;
 }
 
 /// @notice Common basic interface for all LBPool types.

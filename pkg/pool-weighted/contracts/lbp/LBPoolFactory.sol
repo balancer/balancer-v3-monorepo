@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { LBPParams, FactoryParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -15,7 +15,7 @@ import { LBPoolLib } from "../lib/LBPoolLib.sol";
 import { LBPool } from "./LBPool.sol";
 
 /**
- * @notice LBPool Factory.
+ * @notice Factory for Weighted LBPools.
  * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
  * with parameters specified on deployment.
  */
