@@ -88,12 +88,6 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
             revert InvalidOwner();
         }
 
-        PoolRoleAccounts memory roleAccounts;
-
-        // This account can change the static swap fee for the pool.
-        roleAccounts.swapFeeManager = lbpCommonParams.owner;
-        roleAccounts.poolCreator = poolCreator;
-
         // Validate weight parameters and temporal constraints prior to deployment.
         // This validation is duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason. We don't need the return value.
@@ -131,6 +125,12 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
             );
         }
 
+        PoolRoleAccounts memory roleAccounts;
+
+        // This account can change the static swap fee for the pool.
+        roleAccounts.swapFeeManager = lbpCommonParams.owner;
+        roleAccounts.poolCreator = poolCreator;
+        
         _registerPoolWithVault(
             pool,
             _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
