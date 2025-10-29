@@ -163,13 +163,14 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
      * forge-config: intense.fuzz.runs = 50
      */
     function testGetWeights__Fuzz(uint256 totalTokens) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
         (LPOracleBase _oracle, ) = deployOracle(pool);
         WeightedLPOracleMock oracle = WeightedLPOracleMock(address(_oracle));
 
         uint256[] memory returnedWeights = oracle.getWeights();
+        assertEq(returnedWeights.length, weights.length, "Weights length mismatch");
 
         for (uint256 i = 0; i < weights.length; i++) {
             assertEq(weights[i], returnedWeights[i], "Weight does not match");
@@ -211,7 +212,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
 
         IWeightedPool pool = createAndInitPool(
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            [50e16, uint256(50e16)].toMemoryArray(), // 50% weight for each token
+            [uint256(50e16), uint256(50e16)].toMemoryArray(), // 50% weight for each token
             tokenConfigs
         );
 
