@@ -36,17 +36,4 @@ interface ISequencerUptimeFeed {
      * @return uptimeResyncWindow The length of the uptime resync window, in seconds
      */
     function getUptimeResyncWindow() external view returns (uint256 uptimeResyncWindow);
-
-    /**
-     * @notice Flag indicating whether `getFeedData` computes and returns the oldest minUpdatedAt.
-     * @dev We always return the full set of oracle feed `updatedAt` times in `getFeedData`, and usually compute the
-     * oldest (= most stale) value from the set and return it as the overall `minUpdatedAt`. If this flag is true, skip
-     * that computation, and simply return `block.timestamp`.
-     *
-     * @return shouldUseBlockTimeForOldestFeedUpdate True returns currentTime; false computes minUpdatedAt
-     */
-    function getShouldUseBlockTimeForOldestFeedUpdate()
-        external
-        view
-        returns (bool shouldUseBlockTimeForOldestFeedUpdate);
 }

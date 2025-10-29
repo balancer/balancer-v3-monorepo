@@ -17,34 +17,31 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Stable Pool oracle was created.
      * @param pool The address of the Stable Pool
+     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
-    event StableLPOracleCreated(IStablePool indexed pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
+    event StableLPOracleCreated(
+        IStablePool indexed pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] feeds,
+        ILPOracleBase oracle
+    );
 
     constructor(
         IVault vault,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         string memory factoryVersion,
-        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 oracleVersion
-    )
-        LPOracleFactoryBase(
-            vault,
-            sequencerUptimeFeed,
-            uptimeResyncWindow,
-            factoryVersion,
-            shouldUseBlockTimeForOldestFeedUpdate,
-            oracleVersion
-        )
-    {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, uptimeResyncWindow, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function _create(
         IVault vault,
         IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         oracle = new StableLPOracle(
@@ -53,9 +50,9 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
             feeds,
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
-            _shouldUseBlockTimeForOldestFeedUpdate,
+            shouldUseBlockTimeForOldestFeedUpdate,
             _oracleVersion
         );
-        emit StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
+        emit StableLPOracleCreated(IStablePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
     }
 }

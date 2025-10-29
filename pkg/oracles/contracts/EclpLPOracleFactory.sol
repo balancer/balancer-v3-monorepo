@@ -17,25 +17,31 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new ECLP Pool oracle was created.
      * @param pool The address of the ECLP Pool
+     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
-    event EclpLPOracleCreated(IGyroECLPPool indexed pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
+    event EclpLPOracleCreated(
+        IGyroECLPPool indexed pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] feeds,
+        ILPOracleBase oracle
+    );
 
-    /// @notice Hardcode `shouldUseBlockTimeForOldestFeedUpdate` to false here, as it is not used in this oracle type.
     constructor(
         IVault vault,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 resyncWindow,
         string memory factoryVersion,
         uint256 oracleVersion
-    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, resyncWindow, factoryVersion, false, oracleVersion) {
+    ) LPOracleFactoryBase(vault, sequencerUptimeFeed, resyncWindow, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function _create(
         IVault vault,
         IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         oracle = new EclpLPOracle(
@@ -44,8 +50,10 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
             feeds,
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
+            shouldUseBlockTimeForOldestFeedUpdate,
             _oracleVersion
         );
-        emit EclpLPOracleCreated(IGyroECLPPool(address(pool)), feeds, oracle);
+
+        emit EclpLPOracleCreated(IGyroECLPPool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
     }
 }
