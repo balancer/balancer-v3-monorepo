@@ -41,18 +41,21 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
+        bool shouldUseBlockTimeForOldestFeedUpdate = true;
+
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, feeds);
+        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         vm.revertToState(snapshot);
 
         vm.expectEmit();
         emit WeightedLPOracleFactory.WeightedLPOracleCreated(
             IWeightedPool(address(pool)),
+            shouldUseBlockTimeForOldestFeedUpdate,
             feeds,
             IWeightedLPOracle(address(oracle))
         );
-        _factory.create(pool, feeds);
+        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {
@@ -105,7 +108,6 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
                         _uptimeFeed,
                         UPTIME_RESYNC_WINDOW,
                         ORACLE_FACTORY_VERSION,
-                        _shouldUseBlockTimeForOldestFeedUpdate,
                         ORACLE_VERSION
                     )
                 )

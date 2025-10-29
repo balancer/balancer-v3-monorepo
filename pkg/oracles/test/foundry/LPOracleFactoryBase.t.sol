@@ -27,8 +27,6 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     ILPOracleFactoryBase internal _factoryUseBlockTime;
     FeedMock internal _uptimeFeed;
 
-    bool _shouldUseBlockTimeForOldestFeedUpdate;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -38,20 +36,10 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
         _factory = _createOracleFactory();
 
-        if (supportsBlockTimeFeedUpdate()) {
-            _shouldUseBlockTimeForOldestFeedUpdate = true;
-            _factoryUseBlockTime = _createOracleFactory();
-        }
-
         authorizer.grantRole(
             IAuthentication(address(_factory)).getActionId(ILPOracleFactoryBase.disable.selector),
             admin
         );
-    }
-
-    // Override this for derived test contracts for oracles that don't support shouldUseBlockTimeForOldestFeedUpdate.
-    function supportsBlockTimeFeedUpdate() internal pure virtual returns (bool) {
-        return true;
     }
 
     function testOracleFactoryVersion() public view {
@@ -66,40 +54,47 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, feeds);
+        bool shouldUseBlockTimeForOldestFeedUpdate = true;
+
+        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), feeds)),
+            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
     }
 
     function testGetNonExistentOracle() external view {
-        assertEq(address(_factory.getOracle(IBasePool(address(0x123)), new AggregatorV3Interface[](0))), address(0));
+        assertEq(
+            address(_factory.getOracle(IBasePool(address(0x123)), false, new AggregatorV3Interface[](0))),
+            address(0)
+        );
     }
 
     function testCreateOracleDifferentFeeds() external {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, feeds);
+        bool shouldUseBlockTimeForOldestFeedUpdate = false;
+
+        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), feeds)),
+            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
 
         AggregatorV3Interface[] memory feeds2 = _createFeeds(pool);
 
-        ILPOracleBase oracle2 = _factory.create(pool, feeds2);
+        ILPOracleBase oracle2 = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds2);
 
         assertEq(
             address(oracle2),
-            address(_factory.getOracle(IBasePool(address(pool)), feeds2)),
+            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds2)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle should be from factory");
@@ -109,11 +104,17 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, feeds);
+        // Set updatedAt flag to true initially.
+        ILPOracleBase oracle = _factory.create(pool, true, feeds);
 
         // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
-        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, feeds, oracle));
-        _factory.create(pool, feeds);
+        vm.expectRevert(
+            abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, true, feeds, oracle)
+        );
+        _factory.create(pool, true, feeds);
+
+        // Can create an otherwise identical oracle with a different flag setting.
+        _factory.create(pool, false, feeds);
     }
 
     function testDisable() public {
@@ -121,7 +122,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         _factory.disable();
 
         vm.expectRevert(ILPOracleFactoryBase.OracleFactoryIsDisabled.selector);
-        _factory.create(IBasePool(address(123)), new AggregatorV3Interface[](0));
+        _factory.create(IBasePool(address(123)), false, new AggregatorV3Interface[](0));
 
         // Revert the second time
         vm.prank(admin);
@@ -138,7 +139,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, feeds);
+        ILPOracleBase oracle = _factory.create(pool, false, feeds);
 
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = LPOracleBase(
             address(oracle)
@@ -164,20 +165,6 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
             UPTIME_RESYNC_WINDOW,
             "Wrong uptime resync window"
         );
-    }
-
-    function testBlockTimeUpdateFlag() public view {
-        assertFalse(
-            ISequencerUptimeFeed(address(_factory)).getShouldUseBlockTimeForOldestFeedUpdate(),
-            "BlockTime flag should be false"
-        );
-
-        if (supportsBlockTimeFeedUpdate()) {
-            assertTrue(
-                ISequencerUptimeFeed(address(_factoryUseBlockTime)).getShouldUseBlockTimeForOldestFeedUpdate(),
-                "BlockTime flag should be true"
-            );
-        }
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {
