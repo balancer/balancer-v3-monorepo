@@ -218,6 +218,9 @@ contract LBPoolTest is BaseLBPTest {
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
+        emit LBPool.WeightedLBPoolCreated(bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+
+        vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
         // Should create the same pool address again.
