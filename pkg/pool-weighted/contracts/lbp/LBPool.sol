@@ -36,6 +36,18 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     uint256 private immutable _reserveTokenEndWeight;
 
     /**
+     * @notice Event emitted when a standard weighted LBPool is deployed.
+     * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
+     * more detail on this specific LBP configuration. The pool also emits a `GradualWeightUpdateScheduled` event with
+     * the starting and ending times and weights.
+     *
+     * @param owner Address of the pool's owner
+     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
+     * @param hasMigration True if the pool will be migrated after the sale
+     */
+    event WeightedLBPoolCreated(address indexed owner, bool blockProjectTokenSwapsIn, bool hasMigration);
+
+    /**
      * @notice Emitted on deployment to record the sale parameters.
      * @param startTime The starting timestamp of the update
      * @param endTime  The ending timestamp of the update
@@ -86,6 +98,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             lbpParams.projectTokenEndWeight,
             lbpParams.reserveTokenEndWeight
         );
+
+        bool hasMigration = migrationParams.bptPercentageToMigrate != 0;
+
+        emit WeightedLBPoolCreated(lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
 
         emit GradualWeightUpdateScheduled(_startTime, _endTime, startWeights, endWeights);
     }
