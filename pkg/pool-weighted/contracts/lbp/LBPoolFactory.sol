@@ -2,13 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { LBPParams, FactoryParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPoolLib } from "../lib/LBPoolLib.sol";
@@ -20,9 +19,6 @@ import { LBPool } from "./LBPool.sol";
  * with parameters specified on deployment.
  */
 contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
-    /// @notice Cannot create a pool with migration without a migration router.
-    error MigrationUnsupported();
-
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -74,6 +70,8 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
+        _validateMigration(migrationParams);
+
         pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, true, poolCreator);
     }
 
@@ -109,40 +107,6 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpParams.projectTokenEndWeight,
             lbpParams.reserveTokenEndWeight
         );
-
-        // If there is no migration, the migration parameters don't need to be validated.
-        if (hasMigration) {
-            // Cannot migrate without an associated router.
-            // The factory guarantees `_trustedRouter` is defined, but allows `_migrationRouter` to be zero.
-            if (_migrationRouter == address(0)) {
-                revert MigrationUnsupported();
-            }
-
-            uint256 totalTokenWeight = migrationParams.migrationWeightProjectToken +
-                migrationParams.migrationWeightReserveToken;
-            if (
-                (totalTokenWeight != FixedPoint.ONE ||
-                    migrationParams.migrationWeightProjectToken == 0 ||
-                    migrationParams.migrationWeightReserveToken < _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT)
-            ) {
-                revert InvalidMigrationWeights();
-            }
-
-            // Must be a valid percentage, and doesn't make sense to be zero if there is a migration.
-            if (
-                migrationParams.bptPercentageToMigrate > FixedPoint.ONE || migrationParams.bptPercentageToMigrate == 0
-            ) {
-                revert InvalidBptPercentageToMigrate();
-            }
-
-            // Cannot go over the maximum duration. There is no minimum duration, but it shouldn't be zero.
-            if (
-                migrationParams.lockDurationAfterMigration > _MAX_BPT_LOCK_DURATION ||
-                migrationParams.lockDurationAfterMigration == 0
-            ) {
-                revert InvalidBptLockDuration();
-            }
-        }
 
         address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
 

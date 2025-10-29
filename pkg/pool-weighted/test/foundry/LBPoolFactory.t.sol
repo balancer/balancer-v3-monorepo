@@ -176,7 +176,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        vm.expectRevert(LBPoolFactory.MigrationUnsupported.selector);
+        vm.expectRevert(BaseLBPFactory.MigrationUnsupported.selector);
         (pool, ) = _createLBPoolWithMigration(
             bob,
             initBptLockDuration,
