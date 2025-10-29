@@ -130,7 +130,7 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         // This account can change the static swap fee for the pool.
         roleAccounts.swapFeeManager = lbpCommonParams.owner;
         roleAccounts.poolCreator = poolCreator;
-        
+
         _registerPoolWithVault(
             pool,
             _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
