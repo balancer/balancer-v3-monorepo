@@ -20,6 +20,9 @@ import { LBPool } from "./LBPool.sol";
  * with parameters specified on deployment.
  */
 contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
+    /// @notice Cannot create a pool with migration without a migration router.
+    error MigrationUnsupported();
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -109,6 +112,12 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         // If there is no migration, the migration parameters don't need to be validated.
         if (hasMigration) {
+            // Cannot migrate without an associated router.
+            // The factory guarantees `_trustedRouter` is defined, but allows `_migrationRouter` to be zero.
+            if (_migrationRouter == address(0)) {
+                revert MigrationUnsupported();
+            }
+
             uint256 totalTokenWeight = migrationParams.migrationWeightProjectToken +
                 migrationParams.migrationWeightReserveToken;
             if (

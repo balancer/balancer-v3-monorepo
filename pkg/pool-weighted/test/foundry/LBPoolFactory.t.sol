@@ -11,6 +11,7 @@ import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool
 import { LBPCommonParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     ILBPool,
     LBPParams,
@@ -148,6 +149,32 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
         assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
         assertEq(vault.getPoolRoleAccounts(pool).poolCreator, bob, "Incorrect pool creator");
+    }
+
+    function testCreatePoolWithMigrationParamsButNoRouter() public {
+        lbPoolFactory = deployLBPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(router),
+            address(0) // no migration router
+        );
+
+        // Set migration parameters
+        uint256 initBptLockDuration = 30 days;
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 60e16; // 60%
+        uint256 initNewWeightReserveToken = 40e16; // 40%
+
+        vm.expectRevert(LBPoolFactory.MigrationUnsupported.selector);
+        (pool, ) = _createLBPoolWithMigration(
+            bob,
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
     }
 
     function testCreatePoolWithInvalidMigrationWeights() public {
