@@ -5,11 +5,13 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
+import { MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /**
@@ -76,6 +78,9 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
     /// @notice The BPT lock duration is greater than the maximum allowed.
     error InvalidBptLockDuration();
 
+    /// @notice Cannot create a pool with migration without a migration router.
+    error MigrationUnsupported();
+
     constructor(
         string memory factoryVersion,
         string memory poolVersion,
@@ -119,5 +124,36 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
         (tokenConfig[0].token, tokenConfig[1].token) = projectToken < reserveToken
             ? (projectToken, reserveToken)
             : (reserveToken, projectToken);
+    }
+
+    function _validateMigration(MigrationParams memory migrationParams) internal view {
+        // Cannot migrate without an associated router.
+        // The factory guarantees `_trustedRouter` is defined, but allows `_migrationRouter` to be zero.
+        if (_migrationRouter == address(0)) {
+            revert MigrationUnsupported();
+        }
+
+        uint256 totalTokenWeight = migrationParams.migrationWeightProjectToken +
+            migrationParams.migrationWeightReserveToken;
+        if (
+            (totalTokenWeight != FixedPoint.ONE ||
+                migrationParams.migrationWeightProjectToken == 0 ||
+                migrationParams.migrationWeightReserveToken < _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT)
+        ) {
+            revert InvalidMigrationWeights();
+        }
+
+        // Must be a valid percentage, and doesn't make sense to be zero if there is a migration.
+        if (migrationParams.bptPercentageToMigrate > FixedPoint.ONE || migrationParams.bptPercentageToMigrate == 0) {
+            revert InvalidBptPercentageToMigrate();
+        }
+
+        // Cannot go over the maximum duration. There is no minimum duration, but it shouldn't be zero.
+        if (
+            migrationParams.lockDurationAfterMigration > _MAX_BPT_LOCK_DURATION ||
+            migrationParams.lockDurationAfterMigration == 0
+        ) {
+            revert InvalidBptLockDuration();
+        }
     }
 }
