@@ -6527,10 +6527,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash@npm:4.17.19":
-  version: 4.17.19
-  resolution: "lodash@npm:4.17.19"
-  checksum: e824d603714975c6be746c42697cc9bccd38bbcbe047b83aa1c4b0cfc389888fd6e58901984ec44047a752a1aeedc6f0eeb314d826f43e4f46869a8347c7778a
+"lodash@npm:4.17.21":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+  checksum: 3ac18e92108d68f88429fcddee609e42cf2b653583d9bac22308815a4cd6b185b89a0ad0d9b0c670c371d9d6b61571a98fee6b36e1db14e52766ca253ed9cba0
   languageName: node
   linkType: hard
 
