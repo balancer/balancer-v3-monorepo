@@ -27,6 +27,9 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     uint256 constant VAULT_MAX_TOKENS = 8;
     uint256 constant VERSION = 123;
 
+    // Uptime sequencer code.
+    uint256 constant SEQUENCER_STATUS_DOWN = 1;
+
     uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
 
     LPOracleBase internal oracle;
@@ -223,7 +226,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         oracle.computeTVLGivenPrices(prices);
     }
 
-    function testZeroPrice() public {
+    function testZeroPrice() public virtual {
         createOracle();
 
         int256[] memory prices = new int256[](2);
@@ -232,7 +235,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         oracle.computeTVLGivenPrices(prices);
     }
 
-    function testNegativePrice() public {
+    function testNegativePrice() public virtual {
         createOracle();
 
         int256[] memory prices = new int256[](2);
@@ -274,7 +277,8 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function testUptimeSequencerDown() public {
         createOracle();
-        uptimeFeed.setLastRoundData(1, 0);
+
+        uptimeFeed.setLastRoundData(SEQUENCER_STATUS_DOWN, 0);
 
         vm.expectRevert(ISequencerUptimeFeed.SequencerDown.selector);
         oracle.latestRoundData();
