@@ -25,7 +25,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     // accurately reflect the state. These values are passed to the oracle contracts on creation.
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
     uint256 internal immutable _uptimeResyncWindow;
-    uint256 internal _oracleVersion;
+    uint256 internal immutable _oracleVersion;
     bool internal _isDisabled;
 
     mapping(bytes32 oracleId => ILPOracleBase oracle) internal _oracles;
