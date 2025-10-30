@@ -577,6 +577,24 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         oracle.computeTVLGivenPrices(prices);
     }
 
+    function testZeroPriceRoundData() public {
+        createOracle();
+
+        vm.expectRevert(EclpLPOracle.TokenPriceTooSmall.selector);
+        oracle.latestRoundData();
+    }
+
+    // This is for coverage.
+    function testPriceRatio() public {
+        createOracle();
+
+        int256[] memory prices = new int256[](2);
+        prices[0] = 2e18;
+        prices[1] = 1e18;
+
+        EclpLPOracleMock(address(oracle)).computeTVL(prices);
+    }
+
     function _computeExpectedTVLBinarySearch(
         GyroECLPPool pool,
         uint256[] memory oraclePricesScaled18
