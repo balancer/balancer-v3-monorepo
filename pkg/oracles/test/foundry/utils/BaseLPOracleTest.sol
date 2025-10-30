@@ -286,4 +286,15 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         vm.expectRevert(ISequencerUptimeFeed.SequencerResyncIncomplete.selector);
         oracle.latestRoundData();
     }
+
+    function testUpdatedAtFlagGetter() public {
+        createOracle();
+
+        assertFalse(oracle.getShouldUseBlockTimeForOldestFeedUpdate(), "Flag should be false");
+
+        setShouldUseBlockTimeForOldestFeedUpdate(true);
+        createOracle();
+
+        assertTrue(oracle.getShouldUseBlockTimeForOldestFeedUpdate(), "Flag should be true");
+    }
 }
