@@ -97,7 +97,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
             address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds2)),
             "Oracle address mismatch"
         );
-        assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle should be from factory");
+        assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle2 should be from factory");
     }
 
     function testCreateOracleRevertsWhenOracleAlreadyExists() external {
