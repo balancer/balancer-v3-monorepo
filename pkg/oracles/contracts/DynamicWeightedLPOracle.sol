@@ -18,18 +18,26 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
  * Liquidity Bootstrapping Pools (LBPs) or other dynamic weight pool implementations.
  */
 contract DynamicWeightedLPOracle is IWeightedLPOracle, WeightedLPOracle {
-    /**
-     * @dev Constructor delegates to parent - weights will be dynamically fetched via _getWeights override.
-     * Hardcode `shouldUseBlockTimeForOldestFeedUpdate` to false here, as it is not used in this oracle type.
-     */
+    /// @dev Constructor delegates to parent - weights will be dynamically fetched via _getWeights override.
     constructor(
         IVault vault_,
         IWeightedPool pool_,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 version_
-    ) WeightedLPOracle(vault_, pool_, feeds, sequencerUptimeFeed, uptimeResyncWindow, false, version_) {
+    )
+        WeightedLPOracle(
+            vault_,
+            pool_,
+            feeds,
+            sequencerUptimeFeed,
+            uptimeResyncWindow,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            version_
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
