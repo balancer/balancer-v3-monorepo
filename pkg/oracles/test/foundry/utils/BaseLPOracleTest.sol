@@ -133,11 +133,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         }
     }
 
-    // Override this for derived test contracts for oracles that don't support shouldUseBlockTimeForOldestFeedUpdate.
-    function supportsBlockTimeFeedUpdate() internal pure virtual returns (bool) {
-        return true;
-    }
-
     function testGetFeedData__Fuzz(
         uint256 totalTokens,
         uint256[VAULT_MAX_TOKENS] memory answersRaw,

@@ -67,10 +67,6 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
         );
     }
 
-    function supportsBlockTimeFeedUpdate() internal pure override returns (bool) {
-        return false;
-    }
-
     // From BaseLPOracleTest
     function getMaxTokens() public pure override returns (uint256) {
         return NUM_TOKENS;
