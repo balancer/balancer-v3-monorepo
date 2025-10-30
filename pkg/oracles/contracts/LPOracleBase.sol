@@ -257,17 +257,6 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         return _uptimeResyncWindow;
     }
 
-    /**
-     * @notice Getter for the `latestRoundData` behavior flag.
-     * @dev If set, `latestRoundData` returns the current time for `updatedAt`, instead of calculating the minimum
-     * update time over all the feeds (i.e., using the update time of the "oldest" / most stale feed).
-     *
-     * @return shouldUseBlockTimeForOldestFeedUpdate The feed update flag setting
-     */
-    function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool) {
-        return _shouldUseBlockTimeForOldestFeedUpdate;
-    }
-
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
         uint256 feedDecimals = feed.decimals();
 
