@@ -8,14 +8,28 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { EclpLPOracle } from "../EclpLPOracle.sol";
+import { FeedMock } from "./FeedMock.sol";
 
 contract EclpLPOracleMock is EclpLPOracle {
     constructor(
         IVault vault_,
         IGyroECLPPool pool_,
         AggregatorV3Interface[] memory feeds,
+        AggregatorV3Interface sequencerUptimeFeed,
+        uint256 uptimeResyncWindow,
+        bool useBlockTimeForOldestFeedUpdate,
         uint256 version_
-    ) EclpLPOracle(vault_, pool_, feeds, AggregatorV3Interface(address(0)), 0, false, version_) {
+    )
+        EclpLPOracle(
+            vault_,
+            pool_,
+            feeds,
+            sequencerUptimeFeed,
+            uptimeResyncWindow,
+            useBlockTimeForOldestFeedUpdate,
+            version_
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
