@@ -231,22 +231,34 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         assertApproxEqAbs(tvlAfter, tvlBefore, 4e3, "TVL should not change after swap");
     }
 
+    struct OracleResults {
+        uint256[] weights;
+        uint256[] answers;
+        uint256[] updateTimestamps;
+    }
+
     function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory weightsRaw,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory answersRaw,
-        uint256[MAX_TOKENS] memory updateTimestampsRaw
+        uint256[MAX_TOKENS] memory updateTimestampsRaw,
+        bool useBlockTimeForOldestFeedUpdate
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
+        // Set in test for oracle deployment.
+        shouldUseBlockTimeForOldestFeedUpdate = useBlockTimeForOldestFeedUpdate;
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
-        uint256[] memory weights = new uint256[](totalTokens);
-        uint256[] memory answers = new uint256[](totalTokens);
-        uint256[] memory updateTimestamps = new uint256[](totalTokens);
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
+        OracleResults memory results = OracleResults({
+            weights: new uint256[](totalTokens),
+            answers: new uint256[](totalTokens),
+            updateTimestamps: new uint256[](totalTokens)
+        });
+
+        uint256 updateTimestamp = useBlockTimeForOldestFeedUpdate ? block.timestamp : MAX_UINT256;
         {
             uint256 restWeight = FixedPoint.ONE;
             for (uint256 i = 0; i < totalTokens; i++) {
@@ -256,28 +268,28 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
                     defaultAccountBalance() / 10,
                     defaultAccountBalance()
                 );
-                answers[i] = bound(answersRaw[i], 1, MAX_UINT128 / 10);
-                updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
+                results.answers[i] = bound(answersRaw[i], 1, MAX_UINT128 / 10);
+                results.updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
-                if (updateTimestamps[i] < minUpdateTimestamp) {
-                    minUpdateTimestamp = updateTimestamps[i];
+                if (useBlockTimeForOldestFeedUpdate == false && results.updateTimestamps[i] < updateTimestamp) {
+                    updateTimestamp = results.updateTimestamps[i];
                 }
 
                 if (i == totalTokens - 1) {
-                    weights[i] = restWeight;
+                    results.weights[i] = restWeight;
                 } else {
                     uint256 maxWeight = restWeight / (totalTokens - i);
-                    weights[i] = bound(weightsRaw[i], MIN_WEIGHT, maxWeight);
-                    restWeight -= weights[i];
+                    results.weights[i] = bound(weightsRaw[i], MIN_WEIGHT, maxWeight);
+                    restWeight -= results.weights[i];
                 }
             }
         }
 
-        IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
+        IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, results.weights);
         (LPOracleBase oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+            FeedMock(address(feeds[i])).setLastRoundData(results.answers[i], results.updateTimestamps[i]);
         }
 
         uint256[] memory lastBalancesLiveScaled18 = vault.getCurrentLiveBalances(address(pool));
@@ -285,8 +297,8 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         uint256 _totalTokens = totalTokens;
         uint256 expectedTVL = FixedPoint.ONE;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            uint256 price = answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
-            expectedTVL = expectedTVL.mulDown(uint256(price).divDown(weights[i]).powDown(weights[i]));
+            uint256 price = results.answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            expectedTVL = expectedTVL.mulDown(uint256(price).divDown(results.weights[i]).powDown(results.weights[i]));
         }
         expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
 
@@ -301,7 +313,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         assertEq(uint256(roundId), 0, "Round ID does not match");
         assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
         assertEq(startedAt, 0, "Started at does not match");
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
+        assertEq(returnedUpdateTimestamp, updateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
     }
 }

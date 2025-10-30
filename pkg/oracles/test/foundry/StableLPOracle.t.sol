@@ -273,7 +273,8 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         uint256 amplificationParameter,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw,
-        uint256[MAX_TOKENS] memory updateTimestampsRaw
+        uint256[MAX_TOKENS] memory updateTimestampsRaw,
+        bool useBlockTimeForOldestFeedUpdate
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
@@ -283,7 +284,10 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
+        // Set in test for oracle deployment.
+        shouldUseBlockTimeForOldestFeedUpdate = useBlockTimeForOldestFeedUpdate;
+
+        uint256 updateTimestamp = useBlockTimeForOldestFeedUpdate ? block.timestamp : MAX_UINT256;
         {
             uint256 priceBase = bound(pricesRaw[0], MIN_PRICE, MAX_PRICE / (PRICE_RATIO_LIMIT / 2));
 
@@ -299,8 +303,8 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
 
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
-                if (updateTimestamps[i] < minUpdateTimestamp) {
-                    minUpdateTimestamp = updateTimestamps[i];
+                if (useBlockTimeForOldestFeedUpdate == false && updateTimestamps[i] < updateTimestamp) {
+                    updateTimestamp = updateTimestamps[i];
                 }
             }
         }
@@ -330,7 +334,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         assertEq(uint256(roundId), 0, "Round ID does not match");
         assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
         assertEq(startedAt, 0, "Started at does not match");
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
+        assertEq(returnedUpdateTimestamp, updateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
     }
 
