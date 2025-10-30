@@ -56,7 +56,15 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new DynamicWeightedLPOracleMock(vault, pool, feeds, uptimeFeed, UPTIME_RESYNC_WINDOW, VERSION);
+        oracle = new DynamicWeightedLPOracleMock(
+            vault,
+            pool,
+            feeds,
+            uptimeFeed,
+            UPTIME_RESYNC_WINDOW,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            VERSION
+        );
     }
 
     function supportsBlockTimeFeedUpdate() internal pure override returns (bool) {
