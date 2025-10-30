@@ -24,7 +24,11 @@ interface ILPOracleBaseMock {
 // Common test contract for LP Oracles, encompassing the sequencer uptime feed and related tests.
 abstract contract BaseLPOracleTest is BaseVaultTest {
     uint256 constant MIN_TOKENS = 2;
+    uint256 constant VAULT_MAX_TOKENS = 8;
     uint256 constant VERSION = 123;
+
+    // Uptime sequencer code.
+    uint256 constant SEQUENCER_STATUS_DOWN = 1;
 
     uint256 constant UPTIME_RESYNC_WINDOW = 1 hours;
 
@@ -34,6 +38,8 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     FeedMock uptimeFeed;
 
     IERC20[] sortedTokens;
+
+    bool shouldUseBlockTimeForOldestFeedUpdate;
 
     function setUp() public virtual override {
         for (uint256 i = 0; i < getMaxTokens(); i++) {
@@ -56,6 +62,10 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function createOracle() internal returns (IBasePool) {
         return createOracle(2);
+    }
+
+    function setShouldUseBlockTimeForOldestFeedUpdate(bool shouldUseBlockTimeForOldestFeedUpdate_) public {
+        shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate_;
     }
 
     function testDecimals() public {
@@ -125,31 +135,25 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function testGetFeedData__Fuzz(
         uint256 totalTokens,
-        uint256[8] memory answersRaw,
-        uint256[8] memory updateTimestampsRaw
+        uint256[VAULT_MAX_TOKENS] memory answersRaw,
+        uint256[VAULT_MAX_TOKENS] memory updateTimestampsRaw
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
+        createOracle(totalTokens);
+
         uint256[] memory answers = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
             answers[i] = bound(answersRaw[i], 1, MAX_UINT128);
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
-
-            if (updateTimestamps[i] < minUpdateTimestamp) {
-                minUpdateTimestamp = updateTimestamps[i];
-            }
         }
-
-        createOracle(totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
-            .getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps) = oracle.getFeedData();
         for (uint256 i = 0; i < totalTokens; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
@@ -159,7 +163,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
             assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
     function testComputeTVL__Fuzz(
@@ -169,16 +172,11 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
 
-        uint256 minUpdateTimestamp = MAX_UINT256;
         uint256[] memory answers = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
             answers[i] = bound(answersRaw[i], 5e17, 5e18); // 0.5 to 5 for stable assets
             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
-
-            if (updateTimestamps[i] < minUpdateTimestamp) {
-                minUpdateTimestamp = updateTimestamps[i];
-            }
         }
 
         // Create a pool with 18-decimal tokens, so that we don't overflow.
@@ -188,8 +186,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
-            .getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps) = oracle.getFeedData();
         for (uint256 i = 0; i < totalTokens; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
@@ -199,7 +196,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
             assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
-        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
 
         uint256 tvlWithPrices = oracle.computeTVLGivenPrices(returnedAnswers);
         uint256 tvl = oracle.computeTVL();
@@ -225,7 +221,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         oracle.computeTVLGivenPrices(prices);
     }
 
-    function testZeroPrice() public {
+    function testZeroPrice() public virtual {
         createOracle();
 
         int256[] memory prices = new int256[](2);
@@ -234,7 +230,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         oracle.computeTVLGivenPrices(prices);
     }
 
-    function testNegativePrice() public {
+    function testNegativePrice() public virtual {
         createOracle();
 
         int256[] memory prices = new int256[](2);
@@ -276,7 +272,8 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function testUptimeSequencerDown() public {
         createOracle();
-        uptimeFeed.setLastRoundData(1, 0);
+
+        uptimeFeed.setLastRoundData(SEQUENCER_STATUS_DOWN, 0);
 
         vm.expectRevert(ISequencerUptimeFeed.SequencerDown.selector);
         oracle.latestRoundData();
@@ -288,5 +285,16 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
         vm.expectRevert(ISequencerUptimeFeed.SequencerResyncIncomplete.selector);
         oracle.latestRoundData();
+    }
+
+    function testUpdatedAtFlagGetter() public {
+        createOracle();
+
+        assertFalse(oracle.getShouldUseBlockTimeForOldestFeedUpdate(), "Flag should be false");
+
+        setShouldUseBlockTimeForOldestFeedUpdate(true);
+        createOracle();
+
+        assertTrue(oracle.getShouldUseBlockTimeForOldestFeedUpdate(), "Flag should be true");
     }
 }
