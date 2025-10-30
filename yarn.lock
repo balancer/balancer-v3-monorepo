@@ -3442,13 +3442,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cipher-base@npm:^1.0.0, cipher-base@npm:^1.0.1, cipher-base@npm:^1.0.3":
-  version: 1.0.4
-  resolution: "cipher-base@npm:1.0.4"
+"cipher-base@npm:1.0.5":
+  version: 1.0.5
+  resolution: "cipher-base@npm:1.0.5"
   dependencies:
-    inherits: "npm:^2.0.1"
-    safe-buffer: "npm:^5.0.1"
-  checksum: 172fced8856f309407e10e2d6dbf0e31a67047267ec1d9ee62f595ab7edfe8e64734434799af09fa1f64f9908f272cdc623a2c2e26de525646c1beee6c263ab9
+    inherits: "npm:^2.0.4"
+    safe-buffer: "npm:^5.2.1"
+  checksum: 784942e7039ede9ab2ee7da38f8cf4beed1d16cf25b5dc0b06ffa2b0a49bc08d59433661e61c172351fd2b534327a9788d26777e3f5855239dce34b2e07750a7
   languageName: node
   linkType: hard
 
@@ -6527,10 +6527,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash@npm:4.17.21, lodash@npm:^4.17.11, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.16, lodash@npm:^4.17.19, lodash@npm:^4.17.21":
-  version: 4.17.21
-  resolution: "lodash@npm:4.17.21"
-  checksum: 3ac18e92108d68f88429fcddee609e42cf2b653583d9bac22308815a4cd6b185b89a0ad0d9b0c670c371d9d6b61571a98fee6b36e1db14e52766ca253ed9cba0
+"lodash@npm:4.17.19":
+  version: 4.17.19
+  resolution: "lodash@npm:4.17.19"
+  checksum: e824d603714975c6be746c42697cc9bccd38bbcbe047b83aa1c4b0cfc389888fd6e58901984ec44047a752a1aeedc6f0eeb314d826f43e4f46869a8347c7778a
   languageName: node
   linkType: hard
 
