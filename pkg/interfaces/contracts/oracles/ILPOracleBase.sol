@@ -56,4 +56,16 @@ interface ILPOracleBase {
      * @return tokens An array of token addresses, sorted in token registration order
      */
     function getPoolTokens() external view returns (IERC20[] memory tokens);
+
+    /**
+     * @notice Getter for the `latestRoundData` behavior flag.
+     * @dev If set, `latestRoundData` returns the current time for `updatedAt`, instead of calculating the minimum
+     * update time over all the feeds (i.e., using the update time of the "oldest" / most stale feed).
+     *
+     * @return shouldUseBlockTimeForOldestFeedUpdate The feed update flag setting
+     */
+    function getShouldUseBlockTimeForOldestFeedUpdate()
+        external
+        view
+        returns (bool shouldUseBlockTimeForOldestFeedUpdate);
 }

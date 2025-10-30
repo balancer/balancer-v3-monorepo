@@ -257,6 +257,11 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         return _uptimeResyncWindow;
     }
 
+    /// @inheritdoc ILPOracleBase
+    function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool) {
+        return _shouldUseBlockTimeForOldestFeedUpdate;
+    }
+
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
         uint256 feedDecimals = feed.decimals();
 
