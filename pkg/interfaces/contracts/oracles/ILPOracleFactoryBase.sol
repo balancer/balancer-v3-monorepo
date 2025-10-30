@@ -15,10 +15,16 @@ interface ILPOracleFactoryBase {
     /**
      * @notice Oracle already exists for the given pool.
      * @param pool The pool that already has an oracle
+     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The oracle that already exists for the pool
      */
-    error OracleAlreadyExists(IBasePool pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
+    error OracleAlreadyExists(
+        IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] feeds,
+        ILPOracleBase oracle
+    );
 
     /// @notice Oracle factory is disabled.
     error OracleFactoryIsDisabled();
@@ -40,19 +46,26 @@ interface ILPOracleFactoryBase {
      * are recoverable; just call create again with the correct values.
      *
      * @param pool The address of the pool
+     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
      * @param feeds The array of price feeds for the tokens in the pool
      * @return oracle The address of the newly created oracle
      */
-    function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle);
+    function create(
+        IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] memory feeds
+    ) external returns (ILPOracleBase oracle);
 
     /**
      * @notice Gets the oracle for the given pool.
      * @param pool The address of the pool
+     * @param shouldUseBlockTimeForOldestFeedUpdate Choose the oracle with this setting for `updatedAt` calculation.
      * @param feeds The array of price feeds for the tokens in the pool
      * @return oracle The address of the oracle for the pool
      */
     function getOracle(
         IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) external view returns (ILPOracleBase oracle);
 

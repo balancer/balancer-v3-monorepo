@@ -19,7 +19,7 @@ import { WeightedLPOracleTest } from "./WeightedLPOracle.t.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
-    uint256 constant TOKENS_NUM = 2;
+    uint256 constant NUM_TOKENS = 2;
 
     FeedMock sequencerUptimeFeed;
     uint256 uptimeResyncWindow = 1 hours;
@@ -33,8 +33,8 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
     }
 
     function _createAndInitPool() private returns (WeightedPoolMock pool, uint256[] memory weights) {
-        IERC20[] memory sortedTokens = new IERC20[](TOKENS_NUM);
-        for (uint256 i = 0; i < TOKENS_NUM; i++) {
+        IERC20[] memory sortedTokens = new IERC20[](NUM_TOKENS);
+        for (uint256 i = 0; i < NUM_TOKENS; i++) {
             sortedTokens[i] = tokens[i];
         }
         sortedTokens = InputHelpers.sortTokens(sortedTokens);
@@ -56,7 +56,20 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new DynamicWeightedLPOracleMock(vault, pool, feeds, uptimeFeed, UPTIME_RESYNC_WINDOW, VERSION);
+        oracle = new DynamicWeightedLPOracleMock(
+            vault,
+            pool,
+            feeds,
+            uptimeFeed,
+            UPTIME_RESYNC_WINDOW,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            VERSION
+        );
+    }
+
+    // From BaseLPOracleTest
+    function getMaxTokens() public pure override returns (uint256) {
+        return NUM_TOKENS;
     }
 
     function testGetDynamicWeights() public {
@@ -101,14 +114,14 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
     }
 
     function _createWeights(uint256 weight0) private pure returns (uint256[] memory weights) {
-        weights = new uint256[](TOKENS_NUM);
+        weights = new uint256[](NUM_TOKENS);
         weights[0] = weight0;
         weights[1] = FixedPoint.ONE - weight0;
     }
 
     function _createFeeds() private returns (AggregatorV3Interface[] memory feeds) {
-        feeds = new AggregatorV3Interface[](TOKENS_NUM);
-        for (uint256 i = 0; i < TOKENS_NUM; i++) {
+        feeds = new AggregatorV3Interface[](NUM_TOKENS);
+        for (uint256 i = 0; i < NUM_TOKENS; i++) {
             FeedMock feed = new FeedMock(18);
             feed.setLastRoundData(1e18, block.timestamp); // $1 price for each token
             feeds[i] = feed;
@@ -120,7 +133,7 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
         WeightedPool.NewPoolParams memory poolParams = WeightedPool.NewPoolParams({
             name: "Test",
             symbol: "TST",
-            numTokens: TOKENS_NUM,
+            numTokens: NUM_TOKENS,
             normalizedWeights: poolWeights,
             version: ""
         });

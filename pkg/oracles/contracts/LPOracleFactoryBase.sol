@@ -25,8 +25,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     // accurately reflect the state. These values are passed to the oracle contracts on creation.
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
     uint256 internal immutable _uptimeResyncWindow;
-
-    uint256 internal _oracleVersion;
+    uint256 internal immutable _oracleVersion;
     bool internal _isDisabled;
 
     mapping(bytes32 oracleId => ILPOracleBase oracle) internal _oracles;
@@ -52,13 +51,17 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     }
 
     /// @inheritdoc ILPOracleFactoryBase
-    function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle) {
+    function create(
+        IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] memory feeds
+    ) external returns (ILPOracleBase oracle) {
         _ensureEnabled();
 
-        bytes32 oracleId = _computeOracleId(pool, feeds);
+        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         if (address(_oracles[oracleId]) != address(0)) {
-            revert OracleAlreadyExists(pool, feeds, _oracles[oracleId]);
+            revert OracleAlreadyExists(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds, _oracles[oracleId]);
         }
 
         IVault vault = getVault();
@@ -66,7 +69,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
 
         InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
 
-        oracle = _create(vault, pool, feeds);
+        oracle = _create(vault, pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         _oracles[oracleId] = oracle;
         _isOracleFromFactory[oracle] = true;
     }
@@ -74,9 +77,10 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     /// @inheritdoc ILPOracleFactoryBase
     function getOracle(
         IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) external view returns (ILPOracleBase oracle) {
-        bytes32 oracleId = _computeOracleId(pool, feeds);
+        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         oracle = ILPOracleBase(address(_oracles[oracleId]));
     }
 
@@ -103,9 +107,13 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
         emit OracleFactoryDisabled();
     }
 
-    function _computeOracleId(IBasePool pool, AggregatorV3Interface[] memory feeds) internal pure returns (bytes32) {
+    function _computeOracleId(
+        IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
+        AggregatorV3Interface[] memory feeds
+    ) internal pure returns (bytes32) {
         address[] memory feedAddresses = _asAddress(feeds);
-        return keccak256(abi.encode(pool, feedAddresses));
+        return keccak256(abi.encode(pool, shouldUseBlockTimeForOldestFeedUpdate, feedAddresses));
     }
 
     function _ensureEnabled() internal view {
@@ -125,6 +133,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     function _create(
         IVault vault,
         IBasePool pool,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) internal virtual returns (ILPOracleBase oracle);
 }
