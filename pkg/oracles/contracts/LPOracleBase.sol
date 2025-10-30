@@ -190,7 +190,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
             minUpdatedAt = type(uint256).max;
 
             for (uint256 i = 0; i < _totalTokens; i++) {
-                if (_shouldUseBlockTimeForOldestFeedUpdate == false && updatedAt[i] < minUpdatedAt) {
+                if (updatedAt[i] < minUpdatedAt) {
                     minUpdatedAt = updatedAt[i];
                 }
             }
