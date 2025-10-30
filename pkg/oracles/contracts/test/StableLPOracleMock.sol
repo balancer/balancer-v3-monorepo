@@ -18,8 +18,19 @@ contract StableLPOracleMock is StableLPOracle {
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
+        bool shouldUseBlockTimeForOldestFeedUpdate,
         uint256 version_
-    ) StableLPOracle(vault_, pool_, feeds, sequencerUptimeFeed, uptimeResyncWindow, version_) {
+    )
+        StableLPOracle(
+            vault_,
+            pool_,
+            feeds,
+            sequencerUptimeFeed,
+            uptimeResyncWindow,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            version_
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
