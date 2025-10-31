@@ -7,11 +7,10 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-import { LBPCommonParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import { LBPParams, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { LBPParams, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -345,6 +344,13 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             reserveTokenEndWeight: endWeights[reserveIdx]
         });
 
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
         // Copy to local variable to free up parameter stack slot before operations that create temporaries.
         uint256 salt = _saltCounter++;
         address poolCreator_ = poolCreator;
@@ -358,15 +364,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             poolCreator_
         );
 
-        poolArgs = abi.encode(
-            lbpCommonParams,
-            migrationParams,
-            lbpParams,
-            vault,
-            address(router),
-            address(migrationRouter),
-            poolVersion
-        );
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams);
 
         return (newPool, poolArgs);
     }
