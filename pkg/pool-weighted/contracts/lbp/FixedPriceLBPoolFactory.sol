@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { FixedPriceLBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
@@ -37,27 +36,28 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @notice Deploys a new `LBPool`.
      * @dev This method does not support native ETH management; WETH needs to be used instead.
      * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
-     * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
+     * @param projectTokenRate The price of the project token in terms of the reserve
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      */
     function create(
         LBPCommonParams memory lbpCommonParams,
-        FixedPriceLBPParams memory lbpParams,
+        uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, false, poolCreator);
+        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, false, poolCreator);
     }
 
     /**
      * @notice Deploys a new `LBPool` with migration.
      * @dev This method does not support native ETH management; WETH needs to be used instead.
      * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
+     * @param projectTokenRate The price of the project token in terms of the reserve
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
@@ -65,20 +65,20 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     function createWithMigration(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
-        FixedPriceLBPParams memory lbpParams,
+        uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
         _validateMigration(migrationParams);
 
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, true, poolCreator);
+        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, true, poolCreator);
     }
 
     function _createPool(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
-        FixedPriceLBPParams memory lbpParams,
+        uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
         bool hasMigration,
@@ -97,7 +97,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             poolVersion: _poolVersion
         });
 
-        pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
+        pool = _create(abi.encode(lbpCommonParams, migrationParams, factoryParams, projectTokenRate), salt);
 
         emit LBPoolCreated(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
 

@@ -102,8 +102,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
-        FixedPriceLBPParams memory lbpParams,
-        FactoryParams memory factoryParams
+        FactoryParams memory factoryParams,
+        uint256 projectTokenRate
     )
         // `buildLBPCommonParams` may adjust startTime as a side effect.
         LBPCommon(
@@ -117,18 +117,18 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         Version(factoryParams.poolVersion)
     {
         // Validate the rate is within acceptable bounds based on historical LBP data.
-        if (lbpParams.projectTokenRate < _MIN_RATE) {
-            revert ProjectTokenRateTooLow(lbpParams.projectTokenRate, _MIN_RATE);
+        if (projectTokenRate < _MIN_RATE) {
+            revert ProjectTokenRateTooLow(projectTokenRate, _MIN_RATE);
         }
-        if (lbpParams.projectTokenRate > _MAX_RATE) {
-            revert ProjectTokenRateTooHigh(lbpParams.projectTokenRate, _MAX_RATE);
+        if (projectTokenRate > _MAX_RATE) {
+            revert ProjectTokenRateTooHigh(projectTokenRate, _MAX_RATE);
         }
 
         bool hasMigration = migrationParams.bptPercentageToMigrate != 0;
 
         emit FixedPriceLBPoolCreated(
             lbpCommonParams.owner,
-            lbpParams.projectTokenRate,
+            projectTokenRate,
             lbpCommonParams.blockProjectTokenSwapsIn,
             hasMigration
         );

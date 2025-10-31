@@ -7,31 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ILBPCommon } from "./ILBPCommon.sol";
 
 /**
- * @notice Structure containing Fixed-Price LBP-specific parameters.
- * @dev These parameters are immutable, representing the configuration of a single token sale, running from `startTime`
- * to `endTime`. Swaps may only occur while the sale is active. If `blockProjectTokenSwapsIn` is true, users may only
- * purchase project tokens with the reserve currency.
- *
- * @param owner The account with permission to change the static swap fee percentage
- * @param projectToken The token being sold
- * @param reserveToken The token used to buy the project token (e.g., USDC or WETH)
- * @param startTime The timestamp at the beginning of the sale - initialization/funding must occur before this time
- * @param endTime the timestamp at the end of the sale - withdrawal of proceeds becomes possible after this time
- * @param blockProjectTokenSwapsIn If set, the pool only supports one-way "token distribution"
- */
-struct FixedPriceLBPParams {
-    // Common LBP parameters
-    address owner;
-    IERC20 projectToken;
-    IERC20 reserveToken;
-    uint256 startTime;
-    uint256 endTime;
-    bool blockProjectTokenSwapsIn;
-    // Fixed price LBPool specific parameters
-    uint256 projectTokenRate;
-}
-
-/**
  * @notice Liquidity Bootstrapping Pool data that cannot change after deployment.
  * @param tokens Pool tokens, sorted in token registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
