@@ -10,14 +10,14 @@ import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/
 
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
-contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
+contract PrepaidCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
     function initQueryClrRouter() internal view override returns (ICompositeLiquidityRouter) {
-        return ICompositeLiquidityRouter(address(aggregatorCompositeLiquidityRouter));
+        return ICompositeLiquidityRouter(address(prepaidCompositeLiquidityRouter));
     }
 
     function testCompositeLiquidityRouterVersion() public view override {
         assertEq(
-            aggregatorCompositeLiquidityRouter.version(),
+            prepaidCompositeLiquidityRouter.version(),
             "Mock CompositeLiquidityRouter v1",
             "CL BatchRouter version mismatch"
         );
@@ -42,7 +42,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{ value: ethValue }(
+            prepaidCompositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{ value: ethValue }(
                 pool,
                 wrapUnderlying,
                 exactAmountsIn,
@@ -69,7 +69,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{ value: ethValue }(
+            prepaidCompositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{ value: ethValue }(
                 pool,
                 wrapUnderlying,
                 maxAmountsIn,
@@ -88,14 +88,14 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256[] memory) {
-        IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(prepaidCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            aggregatorCompositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
+            prepaidCompositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
                 pool,
                 unwrapWrapped,
                 exactBptAmountIn,

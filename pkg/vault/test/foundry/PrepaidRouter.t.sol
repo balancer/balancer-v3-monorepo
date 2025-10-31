@@ -31,7 +31,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { SimpleEIP7702Contract } from "./utils/SimpleEIP7702Contract.sol";
 
-contract AggregatorRouterTest is BaseVaultTest {
+contract PrepaidRouterTest is BaseVaultTest {
     using Address for address payable;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
@@ -39,7 +39,7 @@ contract AggregatorRouterTest is BaseVaultTest {
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
     string constant version = "Mock Router v1";
 
-    RouterMock internal aggregatorRouter;
+    RouterMock internal prepaidRouter;
     SimpleEIP7702Contract internal delegatedContractCode;
 
     // Track the indices for the standard weth/usdc pool.
@@ -50,7 +50,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorRouter = deployRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
+        prepaidRouter = deployRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
 
         delegatedContractCode = new SimpleEIP7702Contract();
     }
@@ -123,7 +123,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             tokens[tokenInIdx].transfer(address(vault), amountIn);
         }
 
-        uint256 amountOut = aggregatorRouter.swapSingleTokenExactIn{ value: isEthTokenIn ? amountIn : 0 }(
+        uint256 amountOut = prepaidRouter.swapSingleTokenExactIn{ value: isEthTokenIn ? amountIn : 0 }(
             pool,
             tokens[tokenInIdx],
             tokens[tokenOutIdx],
@@ -192,7 +192,7 @@ contract AggregatorRouterTest is BaseVaultTest {
     function testQuerySwapExactIn() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorRouter.querySwapSingleTokenExactIn(pool, usdc, weth, MIN_SWAP_AMOUNT, address(this), bytes(""));
+        prepaidRouter.querySwapSingleTokenExactIn(pool, usdc, weth, MIN_SWAP_AMOUNT, address(this), bytes(""));
     }
 
     function testSwapExactInMinAmountOut() public {
@@ -200,7 +200,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT, DEFAULT_AMOUNT + 1));
-        aggregatorRouter.swapSingleTokenExactIn(
+        prepaidRouter.swapSingleTokenExactIn(
             pool,
             usdc,
             weth,
@@ -217,7 +217,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorRouter.swapSingleTokenExactIn(
+        prepaidRouter.swapSingleTokenExactIn(
             pool,
             usdc,
             weth,
@@ -242,7 +242,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // The operation is reverted because we’re trying to take more tokens out of the pool than it has in its balance.
         vm.expectRevert();
-        aggregatorRouter.swapSingleTokenExactIn(
+        prepaidRouter.swapSingleTokenExactIn(
             pool,
             weth,
             usdc,
@@ -265,7 +265,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         weth.transfer(address(vault), partialTransfer);
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.swapSingleTokenExactIn(pool, weth, usdc, exactAmountIn, 0, MAX_UINT256, false, bytes(""));
+        prepaidRouter.swapSingleTokenExactIn(pool, weth, usdc, exactAmountIn, 0, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -275,7 +275,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         // First query the swap.
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
-        uint256 queryAmountOut = aggregatorRouter.querySwapSingleTokenExactIn(
+        uint256 queryAmountOut = prepaidRouter.querySwapSingleTokenExactIn(
             pool,
             weth,
             usdc,
@@ -289,7 +289,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         weth.transfer(address(vault), swapAmountExactIn);
-        uint256 actualAmountOut = aggregatorRouter.swapSingleTokenExactIn(
+        uint256 actualAmountOut = prepaidRouter.swapSingleTokenExactIn(
             pool,
             weth,
             usdc,
@@ -349,7 +349,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             tokens[tokenInIdx].transfer(address(vault), maxAmountIn);
         }
 
-        uint256 amountIn = aggregatorRouter.swapSingleTokenExactOut{
+        uint256 amountIn = prepaidRouter.swapSingleTokenExactOut{
             value: wethIsEth && tokenInIdx == wethIdx ? maxAmountIn : 0
         }(pool, tokens[tokenInIdx], tokens[tokenOutIdx], amountOut, maxAmountIn, MAX_UINT256, wethIsEth, bytes(""));
         vm.stopPrank();
@@ -411,13 +411,13 @@ contract AggregatorRouterTest is BaseVaultTest {
     function testQuerySwapExactOut() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorRouter.querySwapSingleTokenExactOut(pool, weth, usdc, MAX_UINT256, address(this), bytes(""));
+        prepaidRouter.querySwapSingleTokenExactOut(pool, weth, usdc, MAX_UINT256, address(this), bytes(""));
     }
 
     function testSwapExactOutWithoutPayment() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.swapSingleTokenExactOut(
+        prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -434,7 +434,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         weth.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT + 1, DEFAULT_AMOUNT));
-        aggregatorRouter.swapSingleTokenExactOut(
+        prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -451,7 +451,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         weth.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorRouter.swapSingleTokenExactOut(
+        prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -474,7 +474,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         weth.transfer(address(vault), insufficientAmount);
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.swapSingleTokenExactOut(
+        prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -498,7 +498,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         weth.transfer(address(vault), partialTransfer);
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.swapSingleTokenExactOut(
+        prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -518,7 +518,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         // First query the swap.
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
-        uint256 queryAmountIn = aggregatorRouter.querySwapSingleTokenExactOut(
+        uint256 queryAmountIn = prepaidRouter.querySwapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -532,7 +532,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         weth.transfer(address(vault), maxAmountIn);
-        uint256 actualAmountIn = aggregatorRouter.swapSingleTokenExactOut(
+        uint256 actualAmountIn = prepaidRouter.swapSingleTokenExactOut(
             pool,
             weth,
             usdc,
@@ -576,7 +576,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             weth.transfer(address(vault), maxAmountsIn[wethIdx]);
         }
 
-        uint256[] memory amountsIn = aggregatorRouter.addLiquidityProportional{
+        uint256[] memory amountsIn = prepaidRouter.addLiquidityProportional{
             value: wethIsEth ? maxAmountsIn[wethIdx] : 0
         }(pool, maxAmountsIn, exactBptAmountOut, wethIsEth, bytes(""));
         vm.stopPrank();
@@ -613,7 +613,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // WETH is checked first due to token sorting, so it will be the one that fails.
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.addLiquidityProportional(pool, maxAmountsIn, exactBptAmountOut, false, bytes(""));
+        prepaidRouter.addLiquidityProportional(pool, maxAmountsIn, exactBptAmountOut, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -638,7 +638,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             weth.transfer(address(vault), exactAmountsIn[wethIdx]);
         }
 
-        uint256 bptAmountOut = aggregatorRouter.addLiquidityUnbalanced{
+        uint256 bptAmountOut = prepaidRouter.addLiquidityUnbalanced{
             value: wethIsEth ? exactAmountsIn[wethIdx] : 0
         }(pool, exactAmountsIn, 0, wethIsEth, bytes(""));
         vm.stopPrank();
@@ -664,7 +664,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // WETH is checked first due to token sorting, so it will be the one that fails.
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
-        aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
+        prepaidRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -692,7 +692,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             value: 0
         });
         calls[2] = SimpleEIP7702Contract.Call({
-            to: address(aggregatorRouter),
+            to: address(prepaidRouter),
             data: abi.encodeCall(
                 IRouter.addLiquidityProportional,
                 (pool, maxAmountsIn, exactBptAmountOut, false, bytes(""))
@@ -739,7 +739,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             weth.transfer(address(vault), maxAmountIn);
         }
 
-        uint256 amountIn = aggregatorRouter.addLiquiditySingleTokenExactOut{ value: wethIsEth ? maxAmountIn : 0 }(
+        uint256 amountIn = prepaidRouter.addLiquiditySingleTokenExactOut{ value: wethIsEth ? maxAmountIn : 0 }(
             pool,
             weth,
             maxAmountIn,
@@ -777,7 +777,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             weth.transfer(address(vault), amountsIn[wethIdx]);
         }
 
-        aggregatorRouter.donate{ value: wethIsEth ? amountsIn[wethIdx] : 0 }(pool, amountsIn, wethIsEth, bytes(""));
+        prepaidRouter.donate{ value: wethIsEth ? amountsIn[wethIdx] : 0 }(pool, amountsIn, wethIsEth, bytes(""));
         vm.stopPrank();
 
         int256[] memory vaultBalancesDiff = new int256[](2);
@@ -809,7 +809,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             weth.transfer(address(vault), maxAmountsIn[wethIdx]);
         }
 
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = aggregatorRouter.addLiquidityCustom{
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = prepaidRouter.addLiquidityCustom{
             value: wethIsEth ? maxAmountsIn[wethIdx] : 0
         }(pool, maxAmountsIn, minBptAmountOut, wethIsEth, bytes(""));
         vm.stopPrank();
@@ -841,9 +841,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), bptAmountIn);
+        IERC20(pool).approve(address(prepaidRouter), bptAmountIn);
 
-        uint256[] memory amountsOut = aggregatorRouter.removeLiquidityProportional(
+        uint256[] memory amountsOut = prepaidRouter.removeLiquidityProportional(
             pool,
             bptAmountIn,
             new uint256[](2),
@@ -872,9 +872,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(prepaidRouter), exactBptAmountIn);
 
-        uint256 amountOut = aggregatorRouter.removeLiquiditySingleTokenExactIn(
+        uint256 amountOut = prepaidRouter.removeLiquiditySingleTokenExactIn(
             pool,
             exactBptAmountIn,
             weth,
@@ -902,11 +902,11 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 maxBptAmountIn = IERC20(pool).totalSupply();
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
+        IERC20(pool).approve(address(prepaidRouter), maxBptAmountIn);
 
         uint256 exactAmountOut = balancesBefore.vaultTokens[wethIdx] / 2;
 
-        uint256 bptAmountIn = aggregatorRouter.removeLiquiditySingleTokenExactOut(
+        uint256 bptAmountIn = prepaidRouter.removeLiquiditySingleTokenExactOut(
             pool,
             maxBptAmountIn,
             weth,
@@ -940,9 +940,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         minAmountsOut[usdcIdx] = balancesBefore.lpTokens[usdcIdx];
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(prepaidRouter), exactBptAmountIn);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = aggregatorRouter.removeLiquidityCustom(
+        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = prepaidRouter.removeLiquidityCustom(
             pool,
             exactBptAmountIn,
             minAmountsOut,
@@ -964,9 +964,9 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(lp);
         vault.manualEnableRecoveryMode(pool);
-        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(prepaidRouter), exactBptAmountIn);
 
-        uint256[] memory amountsOut = aggregatorRouter.removeLiquidityRecovery(
+        uint256[] memory amountsOut = prepaidRouter.removeLiquidityRecovery(
             pool,
             exactBptAmountIn,
             new uint256[](2)
@@ -985,7 +985,7 @@ contract AggregatorRouterTest is BaseVaultTest {
     ***************************************************************************/
 
     function testRouterVersion() public view {
-        assertEq(aggregatorRouter.version(), version, "Router version mismatch");
+        assertEq(prepaidRouter.version(), version, "Router version mismatch");
     }
 
     function _checkBalancesDiff(
