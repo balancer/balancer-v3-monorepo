@@ -32,13 +32,27 @@ import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
 import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
+import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
-import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
-contract LBPoolTest is BaseLBPTest {
+contract LBPoolTest is WeightedLBPTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
+
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        return
+            _createLBPool(
+                address(0), // Pool creator
+                uint32(block.timestamp + DEFAULT_START_OFFSET),
+                uint32(block.timestamp + DEFAULT_END_OFFSET),
+                DEFAULT_PROJECT_TOKENS_SWAP_IN
+            );
+    }
 
     /********************************************************
                         Pool Constructor
