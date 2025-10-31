@@ -638,9 +638,13 @@ contract PrepaidRouterTest is BaseVaultTest {
             weth.transfer(address(vault), exactAmountsIn[wethIdx]);
         }
 
-        uint256 bptAmountOut = prepaidRouter.addLiquidityUnbalanced{
-            value: wethIsEth ? exactAmountsIn[wethIdx] : 0
-        }(pool, exactAmountsIn, 0, wethIsEth, bytes(""));
+        uint256 bptAmountOut = prepaidRouter.addLiquidityUnbalanced{ value: wethIsEth ? exactAmountsIn[wethIdx] : 0 }(
+            pool,
+            exactAmountsIn,
+            0,
+            wethIsEth,
+            bytes("")
+        );
         vm.stopPrank();
 
         assertGt(bptAmountOut, 0, "BPT amount out should be greater than zero for unbalanced liquidity");
@@ -966,11 +970,7 @@ contract PrepaidRouterTest is BaseVaultTest {
         vault.manualEnableRecoveryMode(pool);
         IERC20(pool).approve(address(prepaidRouter), exactBptAmountIn);
 
-        uint256[] memory amountsOut = prepaidRouter.removeLiquidityRecovery(
-            pool,
-            exactBptAmountIn,
-            new uint256[](2)
-        );
+        uint256[] memory amountsOut = prepaidRouter.removeLiquidityRecovery(pool, exactBptAmountIn, new uint256[](2));
 
         vm.stopPrank();
 

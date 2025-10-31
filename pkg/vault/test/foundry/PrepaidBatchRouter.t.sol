@@ -101,11 +101,8 @@ contract PrepaidBatchRouterTest is BaseVaultTest {
         uint256 aliceDaiBalanceBefore = dai.balanceOf(alice);
         uint256 aliceUsdcBalanceBefore = usdc.balanceOf(alice);
 
-        (
-            uint256[] memory pathAmountsOut,
-            address[] memory tokensOut,
-            uint256[] memory amountsOut
-        ) = prepaidBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = prepaidBatchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
 
         // Verify results.
@@ -553,12 +550,7 @@ contract PrepaidBatchRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         usdc.transfer(address(vault), swapAmount);
-        (uint256[] memory actualAmountsOut, , ) = prepaidBatchRouter.swapExactIn(
-            paths,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        (uint256[] memory actualAmountsOut, , ) = prepaidBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
 
         // Query and actual should match.
