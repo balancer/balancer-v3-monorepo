@@ -38,7 +38,7 @@ interface ILBPMigrationRouter {
         IERC20[] tokens;
         address sender;
         address excessReceiver;
-        uint256 bptLockDuration;
+        uint256 lockDurationAfterMigration;
         uint256 bptPercentageToMigrate;
         uint256 migrationWeightProjectToken;
         uint256 migrationWeightReserveToken;

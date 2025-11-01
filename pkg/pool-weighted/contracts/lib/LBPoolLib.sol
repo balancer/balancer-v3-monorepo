@@ -24,7 +24,7 @@ library LBPoolLib {
         uint256 reserveStartWeight,
         uint256 projectEndWeight,
         uint256 reserveEndWeight
-    ) internal view returns (uint256 actualStartTime) {
+    ) internal view returns (uint256) {
         if (
             projectStartWeight < _MIN_WEIGHT ||
             reserveStartWeight < _MIN_WEIGHT ||
@@ -41,8 +41,6 @@ library LBPoolLib {
             revert IWeightedPool.NormalizedWeightInvariant();
         }
 
-        actualStartTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        return actualStartTime;
+        return GradualValueChange.resolveStartTime(startTime, endTime);
     }
 }

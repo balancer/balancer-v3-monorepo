@@ -120,7 +120,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             0,
             bytes("")
         );
-        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.bptLockDuration);
+        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDurationAfterMigration);
 
         emit PoolMigrated(params.lbp, params.weightedPool, exactAmountsIn, bptAmountOut);
     }
@@ -170,7 +170,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             tokens: lbpImmutableData.tokens,
             sender: sender,
             excessReceiver: excessReceiver,
-            bptLockDuration: lbpImmutableData.bptLockDuration,
+            lockDurationAfterMigration: lbpImmutableData.lockDurationAfterMigration,
             bptPercentageToMigrate: lbpImmutableData.bptPercentageToMigrate,
             migrationWeightProjectToken: lbpImmutableData.migrationWeightProjectToken,
             migrationWeightReserveToken: lbpImmutableData.migrationWeightReserveToken

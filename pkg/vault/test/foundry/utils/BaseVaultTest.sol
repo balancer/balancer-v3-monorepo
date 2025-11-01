@@ -35,7 +35,7 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
-contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
+abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -139,10 +139,17 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
     uint256 vaultMockInitialProtocolSwapFeePercentage = 0;
     uint256 vaultMockInitialProtocolYieldFeePercentage = 0;
 
-    // ------------------------------ Hooks ------------------------------
-    function onAfterDeployMainContracts() internal virtual {}
+    /***************************************************************************
+                                       Hooks
+    ***************************************************************************/
+    function onAfterDeployMainContracts() internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    // ------------------------------ Initialization ------------------------------
+    /***************************************************************************
+                                  Initialization
+    ***************************************************************************/
+
     function setUp() public virtual override {
         BaseTest.setUp();
 
