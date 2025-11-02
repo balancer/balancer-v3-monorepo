@@ -259,7 +259,7 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testGetMigrationParams() public view {
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
         assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
@@ -283,7 +283,7 @@ contract LBPoolTest is WeightedLBPTest {
         );
         initPool();
 
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
         assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
         assertEq(data.lockDurationAfterMigration, initBptLockDuration, "BPT lock duration mismatch");
@@ -422,7 +422,7 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testGetLBPoolDynamicData() public view {
-        LBPoolDynamicData memory data = LBPool(pool).getLBPoolDynamicData();
+        LBPoolDynamicData memory data = ILBPool(pool).getLBPoolDynamicData();
 
         uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(pool);
         assertEq(data.balancesLiveScaled18.length, balancesLiveScaled18.length, "balancesLiveScaled18 length mismatch");
@@ -458,7 +458,7 @@ contract LBPoolTest is WeightedLBPTest {
 
     function testGetLBPoolDynamicDataWeightInterpolation() public {
         // Check initial weights
-        LBPoolDynamicData memory initialData = LBPool(pool).getLBPoolDynamicData();
+        LBPoolDynamicData memory initialData = ILBPool(pool).getLBPoolDynamicData();
         assertEq(
             initialData.normalizedWeights[projectIdx],
             startWeights[projectIdx],
@@ -474,7 +474,7 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 50);
 
         // Check interpolated weights
-        LBPoolDynamicData memory midData = LBPool(pool).getLBPoolDynamicData();
+        LBPoolDynamicData memory midData = ILBPool(pool).getLBPoolDynamicData();
 
         // Calculate expected weights (average between start and end weights)
         uint256 expectedProjectWeight = (startWeights[projectIdx] + endWeights[projectIdx]) / 2;
@@ -488,13 +488,13 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_END_OFFSET);
 
         // Check final weights
-        LBPoolDynamicData memory finalData = LBPool(pool).getLBPoolDynamicData();
+        LBPoolDynamicData memory finalData = ILBPool(pool).getLBPoolDynamicData();
         assertEq(finalData.normalizedWeights[projectIdx], endWeights[projectIdx], "Final project weight mismatch");
         assertEq(finalData.normalizedWeights[reserveIdx], endWeights[reserveIdx], "Final reserve weight mismatch");
     }
 
     function testGetLBPoolImmutableData() public view {
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
         // Check tokens array matches pool tokens
         IERC20[] memory poolTokens = vault.getPoolTokens(pool);
