@@ -10,7 +10,7 @@ import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/
 
 import { CompositeLiquidityRouterNestedPoolsTest } from "./CompositeLiquidityRouterNestedPools.t.sol";
 
-contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidityRouterNestedPoolsTest {
+contract PrepaidCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidityRouterNestedPoolsTest {
     // Virtual function
     function _addLiquidityUnbalancedNestedPool(
         address pool,
@@ -40,7 +40,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedNestedPool{ value: ethValue }(
+            prepaidCompositeLiquidityRouter.addLiquidityUnbalancedNestedPool{ value: ethValue }(
                 pool,
                 tokensIn,
                 exactAmountsIn,
@@ -61,14 +61,14 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256[] memory amountsOut) {
-        IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(prepaidCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            aggregatorCompositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            prepaidCompositeLiquidityRouter.removeLiquidityProportionalNestedPool(
                 pool,
                 exactBptAmountIn,
                 tokensOut,
