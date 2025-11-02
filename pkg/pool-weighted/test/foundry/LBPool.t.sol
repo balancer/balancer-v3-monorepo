@@ -31,7 +31,7 @@ import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
-//import { LBPool } from "../../contracts/lbp/LBPool.sol";
+import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract LBPoolTest is WeightedLBPTest {
     using ArrayHelpers for *;
