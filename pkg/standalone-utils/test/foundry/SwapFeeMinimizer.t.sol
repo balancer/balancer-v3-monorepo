@@ -111,7 +111,7 @@ contract SwapFeeMinimizerTest is BaseVaultTest {
         // Initialize pool
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[0] = LIQUIDITY_AMOUNT_DAI / 2;
-        amountsIn[1] = (LIQUIDITY_AMOUNT_USDC / 2);
+        amountsIn[1] = LIQUIDITY_AMOUNT_USDC / 2;
         
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = dai;
