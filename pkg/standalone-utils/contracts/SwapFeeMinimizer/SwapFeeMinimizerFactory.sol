@@ -76,7 +76,7 @@ contract SwapFeeMinimizerFactory {
         pool = _deployPool(poolFactory, poolParams, predictedMinimizer, salt);
 
         _pendingPool = pool;
-        
+
         minimizer = _deployMinimizer(
             minimizerParams.inputTokens,
             minimizerParams.outputToken,
@@ -88,7 +88,13 @@ contract SwapFeeMinimizerFactory {
         feeMinimizers[pool] = minimizer;
         _pendingPool = address(0);
 
-        emit SwapFeeMinimizerDeployed(pool, minimizerParams.outputToken, minimizerParams.initialOwner, minimizer, minimizerParams.minimalFee);
+        emit SwapFeeMinimizerDeployed(
+            pool,
+            minimizerParams.outputToken,
+            minimizerParams.initialOwner,
+            minimizer,
+            minimizerParams.minimalFee
+        );
     }
 
     function _deployPool(
@@ -103,18 +109,19 @@ contract SwapFeeMinimizerFactory {
             poolCreator: address(0)
         });
 
-        return poolFactory.create(
-            poolParams.name,
-            poolParams.symbol,
-            poolParams.tokens,
-            poolParams.normalizedWeights,
-            roleAccounts,
-            poolParams.swapFeePercentage,
-            poolParams.poolHooksContract,
-            poolParams.enableDonation,
-            poolParams.disableUnbalancedLiquidity,
-            salt
-        );
+        return
+            poolFactory.create(
+                poolParams.name,
+                poolParams.symbol,
+                poolParams.tokens,
+                poolParams.normalizedWeights,
+                roleAccounts,
+                poolParams.swapFeePercentage,
+                poolParams.poolHooksContract,
+                poolParams.enableDonation,
+                poolParams.disableUnbalancedLiquidity,
+                salt
+            );
     }
 
     function getCurrentPool() external view returns (address) {
@@ -140,11 +147,8 @@ contract SwapFeeMinimizerFactory {
             minimalFee,
             initialOwner
         );
-        
-        bytes memory creationCode = abi.encodePacked(
-            type(SwapFeeMinimizer).creationCode,
-            constructorArgs
-        );
+
+        bytes memory creationCode = abi.encodePacked(type(SwapFeeMinimizer).creationCode, constructorArgs);
 
         return Create2.computeAddress(salt, keccak256(creationCode), address(this));
     }
@@ -166,10 +170,7 @@ contract SwapFeeMinimizerFactory {
             initialOwner
         );
 
-        bytes memory creationCode = abi.encodePacked(
-            type(SwapFeeMinimizer).creationCode,
-            constructorArgs
-        );
+        bytes memory creationCode = abi.encodePacked(type(SwapFeeMinimizer).creationCode, constructorArgs);
 
         address minimizerAddress = Create2.deploy(0, salt, creationCode);
         return SwapFeeMinimizer(minimizerAddress);

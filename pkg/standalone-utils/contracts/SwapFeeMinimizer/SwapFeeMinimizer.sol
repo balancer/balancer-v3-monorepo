@@ -6,7 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import { ReentrancyGuardTransient } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -23,7 +25,7 @@ interface ISwapFeeMinimizerFactory {
  */
 contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
-    
+
     IRouter private immutable _router;
     IVault private immutable _vault;
     IPermit2 private immutable _permit2;
@@ -42,14 +44,10 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         _vault.setStaticSwapFeePercentage(_pool, originalFee);
     }
 
-    modifier onlyAllowableOutputToken(IERC20 tokenOut) {
+    modifier onlyOutputTokenFromPool(IERC20 tokenOut, address poolAddress) {
         if (tokenOut != _outputToken) {
             revert InvalidOutputToken(_outputToken, tokenOut);
         }
-        _;
-    }
-
-    modifier onlyPool(address poolAddress) {
         if (poolAddress != _pool) {
             revert InvalidPool();
         }
@@ -65,7 +63,6 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         uint256 minimalSwapFeeAmount,
         address initialOwner
     ) Ownable(initialOwner) {
-        
         _router = router;
         _vault = vault;
         _permit2 = permit2;
@@ -78,7 +75,7 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
 
         // Max approve all possible input tokens for the pool
 
-        // Note: we don't unlock the output token since any attempt to swap with 
+        // Note: we don't unlock the output token since any attempt to swap with
         // that token as an input token will revert. This contract itself sets permit2 ERC20
         // allowances to max and then each swap approves either the exact amount being swapped
         // of the max allowable input amount for that swap.
@@ -104,6 +101,13 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         }
     }
 
+    function _pullTokensFromOwnerAndApprove(IERC20 tokenIn, uint256 amount, uint256 deadline) internal {
+        tokenIn.safeTransferFrom(msg.sender, address(this), amount);
+        // using the swap deadline for the permit2 deadline is safe since
+        // the swap deadline gets checked before transferFrom is called
+        _permit2.approve(address(tokenIn), address(_router), uint160(amount), uint48(deadline));
+    }
+
     function swapSingleTokenExactIn(
         address poolAddress,
         IERC20 tokenIn,
@@ -113,17 +117,10 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable onlyOwner onlyAllowableOutputToken(tokenOut) onlyPool(poolAddress) withSwapMinimized nonReentrant returns (uint256) {
-        {
-        tokenIn.safeTransferFrom(msg.sender, address(this), exactAmountIn);
+    ) external payable onlyOwner onlyOutputTokenFromPool(tokenOut, poolAddress) withSwapMinimized returns (uint256) {
+        _pullTokensFromOwnerAndApprove(tokenIn, exactAmountIn, deadline);
 
-        // using the swap deadline for the permit2 deadline is safe since
-        // the swap deadline gets checked before transferFrom is called
-        _permit2.approve(address(tokenIn), address(_router), uint160(exactAmountIn), uint48(deadline));
-            
-        }
-        
-        uint256 amountOut = _router.swapSingleTokenExactIn{value: msg.value}(
+        uint256 amountOut = _router.swapSingleTokenExactIn{ value: msg.value }(
             poolAddress,
             tokenIn,
             tokenOut,
@@ -133,7 +130,7 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
             wethIsEth,
             userData
         );
-        
+
         tokenOut.safeTransfer(msg.sender, amountOut);
         return amountOut;
     }
@@ -147,14 +144,10 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable onlyOwner onlyAllowableOutputToken(tokenOut) onlyPool(poolAddress) withSwapMinimized nonReentrant returns (uint256) {
-        tokenIn.safeTransferFrom(msg.sender, address(this), maxAmountIn);
-        
-        // using the swap deadline for the permit2 deadline is safe since
-        // the swap deadline gets checked before transferFrom is called
-        _permit2.approve(address(tokenIn), address(_router), uint160(maxAmountIn), uint48(deadline));
-        
-        uint256 amountIn = _router.swapSingleTokenExactOut{value: msg.value}(
+    ) external payable onlyOwner onlyOutputTokenFromPool(tokenOut, poolAddress) withSwapMinimized returns (uint256) {
+        _pullTokensFromOwnerAndApprove(tokenIn, maxAmountIn, deadline);
+
+        uint256 amountIn = _router.swapSingleTokenExactOut{ value: msg.value }(
             poolAddress,
             tokenIn,
             tokenOut,
@@ -164,14 +157,14 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
             wethIsEth,
             userData
         );
-        
+
         tokenOut.safeTransfer(msg.sender, exactAmountOut);
-        
+
         // Return leftover input tokens if any (`amountIn` determined at execution time)
         if (amountIn < maxAmountIn) {
             tokenIn.safeTransfer(msg.sender, maxAmountIn - amountIn);
         }
-        
+
         return amountIn;
     }
 
