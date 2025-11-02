@@ -8,13 +8,13 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
+import { FixedPriceLBPool } from "./FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPoolLib } from "../lib/LBPoolLib.sol";
-import { LBPool } from "./LBPool.sol";
 
 /**
  * @notice Factory for Fixed Price LBPools.
- * @dev This is a factory specific to Fixed PriceLBPools, similar to regular Weighted LBPools, but where the token
+ * @dev This is a factory specific to Fixed Price LBPools, similar to regular Weighted LBPools, but where the token
  * price is fixed throughout the entire sale.
  */
 contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
@@ -27,7 +27,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         address migrationRouter
     )
         BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, migrationRouter)
-        BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode)
+        BasePoolFactory(vault, pauseWindowDuration, type(FixedPriceLBPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
