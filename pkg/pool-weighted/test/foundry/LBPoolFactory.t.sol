@@ -30,13 +30,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         defaultStartTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         defaultEndTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        return
-            _createLBPool(
-                alice,
-                defaultStartTime,
-                defaultEndTime,
-                DEFAULT_PROJECT_TOKENS_SWAP_IN
-            );
+        return _createLBPool(alice, defaultStartTime, defaultEndTime, DEFAULT_PROJECT_TOKENS_SWAP_IN);
     }
 
     function testPoolRegistrationOnCreate() public view {
@@ -135,7 +129,11 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         assertEq(data.endTime, defaultEndTime, "Wrong end time");
         assertEq(data.projectTokenIndex, projectIdx, "Wrong project token index");
         assertEq(data.reserveTokenIndex, reserveIdx, "Wrong reserve token index");
-        assertEq(data.isProjectTokenSwapInBlocked, DEFAULT_PROJECT_TOKENS_SWAP_IN, "Wrong project token swap blocked flag");
+        assertEq(
+            data.isProjectTokenSwapInBlocked,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            "Wrong project token swap blocked flag"
+        );
 
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");

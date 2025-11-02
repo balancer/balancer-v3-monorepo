@@ -4,10 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { LBPCommonParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-import { MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
 import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
@@ -161,20 +160,19 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
 
         MigrationParams memory migrationParams;
 
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
         // Copy to local variable to free up parameter stack slot
         address poolCreator_ = poolCreator;
         uint256 salt = _saltCounter++;
 
         newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_);
 
-        poolArgs = abi.encode(
-            lbpCommonParams,
-            migrationParams,
-            lbpParams,
-            vault,
-            address(router),
-            address(migrationRouter),
-            poolVersion
-        );
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
     }
 }
