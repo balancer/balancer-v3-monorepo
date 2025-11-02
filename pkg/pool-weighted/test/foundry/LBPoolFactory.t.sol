@@ -7,10 +7,10 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { LBPParams, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -23,14 +23,14 @@ import { LBPool } from "../../contracts/lbp/LBPool.sol";
 contract LBPoolFactoryTest is WeightedLBPTest {
     using ArrayHelpers for *;
 
+    uint32 internal defaultStartTime;
+    uint32 internal defaultEndTime;
+
     function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
-        return
-            _createLBPool(
-                alice,
-                uint32(block.timestamp + DEFAULT_START_OFFSET),
-                uint32(block.timestamp + DEFAULT_END_OFFSET),
-                DEFAULT_PROJECT_TOKENS_SWAP_IN
-            );
+        defaultStartTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        defaultEndTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        return _createLBPool(alice, defaultStartTime, defaultEndTime, DEFAULT_PROJECT_TOKENS_SWAP_IN);
     }
 
     function testPoolRegistrationOnCreate() public view {
@@ -113,7 +113,27 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(address(pool));
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(address(data.tokens[i]), address(tokens[i]), "Token address mismatch");
+            assertEq(data.decimalScalingFactors[i], decimalScalingFactors[i], "Decimal scaling factor mismatch");
+            assertEq(data.startWeights[i], startWeights[i], "Wrong start weight");
+            assertEq(data.endWeights[i], endWeights[i], "Wrong end weight");
+        }
+
+        assertEq(data.startTime, defaultStartTime, "Wrong start time");
+        assertEq(data.endTime, defaultEndTime, "Wrong end time");
+        assertEq(data.projectTokenIndex, projectIdx, "Wrong project token index");
+        assertEq(data.reserveTokenIndex, reserveIdx, "Wrong reserve token index");
+        assertEq(
+            data.isProjectTokenSwapInBlocked,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            "Wrong project token swap blocked flag"
+        );
 
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
@@ -131,6 +151,15 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
+        vm.expectEmit(false, true, true, true);
+        emit BaseLBPFactory.MigrationParamsSet(
+            address(0),
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
+
         (pool, ) = _createLBPoolWithMigration(
             bob,
             initBptLockDuration,
@@ -143,7 +172,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
         assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
         assertEq(data.lockDurationAfterMigration, initBptLockDuration, "BPT lock duration mismatch");
