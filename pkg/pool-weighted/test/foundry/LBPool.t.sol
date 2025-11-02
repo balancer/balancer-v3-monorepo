@@ -13,12 +13,10 @@ import { ILBPCommon, MigrationParams } from "@balancer-labs/v3-interfaces/contra
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LBPoolImmutableData,
-    LBPoolDynamicData,
-    ILBPool
-} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
@@ -355,7 +353,7 @@ contract LBPoolTest is WeightedLBPTest {
             uint256 poolEndTime,
             uint256[] memory poolStartWeights,
             uint256[] memory poolEndWeights
-        ) = LBPool(newPool).getGradualWeightUpdateParams();
+        ) = ILBPool(newPool).getGradualWeightUpdateParams();
         assertEq(poolStartTime, customStartTime, "Start time mismatch");
         assertEq(poolEndTime, customEndTime, "End time mismatch");
 
@@ -372,13 +370,13 @@ contract LBPoolTest is WeightedLBPTest {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        assertFalse(LBPool(pool).isSwapEnabled(), "Swap should be disabled before start time");
+        assertFalse(ILBPCommon(pool).isSwapEnabled(), "Swap should be disabled before start time");
 
         vm.warp(startTime + 1);
-        assertTrue(LBPool(pool).isSwapEnabled(), "Swap should be enabled after start time");
+        assertTrue(ILBPCommon(pool).isSwapEnabled(), "Swap should be enabled after start time");
 
         vm.warp(endTime + 1);
-        assertFalse(LBPool(pool).isSwapEnabled(), "Swap should be disabled after end time");
+        assertFalse(ILBPCommon(pool).isSwapEnabled(), "Swap should be disabled after end time");
     }
 
     function testIsProjectTokenSwapInBlocked() public {
@@ -393,7 +391,10 @@ contract LBPoolTest is WeightedLBPTest {
             false
         );
 
-        assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is blocked");
+        assertFalse(
+            ILBPCommon(newPoolSwapDisabled).isProjectTokenSwapInBlocked(),
+            "Swap of Project Token in is blocked"
+        );
 
         (address newPoolSwapEnabled, ) = _createLBPoolWithCustomWeights(
             address(0), // Pool creator
@@ -406,19 +407,22 @@ contract LBPoolTest is WeightedLBPTest {
             true
         );
 
-        assertTrue(LBPool(newPoolSwapEnabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is not blocked");
+        assertTrue(
+            ILBPCommon(newPoolSwapEnabled).isProjectTokenSwapInBlocked(),
+            "Swap of Project Token in is not blocked"
+        );
     }
 
     function testGetWeightedPoolDynamicData() public {
         // This function is not implemented, since the weights are not immutable. So, it should revert.
         vm.expectRevert(LBPool.NotImplemented.selector);
-        LBPool(pool).getWeightedPoolDynamicData();
+        IWeightedPool(pool).getWeightedPoolDynamicData();
     }
 
     function testGetWeightedPoolImmutableData() public {
         // This function is not implemented, since the weights are not immutable. So, it should revert.
         vm.expectRevert(LBPool.NotImplemented.selector);
-        LBPool(pool).getWeightedPoolImmutableData();
+        IWeightedPool(pool).getWeightedPoolImmutableData();
     }
 
     function testGetLBPoolDynamicData() public view {
@@ -442,14 +446,14 @@ contract LBPoolTest is WeightedLBPTest {
             vault.getStaticSwapFeePercentage(pool),
             "staticSwapFeePercentage mismatch"
         );
-        assertEq(data.totalSupply, LBPool(pool).totalSupply(), "TotalSupply mismatch");
+        assertEq(data.totalSupply, IERC20(pool).totalSupply(), "TotalSupply mismatch");
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         assertEq(data.isPoolInitialized, poolConfig.isPoolInitialized, "isPoolInitialized mismatch");
         assertEq(data.isPoolPaused, poolConfig.isPoolPaused, "isPoolInitialized mismatch");
         assertEq(data.isPoolInRecoveryMode, poolConfig.isPoolInRecoveryMode, "isPoolInitialized mismatch");
 
-        assertEq(data.isSwapEnabled, LBPool(pool).isSwapEnabled(), "isSwapEnabled mismatch");
+        assertEq(data.isSwapEnabled, ILBPCommon(pool).isSwapEnabled(), "isSwapEnabled mismatch");
 
         assertEq(data.normalizedWeights.length, startWeights.length, "normalizedWeights length mismatch");
         assertEq(data.normalizedWeights[projectIdx], startWeights[projectIdx], "project weight mismatch");
@@ -563,7 +567,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Before start time, swaps should be disabled
         vm.expectRevert(LBPCommon.SwapsDisabled.selector);
         vm.prank(address(vault));
-        LBPool(pool).onSwap(request);
+        IBasePool(pool).onSwap(request);
 
         // Warp to after end time
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
@@ -571,7 +575,7 @@ contract LBPoolTest is WeightedLBPTest {
         // After end time, swaps should also be disabled
         vm.expectRevert(LBPCommon.SwapsDisabled.selector);
         vm.prank(address(vault));
-        LBPool(pool).onSwap(request);
+        IBasePool(pool).onSwap(request);
     }
 
     function testOnSwapProjectTokenInNotAllowed() public {
@@ -592,7 +596,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Should revert when trying to swap project token in
         vm.expectRevert(LBPCommon.SwapOfProjectTokenIn.selector);
         vm.prank(address(vault));
-        LBPool(pool).onSwap(request);
+        IBasePool(pool).onSwap(request);
     }
 
     function testOnSwapProjectTokenInAllowed() public {
@@ -625,7 +629,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         // Mock vault call to onSwap
         vm.prank(address(vault));
-        uint256 amountCalculated = LBPool(pool).onSwap(request);
+        uint256 amountCalculated = IBasePool(pool).onSwap(request);
 
         // Verify amount calculated is non-zero
         assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
@@ -648,7 +652,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         // Mock vault call to onSwap
         vm.prank(address(vault));
-        uint256 amountCalculated = LBPool(pool).onSwap(request);
+        uint256 amountCalculated = IBasePool(pool).onSwap(request);
 
         // Verify amount calculated is non-zero
         assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
@@ -667,7 +671,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
-        LBPool(pool).onRegister(
+        IHooks(pool).onRegister(
             poolFactory,
             pool,
             tokenConfig,
@@ -690,7 +694,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
-        LBPool(pool).onRegister(
+        IHooks(pool).onRegister(
             poolFactory,
             pool,
             tokenConfig,
@@ -710,7 +714,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         // Mock vault call to onRegister with wrong pool address
         vm.prank(address(vault));
-        bool success = LBPool(pool).onRegister(
+        bool success = IHooks(pool).onRegister(
             poolFactory,
             address(1), // Wrong pool address
             tokenConfig,
@@ -733,7 +737,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         // Mock vault call to onRegister with correct parameters
         vm.prank(address(vault));
-        bool success = LBPool(pool).onRegister(
+        bool success = IHooks(pool).onRegister(
             poolFactory, // Correct factory address
             pool, // Correct pool address
             tokenConfig,
@@ -749,7 +753,7 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testGetHookFlags() public view {
-        HookFlags memory flags = LBPool(pool).getHookFlags();
+        HookFlags memory flags = IHooks(pool).getHookFlags();
 
         // These should be true
         assertTrue(flags.shouldCallBeforeInitialize, "shouldCallBeforeInitialize should be true");
@@ -771,7 +775,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.AddingLiquidityNotAllowed.selector);
-        LBPool(pool).onBeforeInitialize(new uint256[](0), "");
+        IHooks(pool).onBeforeInitialize(new uint256[](0), "");
     }
 
     function testOnBeforeInitializeWrongSender() public {
@@ -783,7 +787,7 @@ contract LBPoolTest is WeightedLBPTest {
         _mockGetSender(address(1));
 
         assertFalse(
-            LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
+            IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
             "onBeforeInitialize should return false when sender is not factory"
         );
     }
@@ -796,7 +800,7 @@ contract LBPoolTest is WeightedLBPTest {
         _mockGetSender(bob);
 
         assertTrue(
-            LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
+            IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
             "onBeforeInitialize should return true with correct sender and before startTime"
         );
     }
@@ -805,7 +809,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Try to remove liquidity before end time.
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.RemovingLiquidityNotAllowed.selector);
-        LBPool(pool).onBeforeRemoveLiquidity(
+        IHooks(pool).onBeforeRemoveLiquidity(
             ZERO_ADDRESS,
             ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
@@ -821,7 +825,7 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
         vm.prank(address(vault));
-        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
             ZERO_ADDRESS,
             ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
@@ -871,7 +875,7 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
         vm.prank(address(vault));
-        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
             address(router),
             ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
@@ -900,7 +904,7 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
         vm.prank(address(vault));
-        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
             address(migrationRouter),
             ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
@@ -927,7 +931,7 @@ contract LBPoolTest is WeightedLBPTest {
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
         vm.prank(address(vault));
-        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
             address(router),
             ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
