@@ -124,6 +124,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert ProjectTokenRateTooHigh(projectTokenRate, _MAX_RATE);
         }
 
+        _projectTokenRate = projectTokenRate;
+
         bool hasMigration = migrationParams.bptPercentageToMigrate != 0;
 
         emit FixedPriceLBPoolCreated(
