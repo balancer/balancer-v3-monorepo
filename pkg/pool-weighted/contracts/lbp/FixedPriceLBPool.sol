@@ -72,12 +72,16 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      * more detail on this specific LBP configuration.
      *
      * @param owner Address of the pool's owner
+     * @param startTime The starting timestamp of the token sale
+     * @param endTime  The ending timestamp of the token sale
      * @param projectTokenRate The project token price in terms of the reserve token
      * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
      * @param hasMigration True if the pool will be migrated after the sale
      */
     event FixedPriceLBPoolCreated(
         address indexed owner,
+        uint256 startTime,
+        uint256 endTime,
         uint256 projectTokenRate,
         bool blockProjectTokenSwapsIn,
         bool hasMigration
@@ -130,6 +134,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
 
         emit FixedPriceLBPoolCreated(
             lbpCommonParams.owner,
+            lbpCommonParams.startTime,
+            lbpCommonParams.endTime,
             projectTokenRate,
             lbpCommonParams.blockProjectTokenSwapsIn,
             hasMigration
