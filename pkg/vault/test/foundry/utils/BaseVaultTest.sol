@@ -67,7 +67,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         uint256[] yieldFeeAmounts;
     }
 
-    string AGGREGATOR_BATCH_ROUTER_VERSION = "AggregatorBatchRouter v1";
+    string PREPAID_BATCH_ROUTER_VERSION = "PrepaidBatchRouter v1";
     // Pool limits.
     uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
     uint256 internal constant PRODUCTION_MIN_TRADE_AMOUNT = 1e6;
@@ -102,12 +102,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
-    BatchRouterMock internal aggregatorBatchRouter;
+    BatchRouterMock internal prepaidBatchRouter;
     BufferRouterMock internal bufferRouter;
     RateProviderMock internal rateProvider;
     BasicAuthorizerMock internal authorizer;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
-    CompositeLiquidityRouterMock internal aggregatorCompositeLiquidityRouter;
+    CompositeLiquidityRouterMock internal prepaidCompositeLiquidityRouter;
 
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
@@ -188,11 +188,11 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        aggregatorBatchRouter = deployBatchRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
-        vm.label(address(aggregatorBatchRouter), "aggregator batch router");
+        prepaidBatchRouter = deployBatchRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
+        vm.label(address(prepaidBatchRouter), "prepaid batch router");
         compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
-        aggregatorCompositeLiquidityRouter = deployCompositeLiquidityRouterMock(
+        prepaidCompositeLiquidityRouter = deployCompositeLiquidityRouterMock(
             IVault(address(vault)),
             weth,
             IPermit2(address(0))

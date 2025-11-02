@@ -6,7 +6,7 @@ import { ERC20TestToken__factory } from '@balancer-labs/v3-solidity-utils/typech
 
 import { BatchSwapBaseTest, WRAPPED_TOKEN_AMOUNT } from './BatchSwapBase';
 
-describe('AggregatorBatchSwap', function () {
+describe('PrepaidBatchSwap', function () {
   const baseTest = new BatchSwapBaseTest(true);
   baseTest.pathMaxAmountIn = fp(2);
 
