@@ -33,9 +33,10 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
     IERC20 private immutable _outputToken;
     uint256 private immutable _minimalSwapFee;
 
-    error InvalidOutputToken(IERC20 expected, IERC20 actual);
     error FeeValidationFailed();
+    error InvalidOutputToken(IERC20 expected, IERC20 actual);
     error InvalidPool();
+    error RouterCallFailed();
 
     modifier withSwapMinimized() {
         uint256 originalFee = _vault.getStaticSwapFeePercentage(_pool);
@@ -108,6 +109,11 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         _permit2.approve(address(tokenIn), address(_router), uint160(amount), uint48(deadline));
     }
 
+    /**
+     * @notice Swap exact amount of input token for minimum amount of output token with minimized fees
+     * @dev External function encodes router calldata and calls internal function to avoid stack-too-deep errors.
+     *      The internal function contains all security modifiers and business logic.
+     */
     function swapSingleTokenExactIn(
         address poolAddress,
         IERC20 tokenIn,
@@ -117,10 +123,9 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable onlyOwner onlyOutputTokenFromPool(tokenOut, poolAddress) withSwapMinimized returns (uint256) {
-        _pullTokensFromOwnerAndApprove(tokenIn, exactAmountIn, deadline);
-
-        uint256 amountOut = _router.swapSingleTokenExactIn{ value: msg.value }(
+    ) external payable returns (uint256) {
+        bytes memory routerCalldata = abi.encodeWithSelector(
+            IRouter.swapSingleTokenExactIn.selector,
             poolAddress,
             tokenIn,
             tokenOut,
@@ -131,10 +136,41 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
             userData
         );
 
+        return _executeSwapExactIn(routerCalldata, tokenIn, tokenOut, poolAddress, exactAmountIn, deadline);
+    }
+
+    function _executeSwapExactIn(
+        bytes memory routerCalldata,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        address poolAddress,
+        uint256 exactAmountIn,
+        uint256 deadline
+    )
+        internal
+        onlyOwner
+        onlyOutputTokenFromPool(tokenOut, poolAddress)
+        withSwapMinimized
+        nonReentrant
+        returns (uint256)
+    {
+        _pullTokensFromOwnerAndApprove(tokenIn, exactAmountIn, deadline);
+
+        (bool success, bytes memory result) = address(_router).call{ value: msg.value }(routerCalldata);
+        if (!success) {
+            revert RouterCallFailed();
+        }
+        uint256 amountOut = abi.decode(result, (uint256));
+
         tokenOut.safeTransfer(msg.sender, amountOut);
         return amountOut;
     }
 
+    /**
+     * @notice Swap maximum amount of input token for exact amount of output token with minimized fees
+     * @dev External function encodes router calldata and calls internal function to avoid stack-too-deep errors.
+     *      The internal function contains all security modifiers and business logic.
+     */
     function swapSingleTokenExactOut(
         address poolAddress,
         IERC20 tokenIn,
@@ -144,10 +180,9 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable onlyOwner onlyOutputTokenFromPool(tokenOut, poolAddress) withSwapMinimized returns (uint256) {
-        _pullTokensFromOwnerAndApprove(tokenIn, maxAmountIn, deadline);
-
-        uint256 amountIn = _router.swapSingleTokenExactOut{ value: msg.value }(
+    ) external payable returns (uint256) {
+        bytes memory routerCalldata = abi.encodeWithSelector(
+            IRouter.swapSingleTokenExactOut.selector,
             poolAddress,
             tokenIn,
             tokenOut,
@@ -157,6 +192,34 @@ contract SwapFeeMinimizer is Ownable2Step, ReentrancyGuardTransient {
             wethIsEth,
             userData
         );
+
+        return
+            _executeSwapExactOut(routerCalldata, tokenIn, tokenOut, poolAddress, exactAmountOut, maxAmountIn, deadline);
+    }
+
+    function _executeSwapExactOut(
+        bytes memory routerCalldata,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        address poolAddress,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
+        uint256 deadline
+    )
+        internal
+        onlyOwner
+        onlyOutputTokenFromPool(tokenOut, poolAddress)
+        withSwapMinimized
+        nonReentrant
+        returns (uint256)
+    {
+        _pullTokensFromOwnerAndApprove(tokenIn, maxAmountIn, deadline);
+
+        (bool success, bytes memory result) = address(_router).call{ value: msg.value }(routerCalldata);
+        if (!success) {
+            revert RouterCallFailed();
+        }
+        uint256 amountIn = abi.decode(result, (uint256));
 
         tokenOut.safeTransfer(msg.sender, exactAmountOut);
 
