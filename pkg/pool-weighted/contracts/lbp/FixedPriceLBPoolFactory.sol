@@ -50,7 +50,15 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
-        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, false, poolCreator);
+        pool = _createPool(
+            lbpCommonParams,
+            migrationParams,
+            projectTokenRate,
+            swapFeePercentage,
+            salt,
+            false,
+            poolCreator
+        );
     }
 
     /**
@@ -72,7 +80,15 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     ) public nonReentrant returns (address pool) {
         _validateMigration(migrationParams);
 
-        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, true, poolCreator);
+        pool = _createPool(
+            lbpCommonParams,
+            migrationParams,
+            projectTokenRate,
+            swapFeePercentage,
+            salt,
+            true,
+            poolCreator
+        );
     }
 
     function _createPool(
