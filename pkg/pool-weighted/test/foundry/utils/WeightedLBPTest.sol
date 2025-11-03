@@ -104,7 +104,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             reserveTokenEndWeight: endWeights[reserveIdx]
         });
 
-        // Copy to local variable to free up parameter stack slot
+        // Copy to local variable to free up parameter stack slot.
         uint256 salt = _saltCounter++;
         address poolCreator_ = poolCreator;
 
@@ -167,7 +167,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             poolVersion: poolVersion
         });
 
-        // Copy to local variable to free up parameter stack slot
+        // Copy to local variable to free up parameter stack slot.
         address poolCreator_ = poolCreator;
         uint256 salt = _saltCounter++;
 
