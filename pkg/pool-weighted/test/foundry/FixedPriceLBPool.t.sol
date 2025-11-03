@@ -71,16 +71,11 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function initPool() internal virtual override {
-        uint256[] memory initAmounts = new uint256[](2);
-        initAmounts[projectIdx] = poolInitAmount;
-        // Should have zero reserve if it's a buy-only sale.
-        initAmounts[reserveIdx] = DEFAULT_PROJECT_TOKENS_SWAP_IN ? 0 : poolInitAmount;
-
         vm.startPrank(bob); // Bob is the owner of the pool.
-        _initPool(pool, initAmounts, 0);
+        _initPool(pool, _computeInitAmounts(DEFAULT_PROJECT_TOKENS_SWAP_IN), 0);
         vm.stopPrank();
     }
-    
+
     /********************************************************
                         Pool Constructor
     ********************************************************/
@@ -118,7 +113,14 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectEmit();
         // The event should be emitted with block.timestamp as startTime, not the past time.
-        emit FixedPriceLBPool.FixedPriceLBPoolCreated(bob, block.timestamp, endTime, DEFAULT_RATE, DEFAULT_PROJECT_TOKENS_SWAP_IN, false);
+        emit FixedPriceLBPool.FixedPriceLBPoolCreated(
+            bob,
+            block.timestamp,
+            endTime,
+            DEFAULT_RATE,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            false
+        );
 
         _createFixedPriceLBPool(
             address(0), // Pool creator
@@ -132,11 +134,29 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        vm.expectEmit();
-        emit FixedPriceLBPool.FixedPriceLBPoolCreated(bob, startTime, endTime, DEFAULT_RATE, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+        uint256 preCreateSnapshotId = vm.snapshotState();
+
+        (address newPool, ) = _createFixedPriceLBPool(
+            address(0), // Pool creator
+            startTime,
+            endTime,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+
+        vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit BaseLBPFactory.LBPoolCreated(pool, projectToken, reserveToken);
+        emit FixedPriceLBPool.FixedPriceLBPoolCreated(
+            bob,
+            startTime,
+            endTime,
+            DEFAULT_RATE,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            false
+        ); // no migration
+
+        vm.expectEmit();
+        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
         _createFixedPriceLBPool(
             address(0), // Pool creator
@@ -250,7 +270,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             false
         );
 
-        assertFalse(ILBPCommon(newPoolSwapDisabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is blocked");
+        assertFalse(
+            ILBPCommon(newPoolSwapDisabled).isProjectTokenSwapInBlocked(),
+            "Swap of Project Token in is blocked"
+        );
 
         (address newPoolSwapEnabled, ) = _createFixedPriceLBPool(
             address(0), // Pool creator
@@ -259,7 +282,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             true
         );
 
-        assertTrue(ILBPCommon(newPoolSwapEnabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is not blocked");
+        assertTrue(
+            ILBPCommon(newPoolSwapEnabled).isProjectTokenSwapInBlocked(),
+            "Swap of Project Token in is not blocked"
+        );
     }
 
     function testGetFixedPriceLBPoolDynamicData() public view {
@@ -393,7 +419,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             uint32(block.timestamp + DEFAULT_END_OFFSET),
             false // Do not block project token swaps in
         );
-        initPool();
+
+        vm.startPrank(bob);
+        _initPool(pool, _computeInitAmounts(false), 0);
+        vm.stopPrank();
 
         // Warp to when swaps are enabled
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
@@ -582,7 +611,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         _mockGetSender(bob);
 
         assertTrue(
-            IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
+            IHooks(pool).onBeforeInitialize(_computeInitAmounts(DEFAULT_PROJECT_TOKENS_SWAP_IN), ""),
             "onBeforeInitialize should return true with correct sender and before startTime"
         );
     }
@@ -734,6 +763,13 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.mockCall(address(router), abi.encodeWithSelector(ISenderGuard.getSender.selector), abi.encode(sender));
     }
 
+    function _computeInitAmounts(bool isBuyOnly) internal view returns (uint256[] memory initAmounts) {
+        initAmounts = new uint256[](2);
+
+        initAmounts[projectIdx] = poolInitAmount;
+        initAmounts[reserveIdx] = isBuyOnly ? 0 : poolInitAmount;
+    }
+
     function _createFixedPriceLBPool(
         address poolCreator,
         uint32 startTime,
@@ -763,6 +799,54 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint256 salt = _saltCounter++;
 
         newPool = lbPoolFactory.create(lbpCommonParams, DEFAULT_RATE, swapFee, bytes32(salt), poolCreator);
+
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, factoryParams, DEFAULT_RATE);
+    }
+
+    function _createLBPoolWithMigration(
+        address poolCreator,
+        uint256 lockDurationAfterMigration,
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        MigrationParams memory migrationParams = MigrationParams({
+            lockDurationAfterMigration: lockDurationAfterMigration,
+            bptPercentageToMigrate: bptPercentageToMigrate,
+            migrationWeightProjectToken: migrationWeightProjectToken,
+            migrationWeightReserveToken: migrationWeightReserveToken
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
+        // Copy to local variable to free up parameter stack slot.
+        uint256 salt = _saltCounter++;
+        address poolCreator_ = poolCreator;
+
+        newPool = lbPoolFactory.createWithMigration(
+            lbpCommonParams,
+            migrationParams,
+            DEFAULT_RATE,
+            swapFee,
+            bytes32(salt),
+            poolCreator_
+        );
 
         poolArgs = abi.encode(lbpCommonParams, migrationParams, factoryParams, DEFAULT_RATE);
     }
