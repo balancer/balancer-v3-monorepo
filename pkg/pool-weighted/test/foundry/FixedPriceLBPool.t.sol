@@ -40,6 +40,13 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
     uint256 internal constant DEFAULT_RATE = FixedPoint.ONE;
 
+    // Bounds on the project token rate.
+    uint256 private constant MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
+    uint256 private constant MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;
+
+    // Tolerance for initialization balance validation in the buy/sell case.
+    uint256 private constant INITIALIZATION_TOLERANCE_PERCENTAGE = 10e16; // 10%
+
     FixedPriceLBPoolFactory internal lbPoolFactory;
 
     function setUp() public virtual override {
@@ -172,6 +179,30 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
     function testGetTrustedRouter() public view {
         assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
+    function testGetMinProjectTokenRate() public view {
+        assertEq(
+            FixedPriceLBPool(address(pool)).getMinimumProjectTokenRate(),
+            MIN_PROJECT_TOKEN_RATE,
+            "Wrong minimum token rate"
+        );
+    }
+
+    function testGetMaxProjectTokenRate() public view {
+        assertEq(
+            FixedPriceLBPool(address(pool)).getMaximumProjectTokenRate(),
+            MAX_PROJECT_TOKEN_RATE,
+            "Wrong maximum token rate"
+        );
+    }
+
+    function testGetInitializationTolerance() public view {
+        assertEq(
+            FixedPriceLBPool(address(pool)).getInitializationTolerancePercentage(),
+            INITIALIZATION_TOLERANCE_PERCENTAGE,
+            "Wrong init tolerance percentage"
+        );
     }
 
     function testGetMigrationParams() public view {

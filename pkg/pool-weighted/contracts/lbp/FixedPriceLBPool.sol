@@ -53,11 +53,11 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      * MAX allows tokens as expensive as $10,000 - ~2000x above observed maximum.
      * These bounds prevent configuration errors while remaining flexible for legitimate use cases.
      */
-    uint256 private constant _MIN_RATE = FixedPoint.ONE / 10_000;
-    uint256 private constant _MAX_RATE = FixedPoint.ONE * 10_000;
+    uint256 private constant _MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
+    uint256 private constant _MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;
 
     // Tolerance for initialization balance validation in the buy/sell case.
-    uint256 private constant _INITIALIZATION_TOLERANCE = 10e16; // 10%
+    uint256 private constant _INITIALIZATION_TOLERANCE_PERCENTAGE = 10e16; // 10%
 
     /**
      * @notice The fixed exchange rate between project and reserve tokens (18 decimals).
@@ -121,11 +121,11 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         Version(factoryParams.poolVersion)
     {
         // Validate the rate is within acceptable bounds based on historical LBP data.
-        if (projectTokenRate < _MIN_RATE) {
-            revert ProjectTokenRateTooLow(projectTokenRate, _MIN_RATE);
+        if (projectTokenRate < _MIN_PROJECT_TOKEN_RATE) {
+            revert ProjectTokenRateTooLow(projectTokenRate, _MIN_PROJECT_TOKEN_RATE);
         }
-        if (projectTokenRate > _MAX_RATE) {
-            revert ProjectTokenRateTooHigh(projectTokenRate, _MAX_RATE);
+        if (projectTokenRate > _MAX_PROJECT_TOKEN_RATE) {
+            revert ProjectTokenRateTooHigh(projectTokenRate, _MAX_PROJECT_TOKEN_RATE);
         }
 
         _projectTokenRate = projectTokenRate;
@@ -140,6 +140,32 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             lbpCommonParams.blockProjectTokenSwapsIn,
             hasMigration
         );
+    }
+
+    /**
+     * @notice Get the minimum allowed project token rate.
+     * @dev This guards against configuration errors, while retaining flexibility to accommodate normal use cases.
+     * @return minProjectTokenRate The minimum allowed token rate (i.e., price of the token in terms of the reserve)
+     */
+    function getMinimumProjectTokenRate() external pure returns (uint256) {
+        return _MIN_PROJECT_TOKEN_RATE;
+    }
+
+    /**
+     * @notice Get the maximum allowed project token rate.
+     * @dev This guards against configuration errors, while retaining flexibility to accommodate normal use cases.
+     * @return maxProjectTokenRate The maximum allowed token rate (i.e., price of the token in terms of the reserve)
+     */
+    function getMaximumProjectTokenRate() external pure returns (uint256) {
+        return _MAX_PROJECT_TOKEN_RATE;
+    }
+
+    /**
+     * @notice For bi-directional (buy and sell) sales, this is the maximum deviation from proportional initialization.
+     * @return initializationTolerancePercentage The maximum deviation from proportionality allowed at init time
+     */
+    function getInitializationTolerancePercentage() external pure returns (uint256) {
+        return _INITIALIZATION_TOLERANCE_PERCENTAGE;
     }
 
     /// @inheritdoc IFixedPriceLBPool
@@ -351,8 +377,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             uint256 expectedReserve = projectAmount.mulDown(_projectTokenRate);
 
             // This accounts for decimal precision and gives the owner some flexibility
-            uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - _INITIALIZATION_TOLERANCE);
-            uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + _INITIALIZATION_TOLERANCE);
+            uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - _INITIALIZATION_TOLERANCE_PERCENTAGE);
+            uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + _INITIALIZATION_TOLERANCE_PERCENTAGE);
 
             // Verify the actual reserve amount is within tolerance
             if (reserveAmount < minReserve || reserveAmount > maxReserve) {

@@ -115,7 +115,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             "Wrong reserve token weight"
         );
     }
-    
+
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
