@@ -99,17 +99,43 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
         _poolVersion = poolVersion;
     }
 
+    /**
+     * @notice Returns the maximum duration the BPT can be locked after migration.
+     * @dev The BPT timelock prevents withdrawal of proceeds after the sale and migration, representing a Best effort
+     * attempt to ensure that the LBP owner leaves liquidity on the protocol after the sale. This maximum protects
+     * the liquidity from being locked forever (e.g., if the pool is misconfigured).
+     *
+     * @return maxBptLockDuration The maximum amount of time the BPT can be locked, preventing withdrawal by the owner
+     */
+    function getMaxBptLockDuration() external pure returns (uint256) {
+        return _MAX_BPT_LOCK_DURATION;
+    }
+
+    /**
+     * @notice Returns the minimum weight of the reserve token in the successor weighted pool after migration.
+     * @return The minimum weight of the reserve token in the post-migration weighted pool
+     */
+    function getMinReserveTokenMigrationWeight() external pure returns (uint256) {
+        return _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT;
+    }
+
     /// @inheritdoc IPoolVersion
     function getPoolVersion() external view returns (string memory) {
         return _poolVersion;
     }
 
-    /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
+    /**
+     * @notice Returns trusted router, which is the gateway to add liquidity to the pool.
+     * @return trustedRouter The address of the trusted router, guaranteed to reliably report the sender
+     */
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
     }
 
-    /// @notice Returns the migration router, which is used to migrate liquidity from an LBP to a new weighted pool.
+    /**
+     * @notice Returns the migration router, which is used to migrate liquidity from an LBP to a new weighted pool.
+     * @return migrationRouter The custom router with permission to withdraw liquidity and lock BPT
+     */
     function getMigrationRouter() external view returns (address) {
         return _migrationRouter;
     }

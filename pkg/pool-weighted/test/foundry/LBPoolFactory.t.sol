@@ -68,6 +68,18 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         );
     }
 
+    function testGetMaxBptLockDuration() public view {
+        assertEq(lbPoolFactory.getMaxBptLockDuration(), MAX_BPT_LOCK_DURATION, "Wrong bpt lock duration");
+    }
+
+    function testGetMinReserveTokenMigrationWeight() public view {
+        assertEq(
+            lbPoolFactory.getMinReserveTokenMigrationWeight(),
+            MIN_RESERVE_TOKEN_MIGRATION_WEIGHT,
+            "Wrong reserve token weight"
+        );
+    }
+
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }

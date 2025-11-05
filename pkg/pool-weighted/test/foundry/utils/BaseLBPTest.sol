@@ -32,6 +32,9 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     uint32 internal constant DEFAULT_END_OFFSET = 200;
     bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
 
+    uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;
+    uint256 internal constant MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
+
     IERC20 internal projectToken;
     IERC20 internal reserveToken;
 

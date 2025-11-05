@@ -23,6 +23,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true sender.
     address internal immutable _trustedRouter;
+    // This is a custom router with special permission to withdraw liquidity from an LBP, and lock the BPT.
     address internal immutable _migrationRouter;
 
     // The project token is the one being launched (i.e., sold).
