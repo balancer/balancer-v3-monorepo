@@ -147,6 +147,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             "Wrong project token swap blocked flag"
         );
 
+        assertEq(data.migrationRouter, address(0), "Migration router not zero");
+
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
         assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
