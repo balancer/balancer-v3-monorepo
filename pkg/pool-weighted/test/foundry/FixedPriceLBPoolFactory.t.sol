@@ -104,6 +104,18 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         );
     }
 
+    function testGetMaxBptLockDuration() public view {
+        assertEq(lbPoolFactory.getMaxBptLockDuration(), MAX_BPT_LOCK_DURATION, "Wrong bpt lock duration");
+    }
+
+    function testGetMinReserveTokenMigrationWeight() public view {
+        assertEq(
+            lbPoolFactory.getMinReserveTokenMigrationWeight(),
+            MIN_RESERVE_TOKEN_MIGRATION_WEIGHT,
+            "Wrong reserve token weight"
+        );
+    }
+    
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
@@ -160,6 +172,9 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             DEFAULT_PROJECT_TOKENS_SWAP_IN,
             "Wrong project token swap blocked flag"
         );
+
+        assertEq(data.projectTokenRate, DEFAULT_RATE, "Wrong project token rate");
+        assertEq(data.migrationRouter, address(0), "Migration router not zero");
 
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
