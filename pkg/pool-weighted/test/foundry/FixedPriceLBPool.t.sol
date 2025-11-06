@@ -389,6 +389,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Check start and end times
         assertEq(data.startTime, block.timestamp + DEFAULT_START_OFFSET, "Start time mismatch");
         assertEq(data.endTime, block.timestamp + DEFAULT_END_OFFSET, "End time mismatch");
+
+        assertEq(data.projectTokenRate, DEFAULT_RATE, "Wrong project token rate");
+        assertEq(data.migrationRouter, address(0), "Non-zero migration router");
     }
 
     /*******************************************************************************
@@ -481,10 +484,12 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Warp to when swaps are enabled
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
 
+        uint256 amount = 1e18;
+
         // Create swap request params - swapping reserve token for project token
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
-            amountGivenScaled18: 1e18,
+            amountGivenScaled18: amount,
             balancesScaled18: vault.getCurrentLiveBalances(pool),
             indexIn: reserveIdx,
             indexOut: projectIdx,
@@ -496,8 +501,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.prank(address(vault));
         uint256 amountCalculated = IBasePool(pool).onSwap(request);
 
-        // Verify amount calculated is non-zero
-        assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
+        // Verify amount calculated is the same as the amount given.
+        assertEq(amountCalculated, amount, "Swap amount should match amount given");
     }
 
     /*******************************************************************************
