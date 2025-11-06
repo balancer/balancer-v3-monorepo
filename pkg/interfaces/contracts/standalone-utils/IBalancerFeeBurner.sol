@@ -14,6 +14,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
+        bool isBuffer;
     }
 
     /**
