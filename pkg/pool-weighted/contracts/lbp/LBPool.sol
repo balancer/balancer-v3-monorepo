@@ -96,7 +96,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             lbpParams.reserveTokenEndWeight
         );
 
-        bool hasMigration = migrationParams.bptPercentageToMigrate != 0;
+        bool hasMigration = factoryParams.migrationRouter != address(0);
 
         emit WeightedLBPoolCreated(lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
 
