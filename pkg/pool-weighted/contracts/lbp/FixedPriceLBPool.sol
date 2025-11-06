@@ -87,22 +87,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         bool hasMigration
     );
 
-    /// @notice The initialization amounts do not match the expected ratio based on the fixed rate.
-    error UnbalancedInitialization();
-
-    /// @notice An initialization amount is invalid (e.g., zero token balance, or non-zero reserve in buy-only mode).
-    error InvalidInitializationAmount();
-
-    /// @notice The provided rate is below the minimum allowed rate.
-    /// @param actualRate The rate provided on creation
-    /// @param minimumRate The minimum allowed rate
-    error ProjectTokenRateTooLow(uint256 actualRate, uint256 minimumRate);
-
-    /// @notice The provided rate is above the maximum allowed rate.
-    /// @param actualRate The rate provided on creation
-    /// @param maximumRate The maximum allowed rate
-    error ProjectTokenRateTooHigh(uint256 actualRate, uint256 maximumRate);
-
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
