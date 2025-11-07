@@ -16,11 +16,13 @@ import { GradualValueChange } from "../lib/GradualValueChange.sol";
  */
 library LBPValidation {
     // Set a boundary on the maximum lock duration, as a safeguard against accidentally locking it forever.
-    uint256 internal constant _MAX_BPT_LOCK_DURATION = 365 days;
+    // solhint-disable-next-line private-vars-leading-underscore
+    uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;
 
     // Set a boundary on the minimum pool value to migrate; otherwise owners could circumvent the liquidity guarantee
     // by migrating a trivial amount of the proceeds.
-    uint256 internal constant _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
+    // solhint-disable-next-line private-vars-leading-underscore
+    uint256 internal constant MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
 
     /// @notice The owner is the zero address.
     error InvalidOwner();
@@ -111,7 +113,7 @@ library LBPValidation {
             if (
                 totalTokenWeight != FixedPoint.ONE ||
                 migrationParams.migrationWeightProjectToken == 0 ||
-                migrationParams.migrationWeightReserveToken < _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT
+                migrationParams.migrationWeightReserveToken < MIN_RESERVE_TOKEN_MIGRATION_WEIGHT
             ) {
                 revert InvalidMigrationWeights();
             }
@@ -125,7 +127,7 @@ library LBPValidation {
 
             // Cannot go over the maximum duration. There is no minimum duration, but it shouldn't be zero.
             if (
-                migrationParams.lockDurationAfterMigration > _MAX_BPT_LOCK_DURATION ||
+                migrationParams.lockDurationAfterMigration > MAX_BPT_LOCK_DURATION ||
                 migrationParams.lockDurationAfterMigration == 0
             ) {
                 revert InvalidBptLockDuration();
