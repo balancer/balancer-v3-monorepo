@@ -27,6 +27,10 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
 
     uint256 internal constant DEFAULT_RATE = FixedPoint.ONE;
 
+    // Bounds on the project token rate.
+    uint256 private constant MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
+    uint256 private constant MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;
+
     FixedPriceLBPoolFactory internal lbPoolFactory;
 
     uint32 internal defaultStartTime;
@@ -416,6 +420,45 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         assertEq(vault.getStaticSwapFeePercentage(pool), newSwapFee);
     }
 
+    function testRatesInFactory() public {
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        uint256 salt = _saltCounter++;
+
+        uint256 tooLowRate = MIN_PROJECT_TOKEN_RATE - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IFixedPriceLBPool.ProjectTokenRateTooLow.selector,
+                tooLowRate,
+                MIN_PROJECT_TOKEN_RATE
+            )
+        );
+
+        lbPoolFactory.create(lbpCommonParams, tooLowRate, swapFee, bytes32(salt), address(0));
+
+        uint256 tooHighRate = MAX_PROJECT_TOKEN_RATE + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IFixedPriceLBPool.ProjectTokenRateTooHigh.selector,
+                tooHighRate,
+                MAX_PROJECT_TOKEN_RATE
+            )
+        );
+
+        lbPoolFactory.create(lbpCommonParams, tooHighRate, swapFee, bytes32(salt), address(0));
+    }
+
     function _createFixedPriceLBPoolWithMigration(
         address poolCreator,
         uint256 lockDurationAfterMigration,
@@ -423,12 +466,9 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         uint256 migrationWeightProjectToken,
         uint256 migrationWeightReserveToken
     ) internal returns (address newPool, bytes memory poolArgs) {
-        string memory name = "LBPool";
-        string memory symbol = "LBP";
-
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
-            name: name,
-            symbol: symbol,
+            name: "LBPool",
+            symbol: "LBP",
             owner: bob,
             projectToken: projectToken,
             reserveToken: reserveToken,

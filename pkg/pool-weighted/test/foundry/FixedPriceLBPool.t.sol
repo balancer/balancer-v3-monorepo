@@ -193,8 +193,30 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertEq(IFixedPriceLBPool(address(pool)).getProjectTokenRate(), DEFAULT_RATE, "Wrong project token rate");
     }
 
-    function testCreatePoolRateTooLow() public {
+    function testCreatePoolRates() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
         uint256 tooLowRate = MIN_PROJECT_TOKEN_RATE - 1;
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        MigrationParams memory migrationParams;
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -203,19 +225,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
                 MIN_PROJECT_TOKEN_RATE
             )
         );
+        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, tooLowRate);
 
-        _createFixedPriceLBPool(
-            address(0), // Pool creator
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            tooLowRate,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
-    }
-
-    function testCreatePoolRateTooHigh() public {
         uint256 tooHighRate = MAX_PROJECT_TOKEN_RATE + 1;
-
         vm.expectRevert(
             abi.encodeWithSelector(
                 IFixedPriceLBPool.ProjectTokenRateTooHigh.selector,
@@ -223,14 +235,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
                 MAX_PROJECT_TOKEN_RATE
             )
         );
-
-        _createFixedPriceLBPool(
-            address(0), // Pool creator
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            tooHighRate,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
+        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, tooHighRate);
     }
 
     /********************************************************
