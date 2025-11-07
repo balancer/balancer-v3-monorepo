@@ -11,7 +11,6 @@ import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultT
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /**
@@ -66,20 +65,12 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
     /// @notice The zero address was given for the trusted router.
     error InvalidTrustedRouter();
 
-    /// @notice The owner is the zero address.
-    error InvalidOwner();
-
-    /// @notice The sum of migrated weights is not equal to 1.
-    error InvalidMigrationWeights();
-
-    /// @notice The percentage of BPT to migrate is greater than 100%.
-    error InvalidBptPercentageToMigrate();
-
-    /// @notice The BPT lock duration is greater than the maximum allowed.
-    error InvalidBptLockDuration();
-
-    /// @notice Cannot create a pool with migration without a migration router.
-    error MigrationUnsupported();
+    /**
+     * @notice The zero address was given for the migration router.
+     * @dev Migration is optional for LBPs, but the *factory* has to have it. We don't want people to be able to deploy
+     * pools with random migration routers.
+     */
+    error InvalidMigrationRouter();
 
     constructor(
         string memory factoryVersion,
@@ -91,9 +82,17 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
             revert InvalidTrustedRouter();
         }
 
+        if (migrationRouter == address(0)) {
+            revert InvalidMigrationRouter();
+        }
+
         // LBPools are deployed with a router known to reliably report the originating address on operations.
         // This is used to ensure that only the owner can add liquidity to an LBP.
         _trustedRouter = trustedRouter;
+
+        // The factory must have a valid migration router, which withdraws, deploys a successor weighted pool,
+        // and locks up the BPT for the specified duration. Migration is optional per LBP, but the factory must
+        // have it: we don't want different factories for migration/no migration.
         _migrationRouter = migrationRouter;
 
         _poolVersion = poolVersion;
@@ -150,36 +149,5 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
         (tokenConfig[0].token, tokenConfig[1].token) = projectToken < reserveToken
             ? (projectToken, reserveToken)
             : (reserveToken, projectToken);
-    }
-
-    function _validateMigration(MigrationParams memory migrationParams) internal view {
-        // Cannot migrate without an associated router.
-        // The factory guarantees `_trustedRouter` is defined, but allows `_migrationRouter` to be zero.
-        if (_migrationRouter == address(0)) {
-            revert MigrationUnsupported();
-        }
-
-        uint256 totalTokenWeight = migrationParams.migrationWeightProjectToken +
-            migrationParams.migrationWeightReserveToken;
-        if (
-            (totalTokenWeight != FixedPoint.ONE ||
-                migrationParams.migrationWeightProjectToken == 0 ||
-                migrationParams.migrationWeightReserveToken < _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT)
-        ) {
-            revert InvalidMigrationWeights();
-        }
-
-        // Must be a valid percentage, and doesn't make sense to be zero if there is a migration.
-        if (migrationParams.bptPercentageToMigrate > FixedPoint.ONE || migrationParams.bptPercentageToMigrate == 0) {
-            revert InvalidBptPercentageToMigrate();
-        }
-
-        // Cannot go over the maximum duration. There is no minimum duration, but it shouldn't be zero.
-        if (
-            migrationParams.lockDurationAfterMigration > _MAX_BPT_LOCK_DURATION ||
-            migrationParams.lockDurationAfterMigration == 0
-        ) {
-            revert InvalidBptLockDuration();
-        }
     }
 }

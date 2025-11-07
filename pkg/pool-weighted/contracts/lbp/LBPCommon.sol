@@ -14,6 +14,8 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { LBPValidation } from "./LBPValidation.sol";
+
 abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
@@ -48,9 +50,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     uint256 internal immutable _lockDurationAfterMigration;
     // The percentage of the final pool value that will be sent in the new Weighted Pool after migration.
     uint256 internal immutable _bptPercentageToMigrate;
-    // The final weight of the project token in the migrated pool (can be different from the LBP ending weight).
+    // The weight of the project token in the migrated pool (can be different from the LBP ending weight).
     uint256 internal immutable _migrationWeightProjectToken;
-    // The final weight of the reserve token in the migrated pool (can be different from the LBP ending weight).
+    // The weight of the reserve token in the migrated pool (can be different from the LBP ending weight).
     uint256 internal immutable _migrationWeightReserveToken;
 
     /// @notice Swaps are disabled except during the sale (i.e., between and start and end times).
@@ -74,24 +76,31 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     constructor(
-        LBPCommonParams memory params,
+        LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
         address trustedRouter,
         address migrationRouter
-    ) Ownable(params.owner) {
+    ) Ownable(lbpCommonParams.owner) {
+        LBPValidation.validateCommonParams(lbpCommonParams);
+
+        // wake-disable-next-line unchecked-return-value
+        LBPValidation.validateMigrationParams(migrationParams, migrationRouter);
+
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
         _migrationRouter = migrationRouter;
 
-        _projectToken = params.projectToken;
-        _reserveToken = params.reserveToken;
+        _projectToken = lbpCommonParams.projectToken;
+        _reserveToken = lbpCommonParams.reserveToken;
 
-        _startTime = params.startTime;
-        _endTime = params.endTime;
+        _startTime = lbpCommonParams.startTime;
+        _endTime = lbpCommonParams.endTime;
 
-        _blockProjectTokenSwapsIn = params.blockProjectTokenSwapsIn;
+        _blockProjectTokenSwapsIn = lbpCommonParams.blockProjectTokenSwapsIn;
 
-        (_projectTokenIndex, _reserveTokenIndex) = params.projectToken < params.reserveToken ? (0, 1) : (1, 0);
+        (_projectTokenIndex, _reserveTokenIndex) = lbpCommonParams.projectToken < lbpCommonParams.reserveToken
+            ? (0, 1)
+            : (1, 0);
 
         _lockDurationAfterMigration = migrationParams.lockDurationAfterMigration;
         _bptPercentageToMigrate = migrationParams.bptPercentageToMigrate;

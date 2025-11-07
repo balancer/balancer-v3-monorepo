@@ -141,8 +141,9 @@ describe('LBPool', function () {
   });
 
   sharedBeforeEach('create pool and grant approvals', async () => {
+    // Not testing the migration router here; address can't be zero. Just use the regular router address.
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, ZERO_ADDRESS],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, router],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 

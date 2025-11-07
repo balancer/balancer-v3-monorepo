@@ -10,6 +10,7 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
+import { LBPValidation } from "./LBPValidation.sol";
 import { LBPoolLib } from "../lib/LBPoolLib.sol";
 import { LBPool } from "./LBPool.sol";
 
@@ -19,6 +20,18 @@ import { LBPool } from "./LBPool.sol";
  * with parameters specified on deployment.
  */
 contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
+    /**
+     * @notice Event emitted when a standard weighted LBPool is deployed.
+     * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
+     * more detail on this specific LBP configuration. The pool also emits a `GradualWeightUpdateScheduled` event with
+     * the starting and ending times and weights.
+     *
+     * @param owner Address of the pool's owner
+     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
+     * @param hasMigration True if the pool will be migrated after the sale
+     */
+    event WeightedLBPoolCreated(address indexed owner, bool blockProjectTokenSwapsIn, bool hasMigration);
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -51,7 +64,7 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, false, poolCreator);
+        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
     }
 
     /**
@@ -70,9 +83,7 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
-        _validateMigration(migrationParams);
-
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, true, poolCreator);
+        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
     }
 
     function _createPool(
@@ -81,26 +92,21 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
         bytes32 salt,
-        bool hasMigration,
         address poolCreator
     ) internal returns (address pool) {
-        if (lbpCommonParams.owner == address(0)) {
-            revert InvalidOwner();
-        }
+        // These validations are duplicated in the pool contract but performed here to surface precise error messages,
+        // as create2 would otherwise mask the underlying revert reason.
 
-        // Validate weight parameters and temporal constraints prior to deployment.
-        // This validation is duplicated in the pool contract but performed here to surface precise error messages,
-        // as create2 would otherwise mask the underlying revert reason. We don't need the return value.
+        LBPValidation.validateCommonParams(lbpCommonParams);
 
-        // wake-disable-next-line unchecked-return-value
         LBPoolLib.verifyWeightUpdateParameters(
-            lbpCommonParams.startTime,
-            lbpCommonParams.endTime,
             lbpParams.projectTokenStartWeight,
             lbpParams.reserveTokenStartWeight,
             lbpParams.projectTokenEndWeight,
             lbpParams.reserveTokenEndWeight
         );
+
+        bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
 
         address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
 
@@ -124,6 +130,8 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
                 migrationParams.migrationWeightReserveToken
             );
         }
+
+        emit WeightedLBPoolCreated(lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
 
         PoolRoleAccounts memory roleAccounts;
 

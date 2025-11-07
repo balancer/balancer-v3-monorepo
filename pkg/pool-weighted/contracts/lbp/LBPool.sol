@@ -14,8 +14,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
-import { LBPCommon } from "./LBPCommon.sol";
 import { LBPoolLib } from "../lib/LBPoolLib.sol";
+import { LBPCommon } from "./LBPCommon.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
@@ -31,18 +31,6 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     uint256 private immutable _reserveTokenStartWeight;
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
-
-    /**
-     * @notice Event emitted when a standard weighted LBPool is deployed.
-     * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
-     * more detail on this specific LBP configuration. The pool also emits a `GradualWeightUpdateScheduled` event with
-     * the starting and ending times and weights.
-     *
-     * @param owner Address of the pool's owner
-     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
-     * @param hasMigration True if the pool will be migrated after the sale
-     */
-    event WeightedLBPoolCreated(address indexed owner, bool blockProjectTokenSwapsIn, bool hasMigration);
 
     /**
      * @notice Emitted on deployment to record the sale parameters.
@@ -67,17 +55,19 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         LBPParams memory lbpParams,
         FactoryParams memory factoryParams
     )
-        LBPCommon(
-            _buildLBPCommonParams(lbpCommonParams, lbpParams), // May adjust startTime as a side effect
-            migrationParams,
-            factoryParams.trustedRouter,
-            factoryParams.migrationRouter
-        )
+        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, factoryParams.migrationRouter)
         WeightedPool(
             _buildWeightedPoolParams(lbpCommonParams, lbpParams, factoryParams.poolVersion),
             factoryParams.vault
         )
     {
+        LBPoolLib.verifyWeightUpdateParameters(
+            lbpParams.projectTokenStartWeight,
+            lbpParams.reserveTokenStartWeight,
+            lbpParams.projectTokenEndWeight,
+            lbpParams.reserveTokenEndWeight
+        );
+
         _projectTokenStartWeight = lbpParams.projectTokenStartWeight;
         _reserveTokenStartWeight = lbpParams.reserveTokenStartWeight;
 
@@ -95,10 +85,6 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             lbpParams.projectTokenEndWeight,
             lbpParams.reserveTokenEndWeight
         );
-
-        bool hasMigration = factoryParams.migrationRouter != address(0);
-
-        emit WeightedLBPoolCreated(lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
 
         emit GradualWeightUpdateScheduled(_startTime, _endTime, startWeights, endWeights);
     }
@@ -253,25 +239,5 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
                 normalizedWeights: normalizedWeights,
                 version: poolVersion
             });
-    }
-
-    // Build and validate LBPCommonParams for initializing LBPCommon. Called on construction.
-    // Validates weights and adjusts startTime if needed.
-    function _buildLBPCommonParams(
-        LBPCommonParams memory lbpCommonParams,
-        LBPParams memory lbpParams
-    ) private view returns (LBPCommonParams memory finalCommonParams) {
-        finalCommonParams = lbpCommonParams;
-
-        // Checks that the weights are valid and `endTime` is after `startTime`. If `startTime` is in the past,
-        // avoid abrupt weight changes by overriding it with the current block time.
-        finalCommonParams.startTime = LBPoolLib.verifyWeightUpdateParameters(
-            lbpCommonParams.startTime,
-            lbpCommonParams.endTime,
-            lbpParams.projectTokenStartWeight,
-            lbpParams.reserveTokenStartWeight,
-            lbpParams.projectTokenEndWeight,
-            lbpParams.reserveTokenEndWeight
-        );
     }
 }
