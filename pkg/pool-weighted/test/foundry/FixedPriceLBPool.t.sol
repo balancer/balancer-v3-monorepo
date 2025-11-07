@@ -123,7 +123,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectEmit();
         // The event should be emitted with block.timestamp as startTime, not the past time.
-        emit FixedPriceLBPool.FixedPriceLBPoolCreated(
+        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(
             bob,
             block.timestamp,
             endTime,
@@ -156,7 +156,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit FixedPriceLBPool.FixedPriceLBPoolCreated(
+        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
+
+        vm.expectEmit();
+        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(
             bob,
             startTime,
             endTime,
@@ -164,9 +167,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             DEFAULT_PROJECT_TOKENS_SWAP_IN,
             false
         ); // no migration
-
-        vm.expectEmit();
-        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
         _createFixedPriceLBPool(
             address(0), // Pool creator
