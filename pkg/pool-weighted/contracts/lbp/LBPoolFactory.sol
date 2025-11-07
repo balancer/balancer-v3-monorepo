@@ -26,11 +26,17 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * more detail on this specific LBP configuration. The pool also emits a `GradualWeightUpdateScheduled` event with
      * the starting and ending times and weights.
      *
+     * @param pool Address of the pool
      * @param owner Address of the pool's owner
      * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
      * @param hasMigration True if the pool will be migrated after the sale
      */
-    event WeightedLBPoolCreated(address indexed owner, bool blockProjectTokenSwapsIn, bool hasMigration);
+    event WeightedLBPoolCreated(
+        address indexed pool,
+        address indexed owner,
+        bool blockProjectTokenSwapsIn,
+        bool hasMigration
+    );
 
     constructor(
         IVault vault,
@@ -119,19 +125,17 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
-        emit LBPoolCreated(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
+        // Emit type-specific event first.
+        emit WeightedLBPoolCreated(pool, lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
 
-        if (hasMigration) {
-            emit MigrationParamsSet(
-                pool,
-                migrationParams.lockDurationAfterMigration,
-                migrationParams.bptPercentageToMigrate,
-                migrationParams.migrationWeightProjectToken,
-                migrationParams.migrationWeightReserveToken
-            );
-        }
-
-        emit WeightedLBPoolCreated(lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
+        // Emit common events via base contract helper.
+        _emitPoolCreatedEvents(
+            pool,
+            lbpCommonParams.projectToken,
+            lbpCommonParams.reserveToken,
+            migrationParams,
+            hasMigration
+        );
 
         PoolRoleAccounts memory roleAccounts;
 

@@ -150,4 +150,38 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
             ? (projectToken, reserveToken)
             : (reserveToken, projectToken);
     }
+
+    /**
+     * @notice Emits common pool creation events in a consistent order.
+     * @dev This helper ensures all LBP factories emit events consistently:
+     * 1. LBPoolCreated (with pool address and tokens)
+     * 2. MigrationParamsSet (if migration is enabled)
+     *
+     * Derived factories should emit their type-specific event before calling this.
+     *
+     * @param pool The address of the newly created pool
+     * @param projectToken The project token address
+     * @param reserveToken The reserve token address
+     * @param migrationParams The migration parameters (may be empty)
+     * @param hasMigration Whether migration is enabled for this pool
+     */
+    function _emitPoolCreatedEvents(
+        address pool,
+        IERC20 projectToken,
+        IERC20 reserveToken,
+        MigrationParams memory migrationParams,
+        bool hasMigration
+    ) internal {
+        emit LBPoolCreated(pool, projectToken, reserveToken);
+
+        if (hasMigration) {
+            emit MigrationParamsSet(
+                pool,
+                migrationParams.lockDurationAfterMigration,
+                migrationParams.bptPercentageToMigrate,
+                migrationParams.migrationWeightProjectToken,
+                migrationParams.migrationWeightReserveToken
+            );
+        }
+    }
 }

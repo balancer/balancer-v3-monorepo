@@ -263,10 +263,10 @@ contract LBPoolTest is WeightedLBPTest {
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
+        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
 
         vm.expectEmit();
-        emit LBPoolFactory.WeightedLBPoolCreated(bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
         // Should create the same pool address again.
         _createLBPoolWithCustomWeights(
