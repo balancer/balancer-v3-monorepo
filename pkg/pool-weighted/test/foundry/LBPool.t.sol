@@ -9,13 +9,13 @@ import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { ILBPCommon, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -29,6 +29,7 @@ import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
 import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { LBPValidation } from "../../contracts/lbp/LBPValidation.sol";
 import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
@@ -55,6 +56,38 @@ contract LBPoolTest is WeightedLBPTest {
     /********************************************************
                         Pool Constructor
     ********************************************************/
+
+    function testCreatePoolWithInvalidTokens() public {
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: IERC20(address(0)),
+            reserveToken: reserveToken,
+            startTime: block.timestamp,
+            endTime: block.timestamp + 1000,
+            blockProjectTokenSwapsIn: false
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: 90e16,
+            reserveTokenStartWeight: 10e16,
+            projectTokenEndWeight: 10e16,
+            reserveTokenEndWeight: 90e16
+        });
+
+        vm.expectRevert(LBPValidation.InvalidProjectToken.selector);
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+
+        lbpCommonParams.projectToken = projectToken;
+        lbpCommonParams.reserveToken = IERC20(address(0));
+        vm.expectRevert(LBPValidation.InvalidReserveToken.selector);
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+
+        lbpCommonParams.reserveToken = projectToken;
+        vm.expectRevert(LBPValidation.TokensMustBeDifferent.selector);
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+    }
 
     function testCreatePoolLowProjectStartWeight() public {
         // Min weight is 1e16 (1%).
@@ -230,10 +263,10 @@ contract LBPoolTest is WeightedLBPTest {
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit LBPool.WeightedLBPoolCreated(bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
         vm.expectEmit();
-        emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
+        emit LBPoolFactory.WeightedLBPoolCreated(bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
 
         // Should create the same pool address again.
         _createLBPoolWithCustomWeights(

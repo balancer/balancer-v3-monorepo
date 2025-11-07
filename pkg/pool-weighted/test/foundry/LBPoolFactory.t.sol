@@ -15,8 +15,9 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
+import { LBPValidation } from "../../contracts/lbp/LBPValidation.sol";
+import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
@@ -113,7 +114,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             reserveTokenEndWeight: DEFAULT_WEIGHT
         });
 
-        vm.expectRevert(BaseLBPFactory.InvalidOwner.selector);
+        vm.expectRevert(LBPValidation.InvalidOwner.selector);
         lbPoolFactory.create(commonParams, params, swapFee, ZERO_BYTES32, address(0));
     }
 
@@ -197,6 +198,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testCreatePoolWithMigrationParamsButNoRouter() public {
+        vm.expectRevert(BaseLBPFactory.InvalidMigrationRouter.selector);
         lbPoolFactory = deployLBPoolFactory(
             IVault(address(vault)),
             365 days,
@@ -206,20 +208,40 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             address(0) // no migration router
         );
 
-        // Set migration parameters
-        uint256 initBptLockDuration = 30 days;
-        uint256 initBptPercentageToMigrate = 50e16; // 50%
-        uint256 initNewWeightProjectToken = 60e16; // 60%
-        uint256 initNewWeightReserveToken = 40e16; // 40%
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
 
-        vm.expectRevert(BaseLBPFactory.MigrationUnsupported.selector);
-        (pool, ) = _createLBPoolWithMigration(
-            bob,
-            initBptLockDuration,
-            initBptPercentageToMigrate,
-            initNewWeightProjectToken,
-            initNewWeightReserveToken
-        );
+        MigrationParams memory migrationParams = MigrationParams({
+            lockDurationAfterMigration: 30 days,
+            bptPercentageToMigrate: 50e16,
+            migrationWeightProjectToken: 60e16,
+            migrationWeightReserveToken: 40e16
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx]
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(0), // no router
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(LBPValidation.MigrationRouterRequired.selector);
+        new LBPool(lbpCommonParams, migrationParams, lbpParams, factoryParams);
     }
 
     function testCreatePoolWithInvalidMigrationWeights() public {
@@ -228,13 +250,13 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 minReserveTokenWeight = 20e16; // 20%
         uint256 maxProjectTokenWeight = 100e16 - minReserveTokenWeight;
 
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
 
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
 
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -243,10 +265,10 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             minReserveTokenWeight - 1
         );
 
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
 
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
     }
 
@@ -256,7 +278,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         // BPT percentage to migrate cannot be zero
-        vm.expectRevert(BaseLBPFactory.InvalidBptPercentageToMigrate.selector);
+        vm.expectRevert(LBPValidation.InvalidBptPercentageToMigrate.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -272,7 +294,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         // BPT percentage to migrate cannot be zero
-        vm.expectRevert(BaseLBPFactory.InvalidBptPercentageToMigrate.selector);
+        vm.expectRevert(LBPValidation.InvalidBptPercentageToMigrate.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -287,7 +309,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        vm.expectRevert(BaseLBPFactory.InvalidBptLockDuration.selector);
+        vm.expectRevert(LBPValidation.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
             address(0),
             366 days,
@@ -302,7 +324,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        vm.expectRevert(BaseLBPFactory.InvalidBptLockDuration.selector);
+        vm.expectRevert(LBPValidation.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
             address(0),
             0,
