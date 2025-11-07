@@ -24,6 +24,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
      * more detail on this specific LBP configuration.
      *
+     * @param pool Address of the pool
      * @param owner Address of the pool's owner
      * @param startTime The starting timestamp of the token sale
      * @param endTime  The ending timestamp of the token sale
@@ -32,6 +33,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @param hasMigration True if the pool will be migrated after the sale
      */
     event FixedPriceLBPoolCreated(
+        address indexed pool,
         address indexed owner,
         uint256 startTime,
         uint256 endTime,
@@ -121,24 +123,23 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, factoryParams, projectTokenRate), salt);
 
-        emit LBPoolCreated(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
-
-        if (hasMigration) {
-            emit MigrationParamsSet(
-                pool,
-                migrationParams.lockDurationAfterMigration,
-                migrationParams.bptPercentageToMigrate,
-                migrationParams.migrationWeightProjectToken,
-                migrationParams.migrationWeightReserveToken
-            );
-        }
-
+        // Emit type-specific event first
         emit FixedPriceLBPoolCreated(
+            pool,
             lbpCommonParams.owner,
             lbpCommonParams.startTime,
             lbpCommonParams.endTime,
             projectTokenRate,
             lbpCommonParams.blockProjectTokenSwapsIn,
+            hasMigration
+        );
+
+        // Emit common events via base helper
+        _emitPoolCreatedEvents(
+            pool,
+            lbpCommonParams.projectToken,
+            lbpCommonParams.reserveToken,
+            migrationParams,
             hasMigration
         );
 
