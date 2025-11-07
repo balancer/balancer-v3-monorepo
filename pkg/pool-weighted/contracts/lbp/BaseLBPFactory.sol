@@ -13,6 +13,8 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
+import { LBPValidation } from "./LBPValidation.sol";
+
 /**
  * @notice Base contract for LBP factories.
  * @dev This is a factory for LBPools, allowing only two tokens and restricting the LBP to a single token sale, with
@@ -21,14 +23,6 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Version {
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
     uint256 internal constant _TWO_TOKENS = 2;
-
-    // Set a boundary on the maximum lock duration, as a safeguard against accidentally locking it forever.
-    uint256 internal constant _MAX_BPT_LOCK_DURATION = 365 days;
-
-    // Set a boundary on the minimum pool value to migrate; otherwise owners could circumvent the liquidity guarantee
-    // by migrating a trivial amount of the proceeds. Note that LBP participants should also note the lock duration;
-    // a very short lock time would have a similar effect.
-    uint256 internal constant _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
 
     // The pool version and router addresses are stored in the factory and passed down to the pools on deployment.
     string internal _poolVersion;
@@ -107,7 +101,7 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
      * @return maxBptLockDuration The maximum amount of time the BPT can be locked, preventing withdrawal by the owner
      */
     function getMaxBptLockDuration() external pure returns (uint256) {
-        return _MAX_BPT_LOCK_DURATION;
+        return LBPValidation.MAX_BPT_LOCK_DURATION;
     }
 
     /**
@@ -115,7 +109,7 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
      * @return The minimum weight of the reserve token in the post-migration weighted pool
      */
     function getMinReserveTokenMigrationWeight() external pure returns (uint256) {
-        return _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT;
+        return LBPValidation.MIN_RESERVE_TOKEN_MIGRATION_WEIGHT;
     }
 
     /// @inheritdoc IPoolVersion
