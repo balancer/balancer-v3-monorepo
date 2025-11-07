@@ -51,6 +51,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      * MIN allows tokens as cheap as $0.0001 (0.01 cent) - 100x below observed minimum.
      * MAX allows tokens as expensive as $10,000 - ~2000x above observed maximum.
      * These bounds prevent configuration errors while remaining flexible for legitimate use cases.
+     *
+     * NOTE: These constants are duplicated in FixedPriceLBPoolFactory for early validation.
      */
     uint256 private constant _MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
     uint256 private constant _MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;

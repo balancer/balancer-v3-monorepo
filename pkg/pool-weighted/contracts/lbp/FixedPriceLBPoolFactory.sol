@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
@@ -19,6 +20,10 @@ import { LBPoolLib } from "../lib/LBPoolLib.sol";
  * price is fixed throughout the entire sale.
  */
 contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
+    // NOTE: These constants are duplicated in FixedPriceLBPool to support both factory and pool validation.
+    uint256 private constant _MIN_PROJECT_TOKEN_RATE = 1e14; // 0.0001
+    uint256 private constant _MAX_PROJECT_TOKEN_RATE = 1e22; // 10000
+
     /**
      * @notice Event emitted when a fixed price LBP is deployed.
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
@@ -109,6 +114,14 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         // as create2 would otherwise mask the underlying revert reason.
 
         LBPValidation.validateCommonParams(lbpCommonParams);
+
+        // Validate rate bounds before deployment.
+        if (projectTokenRate < _MIN_PROJECT_TOKEN_RATE) {
+            revert IFixedPriceLBPool.ProjectTokenRateTooLow(projectTokenRate, _MIN_PROJECT_TOKEN_RATE);
+        }
+        if (projectTokenRate > _MAX_PROJECT_TOKEN_RATE) {
+            revert IFixedPriceLBPool.ProjectTokenRateTooHigh(projectTokenRate, _MAX_PROJECT_TOKEN_RATE);
+        }
 
         bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
 
