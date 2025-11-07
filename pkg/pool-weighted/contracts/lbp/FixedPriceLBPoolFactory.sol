@@ -10,6 +10,7 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 
 import { FixedPriceLBPool } from "./FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
+import { LBPValidation } from "./LBPValidation.sol";
 import { LBPoolLib } from "../lib/LBPoolLib.sol";
 
 /**
@@ -18,6 +19,27 @@ import { LBPoolLib } from "../lib/LBPoolLib.sol";
  * price is fixed throughout the entire sale.
  */
 contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
+    /**
+     * @notice Event emitted when a fixed price LBP is deployed.
+     * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
+     * more detail on this specific LBP configuration.
+     *
+     * @param owner Address of the pool's owner
+     * @param startTime The starting timestamp of the token sale
+     * @param endTime  The ending timestamp of the token sale
+     * @param projectTokenRate The project token price in terms of the reserve token
+     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
+     * @param hasMigration True if the pool will be migrated after the sale
+     */
+    event FixedPriceLBPoolCreated(
+        address indexed owner,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 projectTokenRate,
+        bool blockProjectTokenSwapsIn,
+        bool hasMigration
+    );
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -50,15 +72,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
-        pool = _createPool(
-            lbpCommonParams,
-            migrationParams,
-            projectTokenRate,
-            swapFeePercentage,
-            salt,
-            false,
-            poolCreator
-        );
+        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
     }
 
     /**
@@ -78,17 +92,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
-        _validateMigration(migrationParams);
-
-        pool = _createPool(
-            lbpCommonParams,
-            migrationParams,
-            projectTokenRate,
-            swapFeePercentage,
-            salt,
-            true,
-            poolCreator
-        );
+        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
     }
 
     function _createPool(
@@ -97,12 +101,14 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
-        bool hasMigration,
         address poolCreator
     ) internal returns (address pool) {
-        if (lbpCommonParams.owner == address(0)) {
-            revert InvalidOwner();
-        }
+        // These validations are duplicated in the pool contract but performed here to surface precise error messages,
+        // as create2 would otherwise mask the underlying revert reason.
+
+        LBPValidation.validateCommonParams(lbpCommonParams);
+
+        bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
 
         address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
 
@@ -126,6 +132,15 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
                 migrationParams.migrationWeightReserveToken
             );
         }
+
+        emit FixedPriceLBPoolCreated(
+            lbpCommonParams.owner,
+            lbpCommonParams.startTime,
+            lbpCommonParams.endTime,
+            projectTokenRate,
+            lbpCommonParams.blockProjectTokenSwapsIn,
+            hasMigration
+        );
 
         PoolRoleAccounts memory roleAccounts;
 

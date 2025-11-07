@@ -17,7 +17,6 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
-import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { LBPCommon } from "./LBPCommon.sol";
 
 /**
@@ -66,40 +65,13 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      */
     uint256 private immutable _projectTokenRate;
 
-    /**
-     * @notice Event emitted when a fixed price LBP is deployed.
-     * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
-     * more detail on this specific LBP configuration.
-     *
-     * @param owner Address of the pool's owner
-     * @param startTime The starting timestamp of the token sale
-     * @param endTime  The ending timestamp of the token sale
-     * @param projectTokenRate The project token price in terms of the reserve token
-     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
-     * @param hasMigration True if the pool will be migrated after the sale
-     */
-    event FixedPriceLBPoolCreated(
-        address indexed owner,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 projectTokenRate,
-        bool blockProjectTokenSwapsIn,
-        bool hasMigration
-    );
-
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
         FactoryParams memory factoryParams,
         uint256 projectTokenRate
     )
-        // `buildLBPCommonParams` may adjust startTime as a side effect.
-        LBPCommon(
-            _buildLBPCommonParams(lbpCommonParams),
-            migrationParams,
-            factoryParams.trustedRouter,
-            factoryParams.migrationRouter
-        )
+        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, factoryParams.migrationRouter)
         BalancerPoolToken(factoryParams.vault, lbpCommonParams.name, lbpCommonParams.symbol)
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
@@ -113,17 +85,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         }
 
         _projectTokenRate = projectTokenRate;
-
-        bool hasMigration = migrationParams.bptPercentageToMigrate != 0;
-
-        emit FixedPriceLBPoolCreated(
-            lbpCommonParams.owner,
-            lbpCommonParams.startTime,
-            lbpCommonParams.endTime,
-            projectTokenRate,
-            lbpCommonParams.blockProjectTokenSwapsIn,
-            hasMigration
-        );
     }
 
     /**
@@ -369,19 +330,5 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
                 revert UnbalancedInitialization();
             }
         }
-    }
-
-    // Build and validate LBPCommonParams for initializing LBPCommon. Called on construction.
-    function _buildLBPCommonParams(
-        LBPCommonParams memory lbpCommonParams
-    ) private view returns (LBPCommonParams memory finalCommonParams) {
-        finalCommonParams = lbpCommonParams;
-
-        // Checks that `endTime` is after `startTime`. If `startTime` is in the past, override it with the current
-        // block time for consistency.
-        finalCommonParams.startTime = GradualValueChange.resolveStartTime(
-            lbpCommonParams.startTime,
-            lbpCommonParams.endTime
-        );
     }
 }
