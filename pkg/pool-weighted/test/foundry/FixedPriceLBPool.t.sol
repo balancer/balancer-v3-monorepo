@@ -976,7 +976,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
     }
 
-    function testInitializationRatios() public {
+    function testInitializationInvalidRatios() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
@@ -1032,6 +1032,70 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.prank(bob);
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
+    }
+
+    function testInitializationValidLowRatio() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        uint256 rate = 1.5e18;
+
+        (address newPool, ) = _createFixedPriceLBPool(
+            address(0), // Pool creator
+            startTime,
+            endTime,
+            rate,
+            false // bi-directional
+        );
+
+        uint256[] memory initAmounts = new uint256[](2);
+        uint256 projectAmount = 1000e18;
+
+        initAmounts[projectIdx] = projectAmount;
+
+        uint256 expectedReserve = projectAmount.mulDown(rate);
+
+        // This accounts for decimal precision and gives the owner some flexibility
+        uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - INITIALIZATION_TOLERANCE_PERCENTAGE);
+
+        // Now try initializing with the minimum permitted reserve.
+        initAmounts[reserveIdx] = minReserve;
+
+        IERC20[] memory poolTokens = vault.getPoolTokens(newPool);
+
+        vm.prank(bob);
+        router.initialize(newPool, poolTokens, initAmounts, 0, false, bytes(""));
+    }
+
+    function testInitializationValidHighRatio() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        uint256 rate = 1.5e18;
+
+        (address newPool, ) = _createFixedPriceLBPool(
+            address(0), // Pool creator
+            startTime,
+            endTime,
+            rate,
+            false // bi-directional
+        );
+
+        uint256[] memory initAmounts = new uint256[](2);
+        uint256 projectAmount = 1000e18;
+
+        initAmounts[projectIdx] = projectAmount;
+
+        uint256 expectedReserve = projectAmount.mulDown(rate);
+        uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + INITIALIZATION_TOLERANCE_PERCENTAGE);
+
+        // Now try initializing at the maximum permitted reserve.
+        initAmounts[reserveIdx] = maxReserve;
+
+        IERC20[] memory poolTokens = vault.getPoolTokens(newPool);
+
+        vm.prank(bob);
+        router.initialize(newPool, poolTokens, initAmounts, 0, false, bytes(""));
     }
 
     /*******************************************************************************
