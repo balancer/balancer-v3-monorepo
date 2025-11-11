@@ -2,11 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -36,7 +38,11 @@ import { BPTTimeLocker } from "../../contracts/lbp/BPTTimeLocker.sol";
 contract LBPMigrationRouterTest is BaseLBPTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
+    uint256 constant USDC6_SCALING_FACTOR = 1e12;
+    uint256 constant WBTC8_SCALING_FACTOR = 1e10;
+    uint256 constant DEFAULT_RATE = 1e18;
     uint256 constant DELTA = 1e7;
     uint256 constant DEFAULT_BPT_LOCK_DURATION = 10 days;
     uint256 constant DEFAULT_SHARE_TO_MIGRATE = 70e16; // 70% of the pool
@@ -48,6 +54,13 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     string constant VERSION = "LBP Migration Router v1";
 
     address excessReceiver = makeAddr("excessReceiver");
+
+    uint256 usdc6DecimalsInitAmount = 10_000e6;
+    uint256 wbtc8DecimalsInitAmount = 1_000e8;
+
+    function setUp() public override {
+        super.setUp();
+    }
 
     function testConstructorWithIncorrectWeightedPoolFactory() external {
         vm.prank(admin);
@@ -128,8 +141,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         vm.startPrank(bob);
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
 
-        uint256 lbpBPTBalanceBefore = IERC20(pool).balanceOf(bob);
-        IERC20(pool).approve(address(migrationRouter), lbpBPTBalanceBefore);
+        IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
 
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: makeAddr("pauseManager"),
@@ -176,21 +188,21 @@ contract LBPMigrationRouterTest is BaseLBPTest {
             .mulDown(lbpWeights[projectIdx])
             .divDown(lbpWeights[reserveIdx]);
 
-        uint256[] memory expectedBalances = new uint256[](TOKEN_COUNT);
-        expectedBalances[projectIdx] = newBalanceProjectToken.mulDown(bptPercentageToMigrate);
-        expectedBalances[reserveIdx] = newBalanceReserveToken.mulDown(bptPercentageToMigrate);
+        uint256[] memory expectedBalancesScaled18 = new uint256[](TOKEN_COUNT);
+        expectedBalancesScaled18[projectIdx] = newBalanceProjectToken.mulDown(bptPercentageToMigrate);
+        expectedBalancesScaled18[reserveIdx] = newBalanceReserveToken.mulDown(bptPercentageToMigrate);
 
         // Check that the weighted pool balance is correct
         uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
         assertApproxEqAbs(
             balancesLiveScaled18[projectIdx],
-            expectedBalances[projectIdx],
+            expectedBalancesScaled18[projectIdx],
             DELTA,
             "Live balance mismatch for project token"
         );
         assertApproxEqAbs(
             balancesLiveScaled18[reserveIdx],
-            expectedBalances[reserveIdx],
+            expectedBalancesScaled18[reserveIdx],
             DELTA,
             "Live balance mismatch for reserve token"
         );
@@ -218,20 +230,22 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256[] memory weights = [weightProjectToken, weightReserveToken].toMemoryArray();
 
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
+        IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
 
-        uint256 lbpBPTBalanceBefore = IERC20(pool).balanceOf(bob);
-        IERC20(pool).approve(address(migrationRouter), lbpBPTBalanceBefore);
-
-        (IERC20[] memory lbpTokens, TokenInfo[] memory lbpTokenInfo, , uint256[] memory lbpBalancesBefore) = vault
-            .getPoolTokenInfo(pool);
+        (
+            IERC20[] memory lbpTokens,
+            TokenInfo[] memory lbpTokenInfo,
+            ,
+            uint256[] memory lbpBalancesBeforeScaled18
+        ) = vault.getPoolTokenInfo(pool);
 
         IWeightedPool weightedPool;
-        uint256[] memory exactAmountsIn;
+        uint256[] memory removeExactAmountsIn;
         uint256 bptAmountOut;
         {
             // Check event vs returned values first.
             uint256 snapshotId = vm.snapshotState();
-            (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
+            (weightedPool, removeExactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
                 ILBPool(pool),
                 excessReceiver,
                 ILBPMigrationRouter.WeightedPoolParams({
@@ -254,9 +268,9 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         }
 
         vm.expectEmit();
-        emit ILBPMigrationRouter.PoolMigrated(ILBPool(pool), weightedPool, exactAmountsIn, bptAmountOut);
+        emit ILBPMigrationRouter.PoolMigrated(ILBPool(pool), weightedPool, removeExactAmountsIn, bptAmountOut);
 
-        (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
+        (weightedPool, removeExactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
             ILBPool(pool),
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
@@ -319,89 +333,25 @@ contract LBPMigrationRouterTest is BaseLBPTest {
             assertEq(currentWeights[reserveIdx], weights[reserveIdx], "Reserve token weight mismatch");
         }
 
-        // Check the liquidity migration result
-        {
-            uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
-            uint256[] memory lbpWeights = ILBPool(pool).getLBPoolDynamicData().normalizedWeights;
-            uint256[] memory expectedBalances = _calculateExactAmountsIn(
-                lbpWeights,
-                lbpBalancesBefore,
-                weights,
-                _bptPercentageToMigrate
-            );
+        // Check balances after migration
+        uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
+        (uint256[] memory expectedBalances, uint256[] memory expectedBalancesScaled18) = _calculateExpectedBalances(
+            lbpBalancesBeforeScaled18,
+            ILBPool(pool).getLBPoolDynamicData().normalizedWeights,
+            weights,
+            [uint256(1), 1].toMemoryArray(),
+            _bptPercentageToMigrate
+        );
 
-            // Check that the weighted pool balance is correct
-            uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
-            assertApproxEqAbs(
-                balancesLiveScaled18[projectIdx],
-                expectedBalances[projectIdx],
-                DELTA,
-                "Live balance mismatch for project token"
-            );
-            assertApproxEqAbs(
-                balancesLiveScaled18[reserveIdx],
-                expectedBalances[reserveIdx],
-                DELTA,
-                "Live balance mismatch for reserve token"
-            );
-
-            assertEq(exactAmountsIn.length, 2, "Incorrect returned exact amounts in length");
-            assertEq(balancesLiveScaled18[projectIdx], exactAmountsIn[projectIdx], "Project token balance mismatch");
-            assertEq(balancesLiveScaled18[reserveIdx], exactAmountsIn[reserveIdx], "Reserve token balance mismatch");
-
-            // Check bob's balances
-            assertEq(IERC20(pool).balanceOf(bob), 0, "Bob should not hold any LBP BPT after migration");
-            assertGt(tokens[projectIdx].balanceOf(bob), 0, "Bob should have received project tokens after migration");
-            assertGt(tokens[reserveIdx].balanceOf(bob), 0, "Bob should have received reserve tokens after migration");
-
-            // Check migrationRouter balances
-            assertEq(
-                IERC20(address(weightedPool)).balanceOf(address(migrationRouter)),
-                bptAmountOut,
-                "Router should hold the correct amount of BPT after migration"
-            );
-
-            assertEq(
-                migrationRouter.balanceOf(bob, migrationRouter.getId(address(weightedPool))),
-                bptAmountOut,
-                "Router should have correct locked BPT balance for bob"
-            );
-            assertEq(
-                migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(weightedPool))),
-                block.timestamp + DEFAULT_BPT_LOCK_DURATION,
-                "Router should have correct unlock timestamp for locked BPT"
-            );
-
-            assertEq(
-                IERC20(pool).balanceOf(address(migrationRouter)),
-                0,
-                "Router should not hold any LBP BPT after migration"
-            );
-            assertEq(
-                tokens[projectIdx].balanceOf(address(migrationRouter)),
-                0,
-                "Router should not hold any project tokens after migration"
-            );
-            assertEq(
-                tokens[reserveIdx].balanceOf(address(migrationRouter)),
-                0,
-                "Router should not hold any reserve tokens after migration"
-            );
-
-            // Check excessReceiver balances
-            assertApproxEqAbs(
-                tokens[projectIdx].balanceOf(excessReceiver),
-                lbpBalancesBefore[projectIdx] - expectedBalances[projectIdx],
-                DELTA,
-                "excessReceiver should hold the correct amount of project tokens after migration"
-            );
-            assertApproxEqAbs(
-                tokens[reserveIdx].balanceOf(excessReceiver),
-                lbpBalancesBefore[reserveIdx] - expectedBalances[reserveIdx],
-                DELTA,
-                "excessReceiver should hold the correct amount of reserve tokens after migration"
-            );
-        }
+        _checkBalancesAfterMigration(
+            weightedPool,
+            bptAmountOut,
+            lbpBalancesBeforeScaled18,
+            removeExactAmountsIn,
+            expectedBalances,
+            expectedBalancesScaled18,
+            [uint256(1), 1].toMemoryArray()
+        );
     }
 
     function testMigrationLiquidityRevertsIfMigrationNotSetup() external {
@@ -450,14 +400,206 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         );
     }
 
+    function testMigrateLiquidityWithDecimalsRelatedPool() external {
+        uint256 weightReserveToken = 70e16;
+        uint256 weightProjectToken = 30e16;
+        uint256 bptPercentageToMigrate = 50e16; // 50%
+
+        projectToken = wbtc8Decimals;
+        reserveToken = usdc6Decimals;
+        (projectIdx, reserveIdx) = getSortedIndexes(address(projectToken), address(reserveToken));
+
+        uint256[] memory decimalScalingFactors = new uint256[](2);
+        decimalScalingFactors[projectIdx] = WBTC8_SCALING_FACTOR;
+        decimalScalingFactors[reserveIdx] = USDC6_SCALING_FACTOR;
+
+        (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
+            DEFAULT_BPT_LOCK_DURATION,
+            bptPercentageToMigrate,
+            weightProjectToken,
+            weightReserveToken
+        );
+
+        uint256[] memory initAmounts = new uint256[](2);
+        initAmounts[projectIdx] = wbtc8DecimalsInitAmount;
+        initAmounts[reserveIdx] = usdc6DecimalsInitAmount;
+
+        vm.startPrank(bob);
+        _initPool(pool, initAmounts, 0);
+
+        uint256[] memory weights = [weightProjectToken, weightReserveToken].toMemoryArray();
+
+        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
+        IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
+
+        (IERC20[] memory lbpTokens, , , uint256[] memory lbpBalancesBeforeScaled18) = vault.getPoolTokenInfo(pool);
+
+        (IWeightedPool weightedPool, uint256[] memory removeExactAmountsIn, uint256 bptAmountOut) = migrationRouter
+            .migrateLiquidity(
+                ILBPool(pool),
+                excessReceiver,
+                ILBPMigrationRouter.WeightedPoolParams({
+                    name: POOL_NAME,
+                    symbol: POOL_SYMBOL,
+                    roleAccounts: PoolRoleAccounts({
+                        pauseManager: makeAddr("pauseManager"),
+                        swapFeeManager: makeAddr("swapFeeManager"),
+                        poolCreator: ZERO_ADDRESS
+                    }),
+                    swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                    poolHooksContract: ZERO_ADDRESS,
+                    enableDonation: false,
+                    disableUnbalancedLiquidity: false,
+                    salt: ZERO_BYTES32
+                })
+            );
+        vm.stopPrank();
+
+        uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
+        (uint256[] memory expectedBalances, uint256[] memory expectedBalancesScaled18) = _calculateExpectedBalances(
+            lbpBalancesBeforeScaled18,
+            ILBPool(pool).getLBPoolDynamicData().normalizedWeights,
+            weights,
+            decimalScalingFactors,
+            _bptPercentageToMigrate
+        );
+        uint256[] memory _decimalScalingFactors = decimalScalingFactors;
+        _checkBalancesAfterMigration(
+            weightedPool,
+            bptAmountOut,
+            lbpBalancesBeforeScaled18,
+            removeExactAmountsIn,
+            expectedBalances,
+            expectedBalancesScaled18,
+            _decimalScalingFactors
+        );
+    }
+
+    function _checkBalancesAfterMigration(
+        IWeightedPool weightedPool,
+        uint256 bptAmountOut,
+        uint256[] memory lbpBalancesBeforeScaled18,
+        uint256[] memory removeExactAmountsIn,
+        uint256[] memory expectedBalances,
+        uint256[] memory expectedBalancesScaled18,
+        uint256[] memory decimalScalingFactors
+    ) internal view {
+        // Check that the weighted pool balance is correct
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory balancesLiveScaled18) = vault
+            .getPoolTokenInfo(address(weightedPool));
+
+        console.log("project token balance (scaled18): ", balancesLiveScaled18[projectIdx]);
+        console.log("reserve token balance (scaled18): ", balancesLiveScaled18[reserveIdx]);
+        console.log("project token balance (raw): ", balancesRaw[projectIdx]);
+        console.log("reserve token balance (raw): ", balancesRaw[reserveIdx]);
+
+        assertApproxEqAbs(
+            balancesLiveScaled18[projectIdx],
+            expectedBalancesScaled18[projectIdx],
+            DELTA,
+            "Live balance mismatch for project token"
+        );
+        assertApproxEqAbs(
+            balancesLiveScaled18[reserveIdx],
+            expectedBalancesScaled18[reserveIdx],
+            DELTA,
+            "Live balance mismatch for reserve token"
+        );
+
+        assertEq(removeExactAmountsIn.length, 2, "Incorrect returned remove exact amounts in length");
+        assertEq(
+            removeExactAmountsIn[projectIdx],
+            balancesRaw[projectIdx],
+            "Project token balance mismatch in returned remove exact amounts in"
+        );
+        assertEq(
+            removeExactAmountsIn[reserveIdx],
+            balancesRaw[reserveIdx],
+            "Reserve token balance mismatch in returned remove exact amounts in"
+        );
+        assertApproxEqAbs(
+            expectedBalances[projectIdx],
+            balancesRaw[projectIdx],
+            DELTA,
+            "Project token raw balance mismatch"
+        );
+        assertApproxEqAbs(
+            expectedBalances[reserveIdx],
+            balancesRaw[reserveIdx],
+            DELTA,
+            "Reserve token raw balance mismatch"
+        );
+
+        // Check bob's balances
+        assertEq(IERC20(pool).balanceOf(bob), 0, "Bob should not hold any LBP BPT after migration");
+        assertGt(tokens[projectIdx].balanceOf(bob), 0, "Bob should have received project tokens after migration");
+        assertGt(tokens[reserveIdx].balanceOf(bob), 0, "Bob should have received reserve tokens after migration");
+
+        // Check migrationRouter balances
+        assertEq(
+            IERC20(address(weightedPool)).balanceOf(address(migrationRouter)),
+            bptAmountOut,
+            "Router should hold the correct amount of BPT after migration"
+        );
+
+        assertEq(
+            migrationRouter.balanceOf(bob, migrationRouter.getId(address(weightedPool))),
+            bptAmountOut,
+            "Router should have correct locked BPT balance for bob"
+        );
+        assertEq(
+            migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(weightedPool))),
+            block.timestamp + DEFAULT_BPT_LOCK_DURATION,
+            "Router should have correct unlock timestamp for locked BPT"
+        );
+
+        assertEq(
+            IERC20(pool).balanceOf(address(migrationRouter)),
+            0,
+            "Router should not hold any LBP BPT after migration"
+        );
+        assertEq(
+            tokens[projectIdx].balanceOf(address(migrationRouter)),
+            0,
+            "Router should not hold any project tokens after migration"
+        );
+        assertEq(
+            tokens[reserveIdx].balanceOf(address(migrationRouter)),
+            0,
+            "Router should not hold any reserve tokens after migration"
+        );
+
+        // Check excessReceiver balances
+        assertApproxEqAbs(
+            tokens[projectIdx].balanceOf(excessReceiver),
+            (lbpBalancesBeforeScaled18[projectIdx] - expectedBalancesScaled18[projectIdx]).toRawUndoRateRoundDown(
+                decimalScalingFactors[projectIdx],
+                DEFAULT_RATE
+            ),
+            DELTA,
+            "excessReceiver should hold the correct amount of project tokens after migration"
+        );
+        assertApproxEqAbs(
+            tokens[reserveIdx].balanceOf(excessReceiver),
+            (lbpBalancesBeforeScaled18[reserveIdx] - expectedBalancesScaled18[reserveIdx]).toRawUndoRateRoundDown(
+                decimalScalingFactors[reserveIdx],
+                DEFAULT_RATE
+            ),
+            DELTA,
+            "excessReceiver should hold the correct amount of reserve tokens after migration"
+        );
+    }
+
     /// @dev The same logic as in `migrateLiquidityHook`, but uses b1 as the base calculation amount.
     /// The result should be almost the same; the only difference is in rounding.
-    function _calculateExactAmountsIn(
-        uint256[] memory weights,
+    function _calculateExpectedBalances(
         uint256[] memory balances,
+        uint256[] memory weights,
         uint256[] memory newWeights,
+        uint256[] memory decimalScalingFactors,
         uint256 bptPercentageToMigrate
-    ) internal view returns (uint256[] memory exactAmountsIn) {
+    ) internal view returns (uint256[] memory expectedBalances, uint256[] memory expectedBalancesScaled18) {
         uint256 price = (balances[projectIdx] * weights[reserveIdx]).divDown(
             balances[reserveIdx] * weights[projectIdx]
         );
@@ -465,15 +607,44 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 projectAmountOut = price.mulDown(balances[reserveIdx]).mulDown(newWeights[projectIdx]).divDown(
             newWeights[reserveIdx]
         );
-        uint256 reserveAmountOut = balances[reserveIdx];
+        uint256 reserveAmountOut = balances[reserveIdx] - 1;
 
+        console.log("projectAmountOut > balances[projectIdx]: ", projectAmountOut > balances[projectIdx]);
         if (projectAmountOut > balances[projectIdx]) {
-            projectAmountOut = balances[projectIdx];
-            reserveAmountOut = (balances[projectIdx] * newWeights[reserveIdx]).divDown(price * newWeights[projectIdx]);
+            projectAmountOut = balances[projectIdx] - 1;
+            reserveAmountOut = (balances[projectIdx].mulDown(newWeights[reserveIdx])).divDown(
+                price.mulDown(newWeights[projectIdx])
+            );
         }
 
-        exactAmountsIn = new uint256[](TOKEN_COUNT);
-        exactAmountsIn[projectIdx] = projectAmountOut.mulDown(bptPercentageToMigrate);
-        exactAmountsIn[reserveIdx] = reserveAmountOut.mulDown(bptPercentageToMigrate);
+        console.log("projectAmountOut: ", projectAmountOut.mulDown(bptPercentageToMigrate));
+        console.log("reserveAmountOut: ", reserveAmountOut.mulDown(bptPercentageToMigrate));
+
+        // We convert to raw and then back to scaled18 to account for the actual rounding in vault conversions.
+        expectedBalancesScaled18 = new uint256[](TOKEN_COUNT);
+        expectedBalances = new uint256[](TOKEN_COUNT);
+        expectedBalances[projectIdx] = projectAmountOut.mulDown(bptPercentageToMigrate).toRawUndoRateRoundDown(
+            decimalScalingFactors[projectIdx],
+            DEFAULT_RATE
+        );
+        expectedBalances[reserveIdx] = reserveAmountOut.mulDown(bptPercentageToMigrate).toRawUndoRateRoundDown(
+            decimalScalingFactors[reserveIdx],
+            DEFAULT_RATE
+        );
+
+        console.log("Expected project token balance (raw): ", expectedBalances[projectIdx]);
+        console.log("Expected reserve token balance (raw): ", expectedBalances[reserveIdx]);
+
+        expectedBalancesScaled18[projectIdx] = expectedBalances[projectIdx].toScaled18ApplyRateRoundDown(
+            decimalScalingFactors[projectIdx],
+            DEFAULT_RATE
+        );
+        expectedBalancesScaled18[reserveIdx] = expectedBalances[reserveIdx].toScaled18ApplyRateRoundDown(
+            decimalScalingFactors[reserveIdx],
+            DEFAULT_RATE
+        );
+
+        console.log("Expected project token balance (scaled18): ", expectedBalancesScaled18[projectIdx]);
+        console.log("Expected reserve token balance (scaled18): ", expectedBalancesScaled18[reserveIdx]);
     }
 }
