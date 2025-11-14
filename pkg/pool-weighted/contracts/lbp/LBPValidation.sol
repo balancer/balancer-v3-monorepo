@@ -54,9 +54,10 @@ library LBPValidation {
      * Note that the time is also validated here, and the startTime might be "accelerated" to the current time, if it
      * is in the past, per the logic in `GradualValueChange`.
      *
-     * @param lbpCommonParams The common LBP parameters to validate (may mutate startTime)
+     * @param lbpCommonParams The common LBP parameters to validate
+     * @return resolvedStartTime The final start time (might be "fast forwarded" if the start time is in the past)
      */
-    function validateCommonParams(LBPCommonParams memory lbpCommonParams) internal view {
+    function validateCommonParams(LBPCommonParams memory lbpCommonParams) internal view returns (uint256) {
         if (lbpCommonParams.owner == address(0)) {
             revert InvalidOwner();
         }
@@ -73,10 +74,7 @@ library LBPValidation {
             revert TokensMustBeDifferent();
         }
 
-        lbpCommonParams.startTime = GradualValueChange.resolveStartTime(
-            lbpCommonParams.startTime,
-            lbpCommonParams.endTime
-        );
+        return GradualValueChange.resolveStartTime(lbpCommonParams.startTime, lbpCommonParams.endTime);
     }
 
     /**
