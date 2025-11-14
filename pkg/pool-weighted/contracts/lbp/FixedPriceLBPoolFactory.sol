@@ -113,7 +113,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason.
 
-        LBPValidation.validateCommonParams(lbpCommonParams);
+        lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
 
         // Validate rate bounds before deployment.
         if (projectTokenRate < _MIN_PROJECT_TOKEN_RATE) {
