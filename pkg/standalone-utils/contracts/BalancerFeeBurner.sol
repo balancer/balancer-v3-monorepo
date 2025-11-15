@@ -104,17 +104,33 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         for (uint256 i = 0; i < steps.length; i++) {
             SwapPathStep memory step = steps[i];
 
-            (, , uint256 amountOut) = _vault.swap(
-                VaultSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    pool: step.pool,
-                    tokenIn: stepTokenIn,
-                    tokenOut: step.tokenOut,
-                    amountGivenRaw: stepExactAmountIn,
-                    limitRaw: (i == lastStepIndex) ? params.minAmountOut : 0,
-                    userData: bytes("")
-                })
-            );
+            uint256 amountOut;
+            uint256 minAmountOut = (i == lastStepIndex) ? params.minAmountOut : 0;
+            if (step.isBuffer) {
+                (, , amountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: step.pool == address(stepTokenIn)
+                            ? WrappingDirection.UNWRAP
+                            : WrappingDirection.WRAP,
+                        wrappedToken: IERC4626(step.pool),
+                        amountGivenRaw: stepExactAmountIn,
+                        limitRaw: minAmountOut
+                    })
+                );
+            } else {
+                (, , amountOut) = _vault.swap(
+                    VaultSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        pool: step.pool,
+                        tokenIn: stepTokenIn,
+                        tokenOut: step.tokenOut,
+                        amountGivenRaw: stepExactAmountIn,
+                        limitRaw: minAmountOut,
+                        userData: bytes("")
+                    })
+                );
+            }
 
             stepTokenIn = step.tokenOut;
             stepExactAmountIn = amountOut;
