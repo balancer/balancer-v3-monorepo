@@ -23,6 +23,8 @@ abstract contract BasePoolTest is BaseVaultTest {
 
     uint256 public constant DELTA = 1e9;
 
+    uint256 internal constant DEFAULT_MIN_TOKEN_BALANCE = 1e6; // Must match BasePoolFactory
+
     IERC20[] internal poolTokens;
     uint256[] internal tokenAmounts;
 

@@ -523,4 +523,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         assertEq(poolToken.getRate(), mockRate, "Wrong overridden mock rate");
     }
+
+    function testGetDefaultMinTokenBalances() public view {
+        uint256[] memory minTokenBalances = poolToken.getMinTokenBalances();
+        assertEq(minTokenBalances.length, 0);
+    }
 }

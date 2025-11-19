@@ -36,6 +36,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
+import { MinTokenBalanceLibMock } from "../../../contracts/test/MinTokenBalanceLibMock.sol";
 
 /**
  * @notice This contract contains functions for deploying mocks and contracts related to the "Vault".
@@ -317,6 +318,14 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new BufferRouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployMinTokenBalanceLibMock() internal returns (MinTokenBalanceLibMock) {
+        if (reusingArtifacts) {
+            return MinTokenBalanceLibMock(deployCode(_computeVaultTestPath(type(MinTokenBalanceLibMock).name)));
+        } else {
+            return new MinTokenBalanceLibMock();
         }
     }
 
