@@ -180,4 +180,13 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     function getRate() public view virtual returns (uint256) {
         return getVault().getBptRate(address(this));
     }
+
+    /**
+     * @notice Get the minimum token balances, if defined for this pool type.
+     * @dev The default implementation returns an empty array; override this for pools that enforce minimum balances.
+     * @return minTokenBalances An array of minimum token balances, sorted in token registration order
+     */
+    function getMinTokenBalances() public view virtual returns (uint256[] memory) {
+        return new uint256[](0);
+    }
 }
