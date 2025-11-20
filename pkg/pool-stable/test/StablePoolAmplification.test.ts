@@ -60,7 +60,14 @@ describe('StablePoolAmplification', () => {
   async function deployPool(amp: bigint) {
     pool = await deploy('StablePool', {
       args: [
-        { name: 'Stable Pool', symbol: 'STABLE', amplificationParameter: amp, version: 'Stable Pool v1' },
+        {
+          name: 'Stable Pool',
+          symbol: 'STABLE',
+          amplificationParameter: amp,
+          version: 'Stable Pool v1',
+          unbalancedLiquidityDisabled: false,
+          minTokenBalances: [bn(1e12), bn(1e12)],
+        },
         await vault.getAddress(),
       ],
     });
