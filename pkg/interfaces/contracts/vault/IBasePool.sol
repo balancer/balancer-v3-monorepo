@@ -14,6 +14,14 @@ import { PoolSwapParams, Rounding, SwapKind } from "./VaultTypes.sol";
  * liquidity operation.
  */
 interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRatioBounds {
+    /**
+     * @notice An operation has caused a token balance to drop below the minimum allowed balance.
+     * @param tokenIndex Index of the token; we don't always have easy access to the token address
+     * @param actualBalance The balance the pool is rejecting
+     * @param minBalance The minimum balance allowed for this token
+     */
+    error TokenBalanceBelowMin(uint256 tokenIndex, uint256 actualBalance, uint256 minBalance);
+
     /***************************************************************************
                                    Invariant
     ***************************************************************************/

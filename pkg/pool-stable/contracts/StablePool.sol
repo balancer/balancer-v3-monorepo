@@ -59,6 +59,8 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         string symbol;
         uint256 amplificationParameter;
         string version;
+        bool unbalancedLiquidityDisabled;
+        uint256[] minTokenBalances;
     }
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
@@ -79,6 +81,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    uint256 private immutable _minBalanceToken0;
+    uint256 private immutable _minBalanceToken1;
+    uint256 private immutable _minBalanceToken2;
+    uint256 private immutable _minBalanceToken3;
+    uint256 private immutable _minBalanceToken4;
+
+    bool private immutable _unbalancedLiquidityDisabled;
 
     /// @notice Store amplification state.
     AmplificationState private _amplificationState;
@@ -134,11 +144,34 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
         _stopAmplification(initialAmp);
+
+        _unbalancedLiquidityDisabled = params.unbalancedLiquidityDisabled;
+
+        uint256 totalMinTokens = params.minTokenBalances.length;
+
+        // This ensures something is passed to the constructor (e.g., if deployed outside the factory).
+        // Deploy from the factory to ensure minimum balances are checked properly.
+
+        // prettier-ignore
+        {
+            _minBalanceToken0 = params.minTokenBalances[0];
+            _minBalanceToken1 = params.minTokenBalances[1];
+            if (totalMinTokens > 2) { _minBalanceToken2 = params.minTokenBalances[2]; } else { return; }
+            if (totalMinTokens > 3) { _minBalanceToken3 = params.minTokenBalances[3]; } else { return; }
+            if (totalMinTokens > 4) { _minBalanceToken4 = params.minTokenBalances[4]; }
+        }
     }
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // If unbalanced liquidity operations are disabled, we will check minimums in the swap function, so we don't
+        // need to do it here. Otherwise, we need to check here to catch "effective" swaps through unbalanced
+        // add/remove operations that go directly through the Vault.
+        if (_unbalancedLiquidityDisabled == false) {
+            _checkMinimumTokenBalances(balancesLiveScaled18);
+        }
 
         uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
         if (invariant > 0) {
@@ -156,6 +189,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     ) external view returns (uint256 newBalance) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
+        // No need to check the flag here; this is only called by the Vault during unbalanced add/remove operations,
+        // so we always need to check. If unbalanced liquidity operations are disabled, this will never be called.
+        _checkMinimumTokenBalances(balancesLiveScaled18);
+
         return
             StableMath.computeBalance(
                 currentAmp,
@@ -165,13 +202,49 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             );
     }
 
+    function _checkMinimumTokenBalances(uint256[] memory balancesLiveScaled18) internal view {
+        uint256 numTokens = balancesLiveScaled18.length;
+
+        if (balancesLiveScaled18[0] < _minBalanceToken0) {
+            revert TokenBalanceBelowMin(0, balancesLiveScaled18[0], _minBalanceToken0);
+        }
+
+        if (balancesLiveScaled18[1] < _minBalanceToken1) {
+            revert TokenBalanceBelowMin(1, balancesLiveScaled18[1], _minBalanceToken1);
+        }
+        if (numTokens > 2 && balancesLiveScaled18[2] < _minBalanceToken2) {
+            revert TokenBalanceBelowMin(2, balancesLiveScaled18[2], _minBalanceToken2);
+        }
+
+        if (numTokens > 3 && balancesLiveScaled18[3] < _minBalanceToken3) {
+            revert TokenBalanceBelowMin(3, balancesLiveScaled18[3], _minBalanceToken3);
+        }
+
+        if (numTokens > 4 && balancesLiveScaled18[4] < _minBalanceToken4) {
+            revert TokenBalanceBelowMin(4, balancesLiveScaled18[4], _minBalanceToken4);
+        }
+    }
+
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256 calculatedAmountScaled18) {
+        if (_unbalancedLiquidityDisabled) {
+            // If unbalanced liquidity is disabled, the Vault will not call `computeInvariant` or `computeBalance`
+            // during adds/removes, so we will not check the balances in those functions, and need to do it here.
+            // Check both balances *before* the swap, in case a previous unchecked operation made one invalid.
+            // If unbalanced liquidity operations are allowed, "effective swaps" can be accomplished through add and
+            // remove operations that go directly through the Vault, so can't be checked - except in the invariant
+            // functions.
+
+            _ensureMinimumBalance(request.indexIn, request.balancesScaled18[request.indexIn]);
+            _ensureMinimumBalance(request.indexOut, request.balancesScaled18[request.indexOut]);
+        }
+
         uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
+            // amountOutScaled18.
+            calculatedAmountScaled18 = StableMath.computeOutGivenExactIn(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -180,9 +253,15 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 invariant
             );
 
-            return amountOutScaled18;
+            // Check that the ending balance of tokenOut is above the minimum. This has to be done regardless, as even
+            // if we are checking in the invariant, that only happens at the beginning.
+            _ensureMinimumBalance(
+                request.indexOut,
+                request.balancesScaled18[request.indexOut] - calculatedAmountScaled18
+            );
         } else {
-            uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
+            // amountInScaled18.
+            calculatedAmountScaled18 = StableMath.computeInGivenExactOut(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -191,7 +270,29 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 invariant
             );
 
-            return amountInScaled18;
+            // Check that the ending balance of tokenOut is above the minimum. This has to be done regardless, as even
+            // if we are checking in the invariant, that only happens at the beginning.
+            _ensureMinimumBalance(
+                request.indexOut,
+                request.balancesScaled18[request.indexOut] - request.amountGivenScaled18
+            );
+        }
+    }
+
+    function _ensureMinimumBalance(uint256 tokenIndex, uint256 endingBalanceScaled18) internal view {
+        uint256 minimumBalance;
+
+        // prettier-ignore
+        {
+            if (tokenIndex == 0) { minimumBalance = _minBalanceToken0; }
+            else if (tokenIndex == 1) { minimumBalance = _minBalanceToken1; }
+            else if (tokenIndex == 2) { minimumBalance = _minBalanceToken2; }
+            else if (tokenIndex == 3) { minimumBalance = _minBalanceToken3; }
+            else { minimumBalance = _minBalanceToken4; }   
+        }
+
+        if (endingBalanceScaled18 < minimumBalance) {
+            revert TokenBalanceBelowMin(tokenIndex, endingBalanceScaled18, minimumBalance);
         }
     }
 
@@ -374,5 +475,22 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         data.tokens = _vault.getPoolTokens(address(this));
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
         data.amplificationParameterPrecision = StableMath.AMP_PRECISION;
+    }
+
+    /// @inheritdoc BalancerPoolToken
+    function getMinTokenBalances() public view override returns (uint256[] memory minTokenBalances) {
+        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
+
+        uint256 numTokens = tokens.length;
+        minTokenBalances = new uint256[](numTokens);
+
+        // prettier-ignore
+        {
+            minTokenBalances[0] = _minBalanceToken0;
+            minTokenBalances[1] = _minBalanceToken1;
+            if (numTokens > 2) { minTokenBalances[2] = _minBalanceToken2; } else { return minTokenBalances; }
+            if (numTokens > 3) { minTokenBalances[3] = _minBalanceToken3; } else { return minTokenBalances; }
+            if (numTokens > 4) { minTokenBalances[4] = _minBalanceToken4; }
+        }
     }
 }
