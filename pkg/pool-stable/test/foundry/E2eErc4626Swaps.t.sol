@@ -57,7 +57,9 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDe
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: new uint256[](0)
             }),
             vault
         );

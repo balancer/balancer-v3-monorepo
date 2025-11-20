@@ -69,6 +69,11 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
+        // When you pass an empty minimum token amounts array to the factory, it replaces them with the minimums.
+        uint256[] memory factoryAdjustedAmounts = new uint256[](2);
+        factoryAdjustedAmounts[0] = DEFAULT_MIN_TOKEN_BALANCE / 2;
+        factoryAdjustedAmounts[1] = DEFAULT_MIN_TOKEN_BALANCE / 2;
+
         newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
@@ -88,7 +93,9 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: factoryAdjustedAmounts
             }),
             vault
         );

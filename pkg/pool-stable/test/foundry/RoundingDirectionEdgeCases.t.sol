@@ -6,18 +6,19 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -70,6 +71,11 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
+        // When you pass an empty minimum token amounts array to the factory, it replaces them with the minimums.
+        uint256[] memory factoryAdjustedAmounts = new uint256[](2);
+        factoryAdjustedAmounts[0] = DEFAULT_MIN_TOKEN_BALANCE / 2;
+        factoryAdjustedAmounts[1] = DEFAULT_MIN_TOKEN_BALANCE / 2;
+
         newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
@@ -90,7 +96,9 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
                 name: name,
                 symbol: symbol,
                 amplificationParameter: 2000,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: factoryAdjustedAmounts
             }),
             vault
         );
@@ -134,11 +142,11 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
 
         uint256[] memory exactAmountsIn = [tokenAmount, uint256(0)].toMemoryArray();
 
-        router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+        uint256 minBalance = MinTokenBalanceLib.POOL_MINIMUM_TOTAL_SUPPLY / 2;
 
-        // This will actually revert as base pool math will attempt to compute an invariant with 0 balances.
-        vm.expectRevert(stdError.divisionError);
-        router.removeLiquiditySingleTokenExactOut(pool, 1e50, usdc, tokenAmount, false, "");
+        // Will be caught now by the minimum balance check in add unbalanced.
+        vm.expectRevert(abi.encodeWithSelector(IBasePool.TokenBalanceBelowMin.selector, 1, 2, minBalance));
+        router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
     }
 
     function testMockPoolBalanceWithEdgeCaseAddUnbalanced() public {
@@ -155,12 +163,13 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
             [tokenAmount, dustAmount].toMemoryArray()
         );
         rateProviderWstEth.mockRate(1.5e18);
-        uint256 previousTotalSupply = StablePool(pool).totalSupply();
         uint256[] memory exactAmountsIn = [tokenAmount * 2, dustAmount * 2].toMemoryArray();
-        uint256 mintLp;
+
+        uint256 minBalance = MinTokenBalanceLib.POOL_MINIMUM_TOTAL_SUPPLY / 2;
+
+        // Will be caught now by the minimum balance check in add unbalanced.
+        vm.expectRevert(abi.encodeWithSelector(IBasePool.TokenBalanceBelowMin.selector, 1, 2, minBalance));
         vm.prank(alice);
-        mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
-        // This is only true when trading fee is 0
-        vm.assertLt(mintLp, previousTotalSupply * 2);
+        router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
     }
 }

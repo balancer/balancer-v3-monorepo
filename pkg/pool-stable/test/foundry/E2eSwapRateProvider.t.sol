@@ -73,7 +73,9 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
                 name: "Stable Pool",
                 symbol: "STABLE",
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: "Pool v1"
+                version: "Pool v1",
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: new uint256[](0)
             }),
             vault
         );

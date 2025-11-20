@@ -58,7 +58,9 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: new uint256[](0)
             }),
             vault
         );
