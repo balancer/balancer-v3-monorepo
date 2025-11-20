@@ -7,6 +7,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
@@ -52,7 +53,8 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
     }
 
     /**
-     * @notice Deploys a new `StablePool`.
+     * @notice Deploys a new `StablePool` with a surge hook.
+     * @dev This create does not have `minTokenBalances`, and is included for backwards-compatibility.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
@@ -71,7 +73,45 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint256 swapFeePercentage,
         bool enableDonation,
         bytes32 salt
-    ) external returns (address pool) {
+    ) public returns (address pool) {
+        return
+            create(
+                name,
+                symbol,
+                tokens,
+                new uint256[](0),
+                amplificationParameter,
+                roleAccounts,
+                swapFeePercentage,
+                enableDonation,
+                salt
+            );
+    }
+
+    /**
+     * @notice Deploys a new `StablePool` with a surge hook.
+     * @dev This is the general create, which includes user-specified `minTokenBalances`.
+     * @param name The name of the pool
+     * @param symbol The symbol of the pool
+     * @param tokens An array of descriptors for the tokens the pool will manage
+     * @param minTokenBalances An array of minimum token balances; if empty, apply default minimum
+     * @param amplificationParameter Starting value of the amplificationParameter (see StablePool)
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
+     * @param swapFeePercentage Initial swap fee percentage
+     * @param enableDonation If true, the pool will support the donation add liquidity mechanism
+     * @param salt The salt value that will be passed to create3 deployment
+     */
+    function create(
+        string memory name,
+        string memory symbol,
+        TokenConfig[] memory tokens,
+        uint256[] memory minTokenBalances,
+        uint256 amplificationParameter,
+        PoolRoleAccounts memory roleAccounts,
+        uint256 swapFeePercentage,
+        bool enableDonation,
+        bytes32 salt
+    ) public returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
         }
@@ -91,7 +131,9 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
                     name: name,
                     symbol: symbol,
                     amplificationParameter: amplificationParameter,
-                    version: _poolVersion
+                    version: _poolVersion,
+                    unbalancedLiquidityDisabled: false,
+                    minTokenBalances: MinTokenBalanceLib.validateMinimumTokenBalances(tokens, minTokenBalances)
                 }),
                 getVault()
             ),
