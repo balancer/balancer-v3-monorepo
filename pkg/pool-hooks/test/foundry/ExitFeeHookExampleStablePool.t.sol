@@ -64,13 +64,19 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
         );
         vm.label(newPool, label);
 
+        uint256[] memory minTokenBalances = new uint256[](2);
+        minTokenBalances[0] = 5e5;
+        minTokenBalances[1] = 5e5;
+
         // poolArgs is used to check pool deployment address with create2.
         poolArgs = abi.encode(
             StablePool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

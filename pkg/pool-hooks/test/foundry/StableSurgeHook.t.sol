@@ -86,6 +86,10 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         );
         vm.label(address(newPool), label);
 
+        uint256[] memory minTokenBalances = new uint256[](2);
+        minTokenBalances[0] = 5e5;
+        minTokenBalances[1] = 5e5;
+
         return (
             address(newPool),
             abi.encode(
@@ -93,7 +97,9 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
                     name: "Stable Pool",
                     symbol: "STABLEPOOL",
                     amplificationParameter: DEFAULT_AMP_FACTOR,
-                    version: "Pool v1"
+                    version: "Pool v1",
+                    unbalancedLiquidityDisabled: false,
+                    minTokenBalances: minTokenBalances
                 }),
                 vault
             )

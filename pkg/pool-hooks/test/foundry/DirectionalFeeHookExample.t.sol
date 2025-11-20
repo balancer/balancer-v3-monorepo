@@ -103,13 +103,19 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(newPool, SWAP_FEE_PERCENTAGE);
 
+        uint256[] memory minTokenBalances = new uint256[](2);
+        minTokenBalances[0] = 5e5;
+        minTokenBalances[1] = 5e5;
+
         // poolArgs is used to check pool deployment address with create2.
         poolArgs = abi.encode(
             StablePool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: "Pool v1"
+                version: "Pool v1",
+                unbalancedLiquidityDisabled: false,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );
