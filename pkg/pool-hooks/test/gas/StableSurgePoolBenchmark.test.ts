@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { BaseContract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
-import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -41,6 +41,7 @@ class StableSurgePoolBenchmark extends Benchmark {
       'StablePool',
       'Test',
       buildTokenConfig(poolTokens, withRate),
+      [bn(1e12), bn(1e12)],
       this.AMPLIFICATION_PARAMETER,
       poolRoleAccounts,
       fp(0.1),
