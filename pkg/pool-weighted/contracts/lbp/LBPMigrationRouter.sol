@@ -207,17 +207,17 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         // Compute the spot price (reserve tokens per project token) based on the current weights and the amounts out
         // from the LBP.
-        uint256 amountProjectRemoveAmountOut = removeAmountsOut[data.projectTokenIndex].toScaled18ApplyRateRoundDown(
+        uint256 projectAmountOut = removeAmountsOut[data.projectTokenIndex].toScaled18ApplyRateRoundDown(
             decimalScalingFactors[data.projectTokenIndex],
             tokenRates[data.projectTokenIndex]
         );
-        uint256 amountReserveRemoveAmountOut = removeAmountsOut[data.reserveTokenIndex].toScaled18ApplyRateRoundDown(
+        uint256 reserveAmountRemoved = removeAmountsOut[data.reserveTokenIndex].toScaled18ApplyRateRoundDown(
             decimalScalingFactors[data.reserveTokenIndex],
             tokenRates[data.reserveTokenIndex]
         );
 
-        uint256 price = (amountProjectRemoveAmountOut.mulDown(currentWeights[data.reserveTokenIndex])).divDown(
-            amountReserveRemoveAmountOut.mulDown(currentWeights[data.projectTokenIndex])
+        uint256 price = (projectAmountOut.mulDown(currentWeights[data.reserveTokenIndex])).divDown(
+            reserveAmountRemoved.mulDown(currentWeights[data.projectTokenIndex])
         );
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
@@ -226,22 +226,24 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         //
         // If this isn't possible, since using the full project balance would require more reserve tokens than we have
         // available, we fall back on using the full reserve balance and calculating the project amount instead.
-        uint256 reserveAmountOut = (amountProjectRemoveAmountOut.mulDown(migrationWeightReserveToken)).divDown(
+        uint256 reserveAmountOut = (projectAmountOut.mulDown(migrationWeightReserveToken)).divDown(
             price.mulDown(migrationWeightProjectToken)
+        );
         );
         uint256 projectAmountOut = amountProjectRemoveAmountOut;
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
-        if (reserveAmountOut > amountReserveRemoveAmountOut) {
-            reserveAmountOut = amountReserveRemoveAmountOut;
+        if (reserveAmountOut > reserveAmountRemoved) {
+            reserveAmountOut = reserveAmountRemoved;
             projectAmountOut = price.mulDown(reserveAmountOut).mulDown(migrationWeightProjectToken).divDown(
                 migrationWeightReserveToken
             );
         }
 
-        // Stack too deep
-        uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
+        // Stack too deep.
+        uint256 bptPercentageToMigrate_ = bptPercentageToMigrate;
+
         // Calculate the exact amounts in based on the share to migrate.
         exactAmountsIn[data.projectTokenIndex] = projectAmountOut
             .mulDown(_bptPercentageToMigrate)

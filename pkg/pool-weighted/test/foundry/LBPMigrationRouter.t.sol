@@ -433,7 +433,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
         IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
 
-        (IERC20[] memory lbpTokens, , , uint256[] memory lbpBalancesBeforeScaled18) = vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory lbpBalancesBeforeScaled18) = vault.getPoolTokenInfo(pool);
 
         (IWeightedPool weightedPool, uint256[] memory removeExactAmountsIn, uint256 bptAmountOut) = migrationRouter
             .migrateLiquidity(
