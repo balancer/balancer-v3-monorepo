@@ -489,11 +489,6 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory balancesLiveScaled18) = vault
             .getPoolTokenInfo(address(weightedPool));
 
-        console.log("project token balance (scaled18): ", balancesLiveScaled18[projectIdx]);
-        console.log("reserve token balance (scaled18): ", balancesLiveScaled18[reserveIdx]);
-        console.log("project token balance (raw): ", balancesRaw[projectIdx]);
-        console.log("reserve token balance (raw): ", balancesRaw[reserveIdx]);
-
         assertApproxEqAbs(
             balancesLiveScaled18[projectIdx],
             expectedBalancesScaled18[projectIdx],
