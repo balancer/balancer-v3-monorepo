@@ -201,7 +201,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
         if (_checkInvariantOnSwap) {
             // We normally don't want to mutate memory, but this is at the end of a view function, and this is in the
-            // critical path. We can also do unchecked, since calculations with the same numbers have been done in
+            // critical path. We can also do unchecked math, since calculations with the same numbers have been done in
             // StableMath.
             unchecked {
                 if (request.kind == SwapKind.EXACT_IN) {
