@@ -80,6 +80,9 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
+    // If set, ensure that the invariant does not decrease as a result of a swap.
+    bool private immutable _checkInvariantOnSwap;
+
     /// @notice Store amplification state.
     AmplificationState private _amplificationState;
 
@@ -116,9 +119,13 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     /// @notice Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
+    /// @notice A swap operation decreased the invariant, which should never happen.
+    error SwapDecreasedInvariant();
+
     constructor(
         NewPoolParams memory params,
-        IVault vault
+        IVault vault,
+        bool checkInvariantOnSwap
     )
         BalancerPoolToken(vault, params.name, params.symbol)
         BasePoolAuthentication(vault, msg.sender)
@@ -134,6 +141,8 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
         _stopAmplification(initialAmp);
+
+        _checkInvariantOnSwap = checkInvariantOnSwap;
     }
 
     /// @inheritdoc IBasePool
@@ -166,12 +175,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256 amountCalculatedScaled18) {
         uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
+            amountCalculatedScaled18 = StableMath.computeOutGivenExactIn(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -179,10 +188,8 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 request.amountGivenScaled18,
                 invariant
             );
-
-            return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
+            amountCalculatedScaled18 = StableMath.computeInGivenExactOut(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -190,8 +197,28 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 request.amountGivenScaled18,
                 invariant
             );
+        }
 
-            return amountInScaled18;
+        if (_checkInvariantOnSwap) {
+            // We normally don't want to mutate memory, but this is at the end of a view function, and this is in the
+            // critical path. We can also do unchecked, since calculations with the same numbers have been done in
+            // StableMath.
+            unchecked {
+                if (request.kind == SwapKind.EXACT_IN) {
+                    request.balancesScaled18[request.indexIn] += request.amountGivenScaled18;
+                    request.balancesScaled18[request.indexOut] -= amountCalculatedScaled18;
+                } else {
+                    request.balancesScaled18[request.indexOut] -= request.amountGivenScaled18;
+                    // The calculation in StableMath is one wei short, so it could theoretically overflow here,
+                    // but only if computeBalance returned type(uint256).max: which is impossible, since the max
+                    // token balance is type(uint128).max.
+                    request.balancesScaled18[request.indexIn] += amountCalculatedScaled18;
+                }
+            }
+
+            if (computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN) < invariant) {
+                revert SwapDecreasedInvariant();
+            }
         }
     }
 

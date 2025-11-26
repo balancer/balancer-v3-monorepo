@@ -25,13 +25,18 @@ import { StablePool } from "./StablePool.sol";
 contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     string private _poolVersion;
 
+    // Flag passed through to all pools. If set, add a guardrail to ensure the invariant does not decrease from a swap.
+    bool private immutable _checkInvariantOnSwap;
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
-        string memory poolVersion
+        string memory poolVersion,
+        bool checkInvariantOnSwap
     ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
+        _checkInvariantOnSwap = checkInvariantOnSwap;
     }
 
     /// @inheritdoc IPoolVersion
@@ -86,7 +91,8 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
                     amplificationParameter: amplificationParameter,
                     version: _poolVersion
                 }),
-                getVault()
+                getVault(),
+                _checkInvariantOnSwap
             ),
             salt
         );
