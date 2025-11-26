@@ -62,6 +62,7 @@ describe('StablePoolAmplification', () => {
       args: [
         { name: 'Stable Pool', symbol: 'STABLE', amplificationParameter: amp, version: 'Stable Pool v1' },
         await vault.getAddress(),
+        true, // check invariant
       ],
     });
 

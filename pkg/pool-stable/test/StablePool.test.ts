@@ -53,7 +53,7 @@ describe('StablePool', () => {
     router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('StablePoolFactory', {
-      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
+      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, true], // check invariant
     });
 
     tokens = await ERC20TokenList.create(MAX_STABLE_TOKENS, { sorted: true });
