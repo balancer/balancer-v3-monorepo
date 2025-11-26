@@ -230,7 +230,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             price.mulDown(migrationWeightProjectToken)
         );
         );
-        uint256 projectAmountOut = amountProjectRemoveAmountOut;
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
