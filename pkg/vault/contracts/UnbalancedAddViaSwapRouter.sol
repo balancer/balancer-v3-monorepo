@@ -192,7 +192,7 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
                     tokenIn: hookParams.operationParams.exactToken,
                     tokenOut: tokens[adjustableTokenIndex],
                     amountGivenRaw: swapAmount,
-                    limitRaw: _MAX_AMOUNT,
+                    limitRaw: 0,
                     userData: hookParams.operationParams.swapUserData
                 })
             );
