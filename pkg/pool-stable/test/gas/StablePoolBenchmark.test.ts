@@ -19,7 +19,7 @@ class StablePoolBenchmark extends Benchmark {
 
   override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
     const factory = (await deploy('v3-pool-stable/StablePoolFactory', {
-      args: [await this.vault.getAddress(), MONTH * 12, '', ''],
+      args: [await this.vault.getAddress(), MONTH * 12, '', '', true], // check invariant
     })) as unknown as StablePoolFactory;
 
     const poolRoleAccounts: PoolRoleAccountsStruct = {
