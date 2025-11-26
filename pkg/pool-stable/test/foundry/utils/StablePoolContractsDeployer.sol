@@ -27,11 +27,18 @@ contract StablePoolContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployStablePool(StablePool.NewPoolParams memory params, IVault vault) internal returns (StablePool) {
+    function deployStablePool(
+        StablePool.NewPoolParams memory params,
+        IVault vault,
+        bool checkInvariantOnSwap
+    ) internal returns (StablePool) {
         if (reusingArtifacts) {
-            return StablePool(deployCode(_computeStablePoolPath("StablePool"), abi.encode(params, vault)));
+            return
+                StablePool(
+                    deployCode(_computeStablePoolPath("StablePool"), abi.encode(params, vault, checkInvariantOnSwap))
+                );
         } else {
-            return new StablePool(params, vault);
+            return new StablePool(params, vault, true);
         }
     }
 
@@ -39,18 +46,19 @@ contract StablePoolContractsDeployer is BaseContractsDeployer {
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
-        string memory poolVersion
+        string memory poolVersion,
+        bool checkInvariantOnSwap
     ) internal returns (StablePoolFactory) {
         if (reusingArtifacts) {
             return
                 StablePoolFactory(
                     deployCode(
                         _computeStablePoolPath("StablePoolFactory"),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion)
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, checkInvariantOnSwap)
                     )
                 );
         } else {
-            return new StablePoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion);
+            return new StablePoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, checkInvariantOnSwap);
         }
     }
 

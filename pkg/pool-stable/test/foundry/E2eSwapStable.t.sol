@@ -86,7 +86,7 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
     }
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION, true));
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.

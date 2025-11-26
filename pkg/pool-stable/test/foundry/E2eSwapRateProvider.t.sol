@@ -29,7 +29,7 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", true));
     }
 
     function _createPool(

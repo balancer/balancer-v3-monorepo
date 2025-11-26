@@ -36,7 +36,7 @@ contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
     function setUp() public override {
         super.setUp();
 
-        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", true);
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

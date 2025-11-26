@@ -20,7 +20,7 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDe
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION, true));
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {

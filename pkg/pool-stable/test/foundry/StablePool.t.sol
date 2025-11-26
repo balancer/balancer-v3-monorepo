@@ -45,7 +45,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     }
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION, true));
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -90,7 +90,8 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
                 amplificationParameter: DEFAULT_AMP_FACTOR,
                 version: POOL_VERSION
             }),
-            vault
+            vault,
+            true
         );
     }
 

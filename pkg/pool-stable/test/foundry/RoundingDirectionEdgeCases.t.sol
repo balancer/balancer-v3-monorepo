@@ -43,7 +43,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
     }
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION, true));
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -92,7 +92,8 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
                 amplificationParameter: 2000,
                 version: POOL_VERSION
             }),
-            vault
+            vault,
+            true
         );
     }
 

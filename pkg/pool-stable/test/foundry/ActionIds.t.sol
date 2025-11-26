@@ -25,7 +25,13 @@ contract ActionIdsTest is BaseVaultTest {
     }
 
     function testActionIds() public {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        StablePoolFactory factory = new StablePoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            "Pool v1",
+            true
+        ); // check invariant
         PoolRoleAccounts memory roleAccounts;
 
         StablePool pool1 = StablePool(
