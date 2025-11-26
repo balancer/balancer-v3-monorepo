@@ -22,7 +22,13 @@ contract SwapStableMedusaTest is SwapMedusaTest {
         IERC20[] memory tokens,
         uint256[] memory initialBalances
     ) internal override returns (address newPool) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        StablePoolFactory factory = new StablePoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            "Pool v1",
+            true
+        );
         PoolRoleAccounts memory roleAccounts;
 
         newPool = address(
