@@ -5,11 +5,16 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 
 import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
+    using FixedPoint for uint256;
+
+    uint256 constant MIN_ABS_WEIGHT = 1e16; // 1%
+
     uint256 constant MIN_WEIGHT = 10e16; // 10%
     uint256 constant MAX_WEIGHT = 90e16; // 90%
     uint256 constant MIN_BALANCE = 1e18;
@@ -124,6 +129,96 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
             assertEq(roundedUpResult, standardResult, "roundedUpResult != standardResult (computeInGivenExactOut)");
             assertEq(roundedDownResult, standardResult, "roundedDownResult != standardResult (computeInGivenExactOut)");
         }
+    }
+
+    function testComputeBalanceOutGivenInvariantRounding__Fuzz(
+        uint256 invariantRatio,
+        uint256 weight,
+        uint256 currentBalance
+    ) external pure {
+        invariantRatio = bound(invariantRatio, WeightedMath._MIN_INVARIANT_RATIO, WeightedMath._MAX_INVARIANT_RATIO);
+        weight = bound(weight, MIN_WEIGHT, FixedPoint.ONE - MIN_ABS_WEIGHT);
+        currentBalance = bound(currentBalance, 1e6, 1e26);
+
+        _testComputeBalanceGivenOutRounding(invariantRatio, weight, currentBalance);
+    }
+
+    function testComputeBalanceOutGivenInvariantRoundingExtremeWeights__Fuzz(
+        uint256 invariantRatio,
+        uint256 weight,
+        uint256 currentBalance
+    ) external pure {
+        invariantRatio = bound(invariantRatio, WeightedMath._MIN_INVARIANT_RATIO, WeightedMath._MAX_INVARIANT_RATIO);
+        // * 2 to avoid overflow errors.
+        weight = bound(weight, MIN_ABS_WEIGHT * 2, FixedPoint.ONE - MIN_ABS_WEIGHT);
+        currentBalance = bound(currentBalance, 1e10, 100e18);
+
+        _testComputeBalanceGivenOutRounding(invariantRatio, weight, currentBalance);
+    }
+
+    function testComputeBalanceOutGivenInvariantRoundingAdds__Fuzz(
+        uint256 invariantRatio,
+        uint256 weight,
+        uint256 currentBalance
+    ) external pure {
+        invariantRatio = bound(invariantRatio, FixedPoint.ONE, WeightedMath._MAX_INVARIANT_RATIO);
+        weight = bound(weight, MIN_WEIGHT, FixedPoint.ONE - MIN_ABS_WEIGHT);
+        currentBalance = bound(currentBalance, 1e6, 1e26);
+
+        _testComputeBalanceGivenOutRounding(invariantRatio, weight, currentBalance);
+    }
+
+    function testComputeBalanceOutGivenInvariantRoundingRemoves__Fuzz(
+        uint256 invariantRatio,
+        uint256 weight,
+        uint256 currentBalance
+    ) external pure {
+        invariantRatio = bound(invariantRatio, WeightedMath._MIN_INVARIANT_RATIO, FixedPoint.ONE);
+        weight = bound(weight, MIN_WEIGHT, FixedPoint.ONE - MIN_ABS_WEIGHT);
+        currentBalance = bound(currentBalance, 1e6, 1e26);
+
+        _testComputeBalanceGivenOutRounding(invariantRatio, weight, currentBalance);
+    }
+
+    function _testComputeBalanceGivenOutRounding(
+        uint256 invariantRatio,
+        uint256 weight,
+        uint256 currentBalance
+    ) internal pure {
+        uint256 standardNewBalance = WeightedMath.computeBalanceOutGivenInvariant(
+            currentBalance,
+            weight,
+            invariantRatio
+        );
+
+        uint256 newBalanceRoundDown = _computeBalanceOutGivenInvariantExpDown(currentBalance, weight, invariantRatio);
+
+        uint256 newBalanceRoundUp = _computeBalanceOutGivenInvariantExpUp(currentBalance, weight, invariantRatio);
+
+        assertGe(standardNewBalance, newBalanceRoundDown, "standardNewBalance < newBalanceRoundDown");
+        assertGe(standardNewBalance, newBalanceRoundUp, "standardNewBalance < newBalanceRoundUp");
+    }
+
+    /// @dev Same as computeBalanceOutGivenInvariant, rounding down always
+    function _computeBalanceOutGivenInvariantExpDown(
+        uint256 currentBalance,
+        uint256 weight,
+        uint256 invariantRatio
+    ) internal pure returns (uint256 newBalance) {
+        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divDown(weight));
+
+        return currentBalance.mulUp(balanceRatio);
+    }
+
+    /// @dev Same as computeBalanceOutGivenInvariant, rounding up always
+    function _computeBalanceOutGivenInvariantExpUp(
+        uint256 currentBalance,
+        uint256 weight,
+        uint256 invariantRatio
+    ) internal pure returns (uint256 newBalance) {
+        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(weight));
+
+        return currentBalance.mulUp(balanceRatio);
     }
 
     struct AddLiquidityVars {
