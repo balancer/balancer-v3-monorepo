@@ -60,7 +60,6 @@ struct FixedPriceLBPoolDynamicData {
  * @dev The "price" of a fixed price LBP is represented by a `projectTokenRate`: this corresponds to the number of
  * reserve tokens required to purchase one project token. For instance, if we want to sell a million tokens to raise
  * $100k USDC, the rate would be 0.1 (10 cents), or 1e17.
- *
  */
 interface IFixedPriceLBPool is ILBPCommon {
     /// @notice An initialization amount is invalid (e.g., zero token balance, or non-zero reserve).
