@@ -205,7 +205,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates) = _vault.getPoolTokenRates(address(lbp));
 
-        // Compute the spot price (reserve tokens per project token) based on the current weights and the amounts out
+        // Compute the spot price (project token per reserve tokens) based on the current weights and the amounts out
         // from the LBP.
         uint256 projectAmountOutScaled18 = removeAmountsOut[data.projectTokenIndex].toScaled18ApplyRateRoundDown(
             decimalScalingFactors[data.projectTokenIndex],

@@ -295,7 +295,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             [uint256(1), 1].toMemoryArray()
         );
 
-        _checkPrice(weightedPool, weights);
+        _checkPrice(weightedPool, lbpBalancesBeforeScaled18, weights);
 
         (IERC20[] memory weightedPoolTokens, TokenInfo[] memory weightedPoolTokenInfo, , ) = vault.getPoolTokenInfo(
             address(weightedPool)
@@ -408,8 +408,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
     }
 
     function testMigrateLiquidityWithDecimalsRelatedPool() external {
-        uint256 weightReserveToken = 70e16;
-        uint256 weightProjectToken = 30e16;
+        uint256 weightReserveToken = 50e16;
+        uint256 weightProjectToken = 50e16;
         uint256 bptPercentageToMigrate = 50e16; // 50%
 
         projectToken = wbtc8Decimals;
@@ -465,7 +465,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             );
         vm.stopPrank();
 
-        _checkPrice(weightedPool, weights);
+        _checkPrice(weightedPool, lbpBalancesBeforeScaled18, weights);
 
         uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
         (
@@ -626,25 +626,28 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         );
     }
 
-    function _checkPrice(IWeightedPool weightedPool, uint256[] memory weight) internal view {
+    function _checkPrice(
+        IWeightedPool weightedPool,
+        uint256[] memory lbpBalancesBeforeScaled18,
+        uint256[] memory weight
+    ) internal view {
         uint256[] memory weightedPoolBalancesScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
         uint256 weightedPoolPrice = (weightedPoolBalancesScaled18[projectIdx].mulDown(weight[reserveIdx])).divDown(
             weightedPoolBalancesScaled18[reserveIdx].mulDown(weight[projectIdx])
         );
 
-        uint256[] memory lbpBalancesScaled18 = vault.getCurrentLiveBalances(address(pool));
         uint256[] memory lbpWeights = new uint256[](2);
         lbpWeights[projectIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[projectIdx];
         lbpWeights[reserveIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[reserveIdx];
 
-        uint256 lbpPrice = (lbpBalancesScaled18[projectIdx].mulDown(lbpWeights[reserveIdx])).divDown(
-            lbpBalancesScaled18[reserveIdx].mulDown(lbpWeights[projectIdx])
+        uint256 lbpPrice = (lbpBalancesBeforeScaled18[projectIdx].mulDown(lbpWeights[reserveIdx])).divDown(
+            lbpBalancesBeforeScaled18[reserveIdx].mulDown(lbpWeights[projectIdx])
         );
 
         assertApproxEqAbs(
             weightedPoolPrice,
             lbpPrice,
-            100,
+            1e8,
             "Price mismatch between LBP and Weighted Pool after migration"
         );
     }
