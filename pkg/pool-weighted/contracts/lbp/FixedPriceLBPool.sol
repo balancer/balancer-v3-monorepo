@@ -45,18 +45,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    /**
-     * @notice Rate bounds derived from historical LBP data (50+ completed token sales from Fjord).
-     * @dev Observed range: $0.032 to $5.37 per token (rates: 3.2e16 to 5.37e18).
-     * MIN allows tokens as cheap as $0.0001 (0.01 cent) - 100x below observed minimum.
-     * MAX allows tokens as expensive as $10,000 - ~2000x above observed maximum.
-     * These bounds prevent configuration errors while remaining flexible for legitimate use cases.
-     *
-     * NOTE: These constants are duplicated in FixedPriceLBPoolFactory for early validation.
-     */
-    uint256 private constant _MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
-    uint256 private constant _MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;
-
     // Tolerance for initialization balance validation in the buy/sell case.
     uint256 private constant _INITIALIZATION_TOLERANCE_PERCENTAGE = 10e16; // 10%
 
@@ -78,33 +66,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
     {
-        // Validate the rate is within acceptable bounds based on historical LBP data.
-        if (projectTokenRate < _MIN_PROJECT_TOKEN_RATE) {
-            revert ProjectTokenRateTooLow(projectTokenRate, _MIN_PROJECT_TOKEN_RATE);
-        }
-        if (projectTokenRate > _MAX_PROJECT_TOKEN_RATE) {
-            revert ProjectTokenRateTooHigh(projectTokenRate, _MAX_PROJECT_TOKEN_RATE);
-        }
-
         _projectTokenRate = projectTokenRate;
-    }
-
-    /**
-     * @notice Get the minimum allowed project token rate.
-     * @dev This guards against configuration errors, while retaining flexibility to accommodate normal use cases.
-     * @return minProjectTokenRate The minimum allowed token rate (i.e., price of the token in terms of the reserve)
-     */
-    function getMinimumProjectTokenRate() external pure returns (uint256) {
-        return _MIN_PROJECT_TOKEN_RATE;
-    }
-
-    /**
-     * @notice Get the maximum allowed project token rate.
-     * @dev This guards against configuration errors, while retaining flexibility to accommodate normal use cases.
-     * @return maxProjectTokenRate The maximum allowed token rate (i.e., price of the token in terms of the reserve)
-     */
-    function getMaximumProjectTokenRate() external pure returns (uint256) {
-        return _MAX_PROJECT_TOKEN_RATE;
     }
 
     /**

@@ -76,16 +76,6 @@ interface IFixedPriceLBPool is ILBPCommon {
     /// @notice An initialization amount is invalid (e.g., zero token balance, or non-zero reserve in buy-only mode).
     error InvalidInitializationAmount();
 
-    /// @notice The provided rate is below the minimum allowed rate.
-    /// @param actualRate The rate provided on creation
-    /// @param minimumRate The minimum allowed rate
-    error ProjectTokenRateTooLow(uint256 actualRate, uint256 minimumRate);
-
-    /// @notice The provided rate is above the maximum allowed rate.
-    /// @param actualRate The rate provided on creation
-    /// @param maximumRate The maximum allowed rate
-    error ProjectTokenRateTooHigh(uint256 actualRate, uint256 maximumRate);
-
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic LBP parameters
