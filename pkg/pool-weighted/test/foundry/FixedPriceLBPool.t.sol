@@ -140,7 +140,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             block.timestamp,
             endTime,
             DEFAULT_RATE,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN,
             false
         );
 
@@ -174,7 +173,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             startTime,
             endTime,
             DEFAULT_RATE,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN,
             false
         ); // no migration
 
@@ -218,6 +216,33 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
         new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, 0);
+    }
+
+    function testCreatePoolBiDirectional() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: false
+        });
+
+        MigrationParams memory migrationParams;
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(IFixedPriceLBPool.TokenSwapsInUnsupported.selector);
+        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, DEFAULT_RATE);
     }
 
     /********************************************************
@@ -492,41 +517,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         IBasePool(pool).onSwap(request);
     }
 
-    function testOnSwapProjectTokenInAllowed() public {
-        // Deploy a new pool with project token swaps enabled
-        (pool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            false // Do not block project token swaps in
-        );
-
-        vm.startPrank(bob);
-        _initPool(pool, _computeInitAmounts(false), 0);
-        vm.stopPrank();
-
-        // Warp to when swaps are enabled
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
-
-        // Create swap request params - swapping project token for reserve token
-        PoolSwapParams memory request = PoolSwapParams({
-            kind: SwapKind.EXACT_IN,
-            amountGivenScaled18: 1e18,
-            balancesScaled18: vault.getCurrentLiveBalances(pool),
-            indexIn: projectIdx,
-            indexOut: reserveIdx,
-            router: address(router),
-            userData: bytes("")
-        });
-
-        // Mock vault call to onSwap
-        vm.prank(address(vault));
-        uint256 amountCalculated = IBasePool(pool).onSwap(request);
-
-        // Verify amount calculated is non-zero
-        assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
-    }
-
     function testOnSwap() public {
         // Warp to when swaps are enabled
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
@@ -551,13 +541,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Verify amount calculated is the same as the amount given.
         assertEq(amountCalculated, amount, "Swap amount should match amount given (buy project)");
 
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            false // bi-directional
-        );
-
         request = PoolSwapParams({
             kind: SwapKind.EXACT_OUT,
             amountGivenScaled18: amount,
@@ -568,14 +551,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             userData: bytes("")
         });
 
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
-
-        // Mock vault call to onSwap
+        vm.expectRevert(LBPCommon.SwapOfProjectTokenIn.selector);
         vm.prank(address(vault));
-        amountCalculated = IBasePool(newPool).onSwap(request);
-
-        // Verify amount calculated is the same as the amount given.
-        assertEq(amountCalculated, amount, "Swap amount should match amount given (sell project)");
+        amountCalculated = IBasePool(pool).onSwap(request);
     }
 
     /*******************************************************************************

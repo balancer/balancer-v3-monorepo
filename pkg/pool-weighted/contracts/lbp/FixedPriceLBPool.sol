@@ -72,7 +72,10 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         if (projectTokenRate == 0) {
             revert InvalidProjectTokenRate();
         }
-
+    
+        if (lbpCommonParams.blockProjectTokenSwapsIn == false) {
+            revert TokenSwapsInUnsupported();
+        }
         _projectTokenRate = projectTokenRate;
     }
 
@@ -134,8 +137,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert SwapsDisabled();
         }
 
-        // If project token swaps are blocked, project token must be the token out.
-        if (_blockProjectTokenSwapsIn && request.indexOut != _projectTokenIndex) {
+        // Project token must be the token out.
+        if (request.indexIn == _projectTokenIndex) {
             revert SwapOfProjectTokenIn();
         }
 

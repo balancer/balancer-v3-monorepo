@@ -79,6 +79,9 @@ interface IFixedPriceLBPool is ILBPCommon {
     /// @notice The token sale price cannot be zero.
     error InvalidProjectTokenRate();
 
+    /// @notice All fixed price LBPools are "buy only;" token swaps in are not supported.
+    error TokenSwapsInUnsupported();
+
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic LBP parameters

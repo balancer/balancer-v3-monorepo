@@ -23,14 +23,13 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     /**
      * @notice Event emitted when a fixed price LBP is deployed.
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
-     * more detail on this specific LBP configuration.
+     * more detail on this specific LBP configuration. All FixedPrice LBPools are "buy only."
      *
      * @param pool Address of the pool
      * @param owner Address of the pool's owner
      * @param startTime The starting timestamp of the token sale
      * @param endTime  The ending timestamp of the token sale
      * @param projectTokenRate The project token price in terms of the reserve token
-     * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
      * @param hasMigration True if the pool will be migrated after the sale
      */
     event FixedPriceLBPoolCreated(
@@ -39,7 +38,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         uint256 startTime,
         uint256 endTime,
         uint256 projectTokenRate,
-        bool blockProjectTokenSwapsIn,
         bool hasMigration
     );
 
@@ -77,6 +75,10 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         if (projectTokenRate == 0) {
             revert IFixedPriceLBPool.InvalidProjectTokenRate();
+        }
+
+        if (lbpCommonParams.blockProjectTokenSwapsIn == false) {
+            revert IFixedPriceLBPool.TokenSwapsInUnsupported();
         }
 
         pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
@@ -135,7 +137,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpCommonParams.startTime,
             lbpCommonParams.endTime,
             projectTokenRate,
-            lbpCommonParams.blockProjectTokenSwapsIn,
             hasMigration
         );
 
