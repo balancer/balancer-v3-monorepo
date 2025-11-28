@@ -55,6 +55,9 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      */
     uint256 private immutable _projectTokenRate;
 
+    /// @notice Single token liquidity operations (that call `computeBalance` are unsupported.
+    error UnsupportedOperation();
+
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
@@ -175,29 +178,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
     }
 
     /// @inheritdoc IBasePool
-    function computeBalance(
-        uint256[] memory balances,
-        uint256 tokenInIndex,
-        uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
-        // Calculate the current invariant, rounding up to favor the Vault.
-        uint256 invariant = computeInvariant(balances, Rounding.ROUND_UP);
-
-        if (tokenInIndex == _projectTokenIndex) {
-            // Solve for project token: projectBalance = (inv - reserveBalance) / rate.
-            // Round up to favor the pool (require more tokens in).AddLiquidityParams
-            newBalance = (invariant - balances[_reserveTokenIndex]).divUp(_projectTokenRate);
-        } else {
-            // Solve for reserve token: reserveBalance = inv - (projectBalance * rate).
-            // Round up to favor the pool (require more tokens in).
-            uint256 projectTokenValue = balances[_projectTokenIndex].mulDown(_projectTokenRate);
-            newBalance = invariant - projectTokenValue;
-        }
-
-        // Apply invariant ratio for proportional operations.
-        // When adding liquidity proportionally, invariantRatio > FixedPoint.ONE.
-        // When removing liquidity proportionally, invariantRatio < FixedPoint.ONE.
-        newBalance = newBalance.mulUp(invariantRatio);
+    function computeBalance(uint256[] memory, uint256, uint256) external pure returns (uint256) {
+        revert UnsupportedOperation();
     }
 
     /// @inheritdoc ISwapFeePercentageBounds

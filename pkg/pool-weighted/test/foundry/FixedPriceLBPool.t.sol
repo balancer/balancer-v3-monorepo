@@ -865,45 +865,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testComputeBalance() public {
-        uint256 rate = 2e18; // Make it non-unitary
-
-        uint256 reserveBalance = 100e18;
-        uint256 projectBalance = reserveBalance.divDown(rate);
-
-        uint256 invariantRatio = 1.5e18;
-
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            rate,
-            true // swap in only
-        );
-
-        uint256[] memory balances = new uint256[](2);
-        balances[projectIdx] = projectBalance;
-        balances[reserveIdx] = reserveBalance;
-
-        uint256 expectedInverse = reserveBalance.mulDown(invariantRatio);
-        uint256 actualInverse = IBasePool(newPool).computeBalance(balances, reserveIdx, invariantRatio);
-
-        assertEq(actualInverse, expectedInverse, "Wrong computeBalance for reserveToken");
-
-        (newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            rate,
-            false // bi-directional sale
-        );
-
-        expectedInverse = projectBalance.mulDown(invariantRatio);
-        actualInverse = IBasePool(newPool).computeBalance(balances, projectIdx, invariantRatio);
-
-        assertEq(actualInverse, expectedInverse, "Wrong computeBalance for projectToken");
+        vm.expectRevert(FixedPriceLBPool.UnsupportedOperation.selector);
+        IBasePool(pool).computeBalance(new uint256[](2), 0, FixedPoint.ONE);
     }
 
     function testInitializeInvalidProjectOrReserve() public {
