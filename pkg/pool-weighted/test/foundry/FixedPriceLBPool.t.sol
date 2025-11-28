@@ -708,7 +708,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         assertFalse(
             IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
-            "onBeforeInitialize should return false when sender is not factory"
+            "onBeforeInitialize should return false when sender is not owner"
         );
     }
 
