@@ -268,7 +268,9 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             weightedPoolParams
         );
 
-        uint256[] memory weights = [weightProjectToken, weightReserveToken].toMemoryArray();
+        uint256[] memory weights = new uint256[](2);
+        weights[projectIdx] = weightProjectToken;
+        weights[reserveIdx] = weightReserveToken;
 
         // Check balances after migration
         uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
@@ -292,6 +294,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             expectedLBPBalancesScaled18,
             [uint256(1), 1].toMemoryArray()
         );
+
+        _checkPrice(weightedPool, weights);
 
         (IERC20[] memory weightedPoolTokens, TokenInfo[] memory weightedPoolTokenInfo, , ) = vault.getPoolTokenInfo(
             address(weightedPool)
@@ -431,7 +435,9 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         vm.startPrank(bob);
         _initPool(pool, initLBPAmounts, 0);
 
-        uint256[] memory lbpWeights = [weightProjectToken, weightReserveToken].toMemoryArray();
+        uint256[] memory weights = new uint256[](2);
+        weights[projectIdx] = weightProjectToken;
+        weights[reserveIdx] = weightReserveToken;
 
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
         IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
@@ -459,6 +465,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             );
         vm.stopPrank();
 
+        _checkPrice(weightedPool, weights);
+
         uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
         (
             uint256[] memory expectedLBPBalancesAfter,
@@ -466,7 +474,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         ) = _calculateExpectedLBPBalances(
                 lbpBalancesBeforeScaled18,
                 ILBPool(pool).getLBPoolDynamicData().normalizedWeights,
-                lbpWeights,
+                weights,
                 decimalScalingFactors,
                 _bptPercentageToMigrate
             );
@@ -615,6 +623,29 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
                 .toRawUndoRateRoundDown(decimalScalingFactors[reserveIdx], DEFAULT_RATE),
             DELTA,
             "excessReceiver should hold the correct amount of reserve tokens after migration"
+        );
+    }
+
+    function _checkPrice(IWeightedPool weightedPool, uint256[] memory weight) internal view {
+        uint256[] memory weightedPoolBalancesScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
+        uint256 weightedPoolPrice = (weightedPoolBalancesScaled18[projectIdx].mulDown(weight[reserveIdx])).divDown(
+            weightedPoolBalancesScaled18[reserveIdx].mulDown(weight[projectIdx])
+        );
+
+        uint256[] memory lbpBalancesScaled18 = vault.getCurrentLiveBalances(address(pool));
+        uint256[] memory lbpWeights = new uint256[](2);
+        lbpWeights[projectIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[projectIdx];
+        lbpWeights[reserveIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[reserveIdx];
+
+        uint256 lbpPrice = (lbpBalancesScaled18[projectIdx].mulDown(lbpWeights[reserveIdx])).divDown(
+            lbpBalancesScaled18[reserveIdx].mulDown(lbpWeights[projectIdx])
+        );
+
+        assertApproxEqAbs(
+            weightedPoolPrice,
+            lbpPrice,
+            100,
+            "Price mismatch between LBP and Weighted Pool after migration"
         );
     }
 
