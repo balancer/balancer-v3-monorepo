@@ -15,7 +15,7 @@ import { ILBPCommon } from "./ILBPCommon.sol";
  * @param endTime Timestamp of the end of the sale, when swaps are disabled, and liquidity can be removed
  * @param projectTokenIndex The index of token (in `tokens`) being distributed through the sale
  * @param reserveTokenIndex The index of the token (in `tokens`) used to purchase project tokens
- * @param isProjectTokenSwapInBlocked If true, it is impossible to sell the project token back into the pool
+ * @param projectTokenRate The price of the project token in terms of the reserve
  */
 struct FixedPriceLBPoolImmutableData {
     // Common LBPool immutable parameters
@@ -25,15 +25,8 @@ struct FixedPriceLBPoolImmutableData {
     uint256 endTime;
     uint256 projectTokenIndex;
     uint256 reserveTokenIndex;
-    bool isProjectTokenSwapInBlocked;
     // Fixed price LBP immutable parameters
     uint256 projectTokenRate;
-    // Migration parameters (if migrationRouter == address(0), the pool does not support migration).
-    address migrationRouter;
-    uint256 lockDurationAfterMigration;
-    uint256 bptPercentageToMigrate;
-    uint256 migrationWeightProjectToken;
-    uint256 migrationWeightReserveToken;
 }
 
 /**

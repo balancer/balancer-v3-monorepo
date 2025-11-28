@@ -154,16 +154,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         assertEq(data.endTime, defaultEndTime, "Wrong end time");
         assertEq(data.projectTokenIndex, projectIdx, "Wrong project token index");
         assertEq(data.reserveTokenIndex, reserveIdx, "Wrong reserve token index");
-        assertTrue(data.isProjectTokenSwapInBlocked, "Project token swap in not disabled");
-
         assertEq(data.projectTokenRate, DEFAULT_RATE, "Wrong project token rate");
-        assertEq(data.migrationRouter, address(0), "Migration router not zero");
 
-        assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
-        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
-        assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
-        assertEq(data.migrationWeightReserveToken, 0, "Reserve token weight should be zero");
-        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
         assertEq(vault.getPoolRoleAccounts(pool).poolCreator, bob, "Incorrect pool creator");
     }
 

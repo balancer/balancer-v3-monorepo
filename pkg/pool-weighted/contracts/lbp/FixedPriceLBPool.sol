@@ -117,18 +117,10 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         data.reserveTokenIndex = _reserveTokenIndex;
 
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
-        data.isProjectTokenSwapInBlocked = _blockProjectTokenSwapsIn;
         data.startTime = _startTime;
         data.endTime = _endTime;
 
         data.projectTokenRate = _projectTokenRate;
-
-        // Migration-related params, non-zero if the pool supports migration.
-        data.migrationRouter = _migrationRouter;
-        data.lockDurationAfterMigration = _lockDurationAfterMigration;
-        data.bptPercentageToMigrate = _bptPercentageToMigrate;
-        data.migrationWeightProjectToken = _migrationWeightProjectToken;
-        data.migrationWeightReserveToken = _migrationWeightReserveToken;
     }
 
     /*******************************************************************************

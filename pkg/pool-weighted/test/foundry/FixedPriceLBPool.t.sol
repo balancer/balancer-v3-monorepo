@@ -210,16 +210,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetMigrationParams() public view {
-        FixedPriceLBPoolImmutableData memory data = IFixedPriceLBPool(pool).getFixedPriceLBPoolImmutableData();
-
-        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
-        assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
-        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
-        assertEq(data.migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
-        assertEq(data.migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
-    }
-
     function testGetProjectToken() public view {
         assertEq(address(ILBPCommon(pool).getProjectToken()), address(projectToken), "Wrong project token");
     }
@@ -340,15 +330,11 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             "Reserve scaling factor mismatch"
         );
 
-        // Check project token swap in setting
-        assertTrue(data.isProjectTokenSwapInBlocked, "Project token swap in not disabled");
-
         // Check start and end times
         assertEq(data.startTime, block.timestamp + DEFAULT_START_OFFSET, "Start time mismatch");
         assertEq(data.endTime, block.timestamp + DEFAULT_END_OFFSET, "End time mismatch");
 
         assertEq(data.projectTokenRate, DEFAULT_RATE, "Wrong project token rate");
-        assertEq(data.migrationRouter, address(0), "Non-zero migration router");
     }
 
     /*******************************************************************************
