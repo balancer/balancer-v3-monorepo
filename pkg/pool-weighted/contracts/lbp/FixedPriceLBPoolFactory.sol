@@ -30,26 +30,30 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @param startTime The starting timestamp of the token sale
      * @param endTime  The ending timestamp of the token sale
      * @param projectTokenRate The project token price in terms of the reserve token
-     * @param hasMigration True if the pool will be migrated after the sale
      */
     event FixedPriceLBPoolCreated(
         address indexed pool,
         address indexed owner,
         uint256 startTime,
         uint256 endTime,
-        uint256 projectTokenRate,
-        bool hasMigration
+        uint256 projectTokenRate
     );
 
+    /**
+     * @dev BaseLBPFactory requires a non-zero migration router. This is because we want this router specified at the
+     * factory level. While migration is optional for LBPs, any that do choose migration should all use the same router
+     * for it. Since Fixed Price LBPs don't support migration, we don't need to pass one in: but we still want this
+     * factory-level guarantee generally. So we need to pass a non-zero (though clearly invalid) migration router
+     * address. This doesn't matter, since we know it will never be used.
+     */
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRouter,
-        address migrationRouter
+        address trustedRouter
     )
-        BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, migrationRouter)
+        BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, address(0)) // no migration router
         BasePoolFactory(vault, pauseWindowDuration, type(FixedPriceLBPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -71,8 +75,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
-        MigrationParams memory migrationParams;
-
         if (projectTokenRate == 0) {
             revert IFixedPriceLBPool.InvalidProjectTokenRate();
         }
@@ -81,32 +83,11 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             revert IFixedPriceLBPool.TokenSwapsInUnsupported();
         }
 
-        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
-    }
-
-    /**
-     * @notice Deploys a new `LBPool` with migration.
-     * @dev This method does not support native ETH management; WETH needs to be used instead.
-     * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
-     * @param projectTokenRate The price of the project token in terms of the reserve
-     * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
-     * @param salt The salt value that will be passed to create3 deployment
-     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
-     */
-    function createWithMigration(
-        LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
-        uint256 projectTokenRate,
-        uint256 swapFeePercentage,
-        bytes32 salt,
-        address poolCreator
-    ) public nonReentrant returns (address pool) {
-        pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
+        pool = _createPool(lbpCommonParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
     }
 
     function _createPool(
         LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
         uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
@@ -117,18 +98,14 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
 
-        bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
-
-        address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
-
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            migrationRouter: migrationRouterOrZero,
+            migrationRouter: address(0), // Migration unsupported for fixed price LBPs
             poolVersion: _poolVersion
         });
 
-        pool = _create(abi.encode(lbpCommonParams, migrationParams, factoryParams, projectTokenRate), salt);
+        pool = _create(abi.encode(lbpCommonParams, factoryParams, projectTokenRate), salt);
 
         // Emit type-specific event first
         emit FixedPriceLBPoolCreated(
@@ -136,9 +113,11 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpCommonParams.owner,
             lbpCommonParams.startTime,
             lbpCommonParams.endTime,
-            projectTokenRate,
-            hasMigration
+            projectTokenRate
         );
+
+        // Only needed for the event.
+        MigrationParams memory migrationParams;
 
         // Emit common events via base helper
         _emitPoolCreatedEvents(
@@ -146,7 +125,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpCommonParams.projectToken,
             lbpCommonParams.reserveToken,
             migrationParams,
-            hasMigration
+            false // Migration unsupported for fixed price LBPs
         );
 
         PoolRoleAccounts memory roleAccounts;

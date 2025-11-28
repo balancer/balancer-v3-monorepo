@@ -29,27 +29,18 @@ contract FixedPriceLBPoolContractsDeployer is BaseContractsDeployer {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address router,
-        address migrationRouter
+        address router
     ) internal returns (FixedPriceLBPoolFactory) {
         if (reusingArtifacts) {
             return
                 FixedPriceLBPoolFactory(
                     deployCode(
                         _computeLBPoolPath(type(FixedPriceLBPoolFactory).name),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router, migrationRouter)
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router)
                     )
                 );
         } else {
-            return
-                new FixedPriceLBPoolFactory(
-                    vault,
-                    pauseWindowDuration,
-                    factoryVersion,
-                    poolVersion,
-                    router,
-                    migrationRouter
-                );
+            return new FixedPriceLBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router);
         }
     }
 

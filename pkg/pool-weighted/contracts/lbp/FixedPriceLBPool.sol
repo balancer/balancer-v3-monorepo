@@ -57,11 +57,15 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
 
     constructor(
         LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
         FactoryParams memory factoryParams,
         uint256 projectTokenRate
     )
-        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, factoryParams.migrationRouter)
+        LBPCommon(
+            lbpCommonParams,
+            _getEmptyMigrationParams(),
+            factoryParams.trustedRouter,
+            address(0) // no migration router
+        )
         BalancerPoolToken(factoryParams.vault, lbpCommonParams.name, lbpCommonParams.symbol)
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
@@ -74,7 +78,18 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert TokenSwapsInUnsupported();
         }
 
+        // We ignore this and pass zero above, but check it for consistency.
+        if (factoryParams.migrationRouter != address(0)) {
+            revert MigrationUnsupported();
+        }
+
         _projectTokenRate = projectTokenRate;
+    }
+
+    function _getEmptyMigrationParams() private pure returns (MigrationParams memory) {
+        MigrationParams memory params;
+
+        return params;
     }
 
     /// @inheritdoc IFixedPriceLBPool
@@ -132,24 +147,9 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert SwapOfProjectTokenIn();
         }
 
-        // Determine whether we're buying or selling project tokens
-        bool buyingProjectToken = request.indexIn == _reserveTokenIndex;
-
-        if (request.kind == SwapKind.EXACT_IN) {
-            // Calculated amount is amount out; round down to favor the Vault.
-            // When buying project (reserve in): amountOut = amountIn / rate
-            // When selling project (project in): amountOut = amountIn * rate
-            amountCalculatedScaled18 = buyingProjectToken
-                ? request.amountGivenScaled18.divDown(_projectTokenRate)
-                : request.amountGivenScaled18.mulDown(_projectTokenRate);
-        } else {
-            // Calculated amount is amount in; round up to favor the Vault.
-            // When buying project (reserve in): amountIn = amountOut * rate
-            // When selling project (project in): amountIn = amountOut / rate
-            amountCalculatedScaled18 = buyingProjectToken
-                ? request.amountGivenScaled18.mulUp(_projectTokenRate)
-                : request.amountGivenScaled18.divUp(_projectTokenRate);
-        }
+        amountCalculatedScaled18 = request.kind == SwapKind.EXACT_IN
+            ? request.amountGivenScaled18.divDown(_projectTokenRate)
+            : request.amountGivenScaled18.mulUp(_projectTokenRate);
     }
 
     /**
