@@ -58,7 +58,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         defaultStartTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         defaultEndTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        return _createFixedPriceLBPool(alice, defaultStartTime, defaultEndTime, DEFAULT_PROJECT_TOKENS_SWAP_IN);
+        return _createFixedPriceLBPool(alice, defaultStartTime, defaultEndTime);
     }
 
     function initPool() internal virtual override {
@@ -151,7 +151,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testCreatePool() public {
-        (pool, ) = _createFixedPriceLBPool(bob, uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createFixedPriceLBPool(bob, uint32(block.timestamp + 100), uint32(block.timestamp + 200));
         initPool();
 
         // Verify pool was created and initialized correctly
@@ -371,12 +371,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testAddLiquidityPermission() public {
-        (pool, ) = _createFixedPriceLBPool(
-            address(0),
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            true
-        );
+        (pool, ) = _createFixedPriceLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200));
         initPool();
 
         // Try to add to the pool without permission.
@@ -389,12 +384,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testDonationNotAllowed() public {
-        (pool, ) = _createFixedPriceLBPool(
-            address(0),
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            true
-        );
+        (pool, ) = _createFixedPriceLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200));
         initPool();
 
         // Try to donate to the pool
@@ -507,10 +497,16 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function _createFixedPriceLBPool(
+        uint32 startTime,
+        uint32 endTime
+    ) internal returns (address newPool, bytes memory poolArgs) {
+        return _createFixedPriceLBPool(address(0), startTime, endTime);
+    }
+
+    function _createFixedPriceLBPool(
         address poolCreator,
         uint32 startTime,
-        uint32 endTime,
-        bool blockProjectTokenSwapsIn
+        uint32 endTime
     ) internal returns (address newPool, bytes memory poolArgs) {
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "FixedPriceLBPool",
@@ -520,7 +516,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: true // Fixed price LBPs are always "buy-only"
         });
 
         MigrationParams memory migrationParams;

@@ -45,9 +45,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    // Tolerance for initialization balance validation in the buy/sell case.
-    uint256 private constant _INITIALIZATION_TOLERANCE_PERCENTAGE = 10e16; // 10%
-
     /**
      * @notice The fixed exchange rate between project and reserve tokens (18 decimals).
      * @dev This represents how many reserve tokens equal one project token.
@@ -72,19 +69,12 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         if (projectTokenRate == 0) {
             revert InvalidProjectTokenRate();
         }
-    
+
         if (lbpCommonParams.blockProjectTokenSwapsIn == false) {
             revert TokenSwapsInUnsupported();
         }
-        _projectTokenRate = projectTokenRate;
-    }
 
-    /**
-     * @notice For bi-directional (buy and sell) sales, this is the maximum deviation from proportional initialization.
-     * @return initializationTolerancePercentage The maximum deviation from proportionality allowed at init time
-     */
-    function getInitializationTolerancePercentage() external pure returns (uint256) {
-        return _INITIALIZATION_TOLERANCE_PERCENTAGE;
+        _projectTokenRate = projectTokenRate;
     }
 
     /// @inheritdoc IFixedPriceLBPool
@@ -256,32 +246,11 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         uint256 projectAmount = amountsScaled18[_projectTokenIndex];
         uint256 reserveAmount = amountsScaled18[_reserveTokenIndex];
 
-        if (_blockProjectTokenSwapsIn) {
-            // One-way pool: only buying project tokens with reserve.
-            // Therefore, there is no point adding reserve tokens, as they will never be tokenOut in a swap.
-            // This is a form of "seedless" LBP; easy because the math is very simple.
-            if (projectAmount == 0 || reserveAmount != 0) {
-                revert InvalidInitializationAmount();
-            }
-        } else {
-            // Two-way pool: both directions allowed.
-            // Both tokens required and must approximately match the expected ratio.
-            if (projectAmount == 0 || reserveAmount == 0) {
-                revert InvalidInitializationAmount();
-            }
-
-            // Calculate the expected reserve amount based on the project amount and rate.
-            // expectedReserve = projectAmount * rate.
-            uint256 expectedReserve = projectAmount.mulDown(_projectTokenRate);
-
-            // This accounts for decimal precision and gives the owner some flexibility
-            uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - _INITIALIZATION_TOLERANCE_PERCENTAGE);
-            uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + _INITIALIZATION_TOLERANCE_PERCENTAGE);
-
-            // Verify the actual reserve amount is within tolerance
-            if (reserveAmount < minReserve || reserveAmount > maxReserve) {
-                revert UnbalancedInitialization();
-            }
+        // One-way pool: only buying project tokens with reserve.
+        // Therefore, there is no point adding reserve tokens, as they will never be tokenOut in a swap.
+        // This is a form of "seedless" LBP; easy because the math is very simple.
+        if (projectAmount == 0 || reserveAmount != 0) {
+            revert InvalidInitializationAmount();
         }
     }
 }

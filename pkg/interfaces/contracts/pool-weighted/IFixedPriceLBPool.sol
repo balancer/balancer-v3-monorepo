@@ -70,10 +70,7 @@ struct FixedPriceLBPoolDynamicData {
  *
  */
 interface IFixedPriceLBPool is ILBPCommon {
-    /// @notice The initialization amounts do not match the expected ratio based on the fixed rate.
-    error UnbalancedInitialization();
-
-    /// @notice An initialization amount is invalid (e.g., zero token balance, or non-zero reserve in buy-only mode).
+    /// @notice An initialization amount is invalid (e.g., zero token balance, or non-zero reserve).
     error InvalidInitializationAmount();
 
     /// @notice The token sale price cannot be zero.

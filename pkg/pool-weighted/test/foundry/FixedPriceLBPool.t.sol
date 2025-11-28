@@ -73,10 +73,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         return
             _createFixedPriceLBPool(
-                address(0), // Pool creator
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
-                uint32(block.timestamp + DEFAULT_END_OFFSET),
-                DEFAULT_PROJECT_TOKENS_SWAP_IN
+                uint32(block.timestamp + DEFAULT_END_OFFSET)
             );
     }
 
@@ -96,10 +94,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createFixedPriceLBPool(
-            address(0), // Pool creator
             startTime,
-            endTime, // EndTime after StartTime, it should revert.
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
+            endTime // EndTime after StartTime, it should revert
         );
     }
 
@@ -109,10 +105,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createFixedPriceLBPool(
-            address(0), // Pool creator
             startTime,
-            endTime, // EndTime = StartTime, it should revert.
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
+            endTime // EndTime = StartTime, it should revert
         );
     }
 
@@ -123,12 +117,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         uint256 preCreateSnapshotId = vm.snapshotState();
 
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            pastStartTime,
-            endTime,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
+        (address newPool, ) = _createFixedPriceLBPool(pastStartTime, endTime);
 
         vm.revertToState(preCreateSnapshotId);
 
@@ -143,12 +132,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             false
         );
 
-        _createFixedPriceLBPool(
-            address(0), // Pool creator
-            pastStartTime,
-            endTime,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
+        _createFixedPriceLBPool(pastStartTime, endTime);
     }
 
     function testCreatePoolEvents() public {
@@ -157,34 +141,17 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         uint256 preCreateSnapshotId = vm.snapshotState();
 
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
+        (address newPool, ) = _createFixedPriceLBPool(startTime, endTime);
 
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(
-            newPool,
-            bob,
-            startTime,
-            endTime,
-            DEFAULT_RATE,
-            false
-        ); // no migration
+        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(newPool, bob, startTime, endTime, DEFAULT_RATE, false); // no migration
 
         vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
 
-        _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
+        _createFixedPriceLBPool(startTime, endTime);
     }
 
     function testGetProjectTokenRate() public view {
@@ -251,14 +218,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
     function testGetTrustedRouter() public view {
         assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
-    }
-
-    function testGetInitializationTolerance() public view {
-        assertEq(
-            FixedPriceLBPool(address(pool)).getInitializationTolerancePercentage(),
-            INITIALIZATION_TOLERANCE_PERCENTAGE,
-            "Wrong init tolerance percentage"
-        );
     }
 
     function testGetMigrationParams() public view {
@@ -366,23 +325,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testIsProjectTokenSwapInBlocked() public {
-        (address newPoolSwapDisabled, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            false
-        );
-
-        assertFalse(
-            ILBPCommon(newPoolSwapDisabled).isProjectTokenSwapInBlocked(),
-            "Swap of Project Token in is blocked"
-        );
-
         (address newPoolSwapEnabled, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
             uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            true
+            uint32(block.timestamp + DEFAULT_END_OFFSET)
         );
 
         assertTrue(
@@ -851,12 +796,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            true // buy only
-        );
+        (address newPool, ) = _createFixedPriceLBPool(startTime, endTime);
 
         uint256[] memory initAmounts = new uint256[](2);
 
@@ -865,13 +805,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.prank(bob);
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-
-        (newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            true // buy only
-        );
 
         initAmounts[projectIdx] = 1e18;
         initAmounts[reserveIdx] = 1e18;
@@ -881,128 +814,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.prank(bob);
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-    }
-
-    function testInitializationInvalidRatios() public {
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        uint256 rate = 2e18;
-
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            rate,
-            false // bi-directional
-        );
-
-        uint256[] memory initAmounts = new uint256[](2);
-
-        // Should fail with zero project tokens.
-        vm.expectRevert(IFixedPriceLBPool.InvalidInitializationAmount.selector);
-
-        vm.prank(bob);
-        router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-
-        // Should fail with zero reserve tokens.
-        initAmounts[projectIdx] = 1e18;
-
-        vm.expectRevert(IFixedPriceLBPool.InvalidInitializationAmount.selector);
-
-        vm.prank(bob);
-        router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-
-        uint256 projectAmount = 1000e18;
-
-        initAmounts[projectIdx] = projectAmount;
-
-        uint256 expectedReserve = projectAmount.mulDown(rate);
-
-        // This accounts for decimal precision and gives the owner some flexibility
-        uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - INITIALIZATION_TOLERANCE_PERCENTAGE);
-
-        // Now try initializing with less than the tolerance.
-        initAmounts[reserveIdx] = minReserve - 1;
-
-        vm.expectRevert(IFixedPriceLBPool.UnbalancedInitialization.selector);
-
-        vm.prank(bob);
-        router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-
-        uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + INITIALIZATION_TOLERANCE_PERCENTAGE);
-
-        // Now try initializing with more than the tolerance.
-        initAmounts[reserveIdx] = maxReserve + 1;
-
-        vm.expectRevert(IFixedPriceLBPool.UnbalancedInitialization.selector);
-
-        vm.prank(bob);
-        router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-    }
-
-    function testInitializationValidLowRatio() public {
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        uint256 rate = 1.5e18;
-
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            rate,
-            false // bi-directional
-        );
-
-        uint256[] memory initAmounts = new uint256[](2);
-        uint256 projectAmount = 1000e18;
-
-        initAmounts[projectIdx] = projectAmount;
-
-        uint256 expectedReserve = projectAmount.mulDown(rate);
-
-        // This accounts for decimal precision and gives the owner some flexibility
-        uint256 minReserve = expectedReserve.mulDown(FixedPoint.ONE - INITIALIZATION_TOLERANCE_PERCENTAGE);
-
-        // Now try initializing with the minimum permitted reserve.
-        initAmounts[reserveIdx] = minReserve;
-
-        IERC20[] memory poolTokens = vault.getPoolTokens(newPool);
-
-        vm.prank(bob);
-        router.initialize(newPool, poolTokens, initAmounts, 0, false, bytes(""));
-    }
-
-    function testInitializationValidHighRatio() public {
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        uint256 rate = 1.5e18;
-
-        (address newPool, ) = _createFixedPriceLBPool(
-            address(0), // Pool creator
-            startTime,
-            endTime,
-            rate,
-            false // bi-directional
-        );
-
-        uint256[] memory initAmounts = new uint256[](2);
-        uint256 projectAmount = 1000e18;
-
-        initAmounts[projectIdx] = projectAmount;
-
-        uint256 expectedReserve = projectAmount.mulDown(rate);
-        uint256 maxReserve = expectedReserve.mulUp(FixedPoint.ONE + INITIALIZATION_TOLERANCE_PERCENTAGE);
-
-        // Now try initializing at the maximum permitted reserve.
-        initAmounts[reserveIdx] = maxReserve;
-
-        IERC20[] memory poolTokens = vault.getPoolTokens(newPool);
-
-        vm.prank(bob);
-        router.initialize(newPool, poolTokens, initAmounts, 0, false, bytes(""));
     }
 
     /*******************************************************************************
@@ -1021,20 +832,17 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function _createFixedPriceLBPool(
-        address poolCreator,
         uint32 startTime,
-        uint32 endTime,
-        bool blockProjectTokenSwapsIn
+        uint32 endTime
     ) internal returns (address newPool, bytes memory poolArgs) {
-        return _createFixedPriceLBPool(poolCreator, startTime, endTime, DEFAULT_RATE, blockProjectTokenSwapsIn);
+        return _createFixedPriceLBPool(address(0), startTime, endTime, DEFAULT_RATE);
     }
 
     function _createFixedPriceLBPool(
         address poolCreator,
         uint32 startTime,
         uint32 endTime,
-        uint256 projectTokenRate,
-        bool blockProjectTokenSwapsIn
+        uint256 projectTokenRate
     ) internal returns (address newPool, bytes memory poolArgs) {
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "FixedPriceLBPool",
@@ -1044,7 +852,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
         });
 
         MigrationParams memory migrationParams;
