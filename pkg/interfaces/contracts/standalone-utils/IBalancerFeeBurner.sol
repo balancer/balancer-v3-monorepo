@@ -3,20 +3,10 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SwapPathStep } from "../vault/BatchRouterTypes.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IBalancerFeeBurner is IProtocolFeeBurner {
-    /**
-     * @notice Steps for the burn path.
-     * @param pool The pool for the swap
-     * @param tokenOut The `tokenOut` of the swap operation
-     */
-    struct SwapPathStep {
-        address pool;
-        IERC20 tokenOut;
-        bool isBuffer;
-    }
-
     /**
      * @notice Data for the burn hook.
      * @param pool The pool the fees came from (only used for documentation in the event)

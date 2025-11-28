@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IBalancerFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerFeeBurner.sol";
+import { SwapPathStep } from "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -90,8 +91,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     }
 
     function testSweepAndBurn() public {
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         Balances memory balancesBefore = getBalances();
 
@@ -142,8 +143,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         Balances memory balancesBefore = getBalances();
 
@@ -186,9 +187,9 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](2);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiWethPool, tokenOut: weth, isBuffer: false });
-        steps[1] = IBalancerFeeBurner.SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({ pool: daiWethPool, tokenOut: weth, isBuffer: false });
+        steps[1] = SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc, isBuffer: false });
 
         Balances memory balancesBefore = getBalances();
 
@@ -230,8 +231,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
 
         Balances memory balancesBefore = getBalances();
 
@@ -269,8 +270,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(address(waDAI)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
 
         Balances memory balancesBefore = getBalances();
 
@@ -314,22 +315,18 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold DAI");
     }
 
-    function testBurnWrapUnwrap() external {
+    function testBurnUnwrapWrap() external {
         vm.prank(alice);
         IERC20(address(waDAI)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](2);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        steps[1] = IBalancerFeeBurner.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[1] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
 
         Balances memory balancesBefore = getBalances();
 
         vm.prank(alice);
         feeBurner.setBurnPath(waDAI, steps);
-
-        uint256 snapshot = vm.snapshot();
-        uint256 amountOut = _vaultPreviewRedeem(waDAI, TEST_BURN_AMOUNT);
-        vm.revertTo(snapshot);
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
@@ -362,14 +359,14 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold DAI");
     }
 
-    function testBurnWrapSwapUnwrap() external {
+    function testBurnUnwrapSwapWrap() external {
         vm.prank(alice);
         IERC20(address(waDAI)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](3);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        steps[1] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
-        steps[2] = IBalancerFeeBurner.SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[1] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        steps[2] = SwapPathStep({ pool: address(waUSDC), tokenOut: waUSDC, isBuffer: true });
 
         Balances memory balancesBefore = getBalances();
 
@@ -411,7 +408,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
     function testSetPathRevertIfNotAuthorized() external {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeBurner.setBurnPath(dai, new IBalancerFeeBurner.SwapPathStep[](0));
+        feeBurner.setBurnPath(dai, new SwapPathStep[](0));
     }
 
     function testBurnRevertIfDeadlinePassed() external {
@@ -425,8 +422,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
@@ -442,8 +439,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     }
 
     function testBurnRevertIfLastPathStepNotTargetToken() external {
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: weth, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: weth, isBuffer: false });
 
         vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
@@ -486,27 +483,27 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     }
 
     function testSetBurnPathDouble() external {
-        IBalancerFeeBurner.SwapPathStep[] memory oldSteps = new IBalancerFeeBurner.SwapPathStep[](2);
-        oldSteps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiWethPool, tokenOut: weth, isBuffer: false });
-        oldSteps[1] = IBalancerFeeBurner.SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory oldSteps = new SwapPathStep[](2);
+        oldSteps[0] = SwapPathStep({ pool: daiWethPool, tokenOut: weth, isBuffer: false });
+        oldSteps[1] = SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc, isBuffer: false });
 
         vm.prank(alice);
         feeBurner.setBurnPath(dai, oldSteps);
 
-        IBalancerFeeBurner.SwapPathStep[] memory newSteps = new IBalancerFeeBurner.SwapPathStep[](1);
-        newSteps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory newSteps = new SwapPathStep[](1);
+        newSteps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         vm.prank(alice);
         feeBurner.setBurnPath(dai, newSteps);
 
-        IBalancerFeeBurner.SwapPathStep[] memory steps = feeBurner.getBurnPath(dai);
+        SwapPathStep[] memory steps = feeBurner.getBurnPath(dai);
         assertEq(steps.length, newSteps.length);
         assertEq(steps[0].pool, newSteps[0].pool);
         assertEq(address(steps[0].tokenOut), address(newSteps[0].tokenOut));
     }
 
     function testSetBurnPathRevertIfNotAuthorized() external {
-        IBalancerFeeBurner.SwapPathStep[] memory steps;
+        SwapPathStep[] memory steps;
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         feeBurner.setBurnPath(dai, steps);
@@ -524,12 +521,12 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     }
 
     function _testSetBurnPath() internal {
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         feeBurner.setBurnPath(dai, steps);
 
-        IBalancerFeeBurner.SwapPathStep[] memory path = feeBurner.getBurnPath(dai);
+        SwapPathStep[] memory path = feeBurner.getBurnPath(dai);
         assertEq(path.length, steps.length);
         assertEq(path[0].pool, steps[0].pool);
         assertEq(address(path[0].tokenOut), address(steps[0].tokenOut));
