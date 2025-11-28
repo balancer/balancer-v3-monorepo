@@ -66,6 +66,10 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
     {
+        if (projectTokenRate == 0) {
+            revert InvalidProjectTokenRate();
+        }
+
         _projectTokenRate = projectTokenRate;
     }
 

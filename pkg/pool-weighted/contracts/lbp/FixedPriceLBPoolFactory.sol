@@ -75,6 +75,10 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
+        if (projectTokenRate == 0) {
+            revert IFixedPriceLBPool.InvalidProjectTokenRate();
+        }
+
         pool = _createPool(lbpCommonParams, migrationParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
     }
 
