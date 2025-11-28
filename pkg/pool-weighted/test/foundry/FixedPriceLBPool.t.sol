@@ -193,6 +193,33 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertEq(IFixedPriceLBPool(address(pool)).getProjectTokenRate(), DEFAULT_RATE, "Wrong project token rate");
     }
 
+    function testCreatePoolRates() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        MigrationParams memory migrationParams;
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
+        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, 0);
+    }
+
     /********************************************************
                             Getters
     ********************************************************/

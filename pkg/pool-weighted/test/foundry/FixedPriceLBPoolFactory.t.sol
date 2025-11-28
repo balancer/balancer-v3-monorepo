@@ -420,6 +420,24 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         assertEq(vault.getStaticSwapFeePercentage(pool), newSwapFee);
     }
 
+    function testRatesInFactory() public {
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        uint256 salt = _saltCounter++;
+
+        vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
+        lbPoolFactory.create(lbpCommonParams, 0, swapFee, bytes32(salt), address(0));
+    }
+
     function _createFixedPriceLBPoolWithMigration(
         address poolCreator,
         uint256 lockDurationAfterMigration,
