@@ -193,73 +193,12 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertEq(IFixedPriceLBPool(address(pool)).getProjectTokenRate(), DEFAULT_RATE, "Wrong project token rate");
     }
 
-    function testCreatePoolRates() public {
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        uint256 tooLowRate = MIN_PROJECT_TOKEN_RATE - 1;
-
-        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
-            name: "FixedPriceLBPool",
-            symbol: "FLBP",
-            owner: bob,
-            projectToken: projectToken,
-            reserveToken: reserveToken,
-            startTime: startTime,
-            endTime: endTime,
-            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
-        });
-
-        MigrationParams memory migrationParams;
-        FactoryParams memory factoryParams = FactoryParams({
-            vault: vault,
-            trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
-            poolVersion: poolVersion
-        });
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IFixedPriceLBPool.ProjectTokenRateTooLow.selector,
-                tooLowRate,
-                MIN_PROJECT_TOKEN_RATE
-            )
-        );
-        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, tooLowRate);
-
-        uint256 tooHighRate = MAX_PROJECT_TOKEN_RATE + 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IFixedPriceLBPool.ProjectTokenRateTooHigh.selector,
-                tooHighRate,
-                MAX_PROJECT_TOKEN_RATE
-            )
-        );
-        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, tooHighRate);
-    }
-
     /********************************************************
                             Getters
     ********************************************************/
 
     function testGetTrustedRouter() public view {
         assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
-    }
-
-    function testGetMinProjectTokenRate() public view {
-        assertEq(
-            FixedPriceLBPool(address(pool)).getMinimumProjectTokenRate(),
-            MIN_PROJECT_TOKEN_RATE,
-            "Wrong minimum token rate"
-        );
-    }
-
-    function testGetMaxProjectTokenRate() public view {
-        assertEq(
-            FixedPriceLBPool(address(pool)).getMaximumProjectTokenRate(),
-            MAX_PROJECT_TOKEN_RATE,
-            "Wrong maximum token rate"
-        );
     }
 
     function testGetInitializationTolerance() public view {
