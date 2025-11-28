@@ -62,8 +62,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             365 days,
             factoryVersion,
             poolVersion,
-            address(router),
-            address(migrationRouter)
+            address(router)
         );
         vm.label(address(lbPoolFactory), "Fixed Price LB pool factory");
 
@@ -80,7 +79,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
     function initPool() internal virtual override {
         vm.startPrank(bob); // Bob is the owner of the pool.
-        _initPool(pool, _computeInitAmounts(DEFAULT_PROJECT_TOKENS_SWAP_IN), 0);
+        _initPool(pool, _computeInitAmounts(), 0);
         vm.stopPrank();
     }
 
@@ -123,14 +122,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         vm.expectEmit();
         // The event should be emitted with block.timestamp as startTime, not the past time.
-        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(
-            newPool,
-            bob,
-            block.timestamp,
-            endTime,
-            DEFAULT_RATE,
-            false
-        );
+        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(newPool, bob, block.timestamp, endTime, DEFAULT_RATE);
 
         _createFixedPriceLBPool(pastStartTime, endTime);
     }
@@ -146,7 +138,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
-        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(newPool, bob, startTime, endTime, DEFAULT_RATE, false); // no migration
+        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(newPool, bob, startTime, endTime, DEFAULT_RATE);
 
         vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
@@ -170,10 +162,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+            blockProjectTokenSwapsIn: false
         });
 
-        MigrationParams memory migrationParams;
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
@@ -182,7 +173,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         });
 
         vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
-        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, 0);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, 0);
     }
 
     function testCreatePoolBiDirectional() public {
@@ -200,7 +191,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             blockProjectTokenSwapsIn: false
         });
 
-        MigrationParams memory migrationParams;
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
@@ -209,7 +199,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         });
 
         vm.expectRevert(IFixedPriceLBPool.TokenSwapsInUnsupported.selector);
-        new FixedPriceLBPool(lbpCommonParams, migrationParams, factoryParams, DEFAULT_RATE);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
     }
 
     /********************************************************
@@ -228,52 +218,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
         assertEq(data.migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
         assertEq(data.migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
-    }
-
-    function testGetMigrationParamsWithMigration() public {
-        uint256 initBptLockDuration = 30 days;
-        uint256 initBptPercentageToMigrate = 50e16; // 50%
-        uint256 initNewWeightProjectToken = 60e16; // 60%
-        uint256 initNewWeightReserveToken = 40e16; // 40%
-
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            initBptLockDuration,
-            initBptPercentageToMigrate,
-            initNewWeightProjectToken,
-            initNewWeightReserveToken
-        );
-        initPool();
-
-        FixedPriceLBPoolImmutableData memory data = IFixedPriceLBPool(pool).getFixedPriceLBPoolImmutableData();
-
-        assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
-        assertEq(data.lockDurationAfterMigration, initBptLockDuration, "BPT lock duration mismatch");
-        assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
-        assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New project token weight mismatch");
-        assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
-
-        MigrationParams memory migrationParams = ILBPCommon(pool).getMigrationParameters();
-        assertEq(
-            migrationParams.lockDurationAfterMigration,
-            initBptLockDuration,
-            "BPT lock duration mismatch (params)"
-        );
-        assertEq(
-            migrationParams.bptPercentageToMigrate,
-            initBptPercentageToMigrate,
-            "Share to migrate mismatch (params)"
-        );
-        assertEq(
-            migrationParams.migrationWeightProjectToken,
-            initNewWeightProjectToken,
-            "New project token weight mismatch (params)"
-        );
-        assertEq(
-            migrationParams.migrationWeightReserveToken,
-            initNewWeightReserveToken,
-            "New reserve token weight mismatch (params)"
-        );
     }
 
     function testGetProjectToken() public view {
@@ -397,11 +341,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         );
 
         // Check project token swap in setting
-        assertEq(
-            data.isProjectTokenSwapInBlocked,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN,
-            "Project token swap in setting mismatch"
-        );
+        assertTrue(data.isProjectTokenSwapInBlocked, "Project token swap in not disabled");
 
         // Check start and end times
         assertEq(data.startTime, block.timestamp + DEFAULT_START_OFFSET, "Start time mismatch");
@@ -643,7 +583,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         _mockGetSender(bob);
 
         assertTrue(
-            IHooks(pool).onBeforeInitialize(_computeInitAmounts(DEFAULT_PROJECT_TOKENS_SWAP_IN), ""),
+            IHooks(pool).onBeforeInitialize(_computeInitAmounts(), ""),
             "onBeforeInitialize should return true with correct sender and before startTime"
         );
     }
@@ -731,62 +671,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
-    function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            30 days, // BPT lock duration
-            50e16, // Share to migrate (50%)
-            60e16, // New weight for project token (60%)
-            40e16 // New weight for reserve token (40%)
-        );
-        initPool();
-
-        assertEq(ILBPCommon(pool).getMigrationRouter(), address(migrationRouter), "Wrong migration router");
-
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.prank(address(vault));
-        bool success = IHooks(pool).onBeforeRemoveLiquidity(
-            address(migrationRouter),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-
-        assertTrue(success, "onBeforeRemoveLiquidity should return true with migration router");
-    }
-
-    function testOnBeforeRemoveLiquidityWithMigrationRevertWithWrongRouter() public {
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            30 days, // BPT lock duration
-            50e16, // Share to migrate (50%)
-            60e16, // New weight for project token (60%)
-            40e16 // New weight for reserve token (40%)
-        );
-        initPool();
-
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.prank(address(vault));
-        bool success = IHooks(pool).onBeforeRemoveLiquidity(
-            address(router),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-
-        assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
-    }
-
     function testComputeBalance() public {
         vm.expectRevert(FixedPriceLBPool.UnsupportedOperation.selector);
         IBasePool(pool).computeBalance(new uint256[](2), 0, FixedPoint.ONE);
@@ -816,6 +700,32 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
     }
 
+    function testCreateWithMigrationRouter() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(router),
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(LBPCommon.MigrationUnsupported.selector);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+    }
+
     /*******************************************************************************
                                    Private Helpers
     *******************************************************************************/
@@ -824,11 +734,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.mockCall(address(router), abi.encodeWithSelector(ISenderGuard.getSender.selector), abi.encode(sender));
     }
 
-    function _computeInitAmounts(bool isBuyOnly) internal view returns (uint256[] memory initAmounts) {
+    function _computeInitAmounts() internal view returns (uint256[] memory initAmounts) {
         initAmounts = new uint256[](2);
 
         initAmounts[projectIdx] = poolInitAmount;
-        initAmounts[reserveIdx] = isBuyOnly ? 0 : poolInitAmount;
     }
 
     function _createFixedPriceLBPool(
@@ -855,12 +764,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
         });
 
-        MigrationParams memory migrationParams;
-
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
+            migrationRouter: address(0),
             poolVersion: poolVersion
         });
 
@@ -869,54 +776,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         newPool = lbPoolFactory.create(lbpCommonParams, projectTokenRate, swapFee, bytes32(salt), poolCreator_);
 
-        poolArgs = abi.encode(lbpCommonParams, migrationParams, factoryParams, projectTokenRate);
-    }
-
-    function _createLBPoolWithMigration(
-        address poolCreator,
-        uint256 lockDurationAfterMigration,
-        uint256 bptPercentageToMigrate,
-        uint256 migrationWeightProjectToken,
-        uint256 migrationWeightReserveToken
-    ) internal override returns (address newPool, bytes memory poolArgs) {
-        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
-            name: "FixedPriceLBPool",
-            symbol: "FLBP",
-            owner: bob,
-            projectToken: projectToken,
-            reserveToken: reserveToken,
-            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
-            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
-        });
-
-        MigrationParams memory migrationParams = MigrationParams({
-            lockDurationAfterMigration: lockDurationAfterMigration,
-            bptPercentageToMigrate: bptPercentageToMigrate,
-            migrationWeightProjectToken: migrationWeightProjectToken,
-            migrationWeightReserveToken: migrationWeightReserveToken
-        });
-
-        FactoryParams memory factoryParams = FactoryParams({
-            vault: vault,
-            trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
-            poolVersion: poolVersion
-        });
-
-        // Copy to local variable to free up parameter stack slot.
-        uint256 salt = _saltCounter++;
-        address poolCreator_ = poolCreator;
-
-        newPool = lbPoolFactory.createWithMigration(
-            lbpCommonParams,
-            migrationParams,
-            DEFAULT_RATE,
-            swapFee,
-            bytes32(salt),
-            poolCreator_
-        );
-
-        poolArgs = abi.encode(lbpCommonParams, migrationParams, factoryParams, DEFAULT_RATE);
+        poolArgs = abi.encode(lbpCommonParams, factoryParams, projectTokenRate);
     }
 }

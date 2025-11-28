@@ -821,7 +821,7 @@ contract LBPoolTest is WeightedLBPTest {
 
         assertFalse(
             IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
-            "onBeforeInitialize should return false when sender is not owner"
+            "onBeforeInitialize should return false when sender is not factory"
         );
     }
 

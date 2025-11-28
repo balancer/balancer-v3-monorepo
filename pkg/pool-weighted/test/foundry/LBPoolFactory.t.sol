@@ -198,16 +198,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testCreatePoolWithMigrationParamsButNoRouter() public {
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationRouter.selector);
-        lbPoolFactory = deployLBPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            factoryVersion,
-            poolVersion,
-            address(router),
-            address(0) // no migration router
-        );
-
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "LBPool",
             symbol: "LBP",
