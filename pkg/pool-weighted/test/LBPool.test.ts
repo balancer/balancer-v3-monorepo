@@ -98,20 +98,25 @@ describe('LBPool', function () {
   ): Promise<ContractTransactionResponse> {
     const tokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
-    const lbpParams = {
+    const lbpCommonParams = {
+      name: 'LBPool',
+      symbol: 'Test',
       owner: admin.address,
       projectToken: tokens[0],
       reserveToken: tokens[1],
-      projectTokenStartWeight,
-      reserveTokenStartWeight,
-      projectTokenEndWeight,
-      reserveTokenEndWeight,
       startTime,
       endTime,
       blockProjectTokenSwapsIn,
     };
 
-    return factory.create('LBPool', 'Test', lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
+    const lbpParams = {
+      projectTokenStartWeight,
+      reserveTokenStartWeight,
+      projectTokenEndWeight,
+      reserveTokenEndWeight,
+    };
+
+    return factory.create(lbpCommonParams, lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
   }
 
   before('setup signers', async () => {
@@ -136,8 +141,9 @@ describe('LBPool', function () {
   });
 
   sharedBeforeEach('create pool and grant approvals', async () => {
+    // Not testing the migration router here; address can't be zero. Just use the regular router address.
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, ZERO_ADDRESS],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, router],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 

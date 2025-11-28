@@ -122,7 +122,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             0,
             bytes("")
         );
-        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.bptLockDuration);
+        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDurationAfterMigration);
 
         emit PoolMigrated(params.lbp, params.weightedPool, exactAmountsIn, bptAmountOut);
     }
@@ -172,7 +172,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             tokens: lbpImmutableData.tokens,
             sender: sender,
             excessReceiver: excessReceiver,
-            bptLockDuration: lbpImmutableData.bptLockDuration,
+            lockDurationAfterMigration: lbpImmutableData.lockDurationAfterMigration,
             bptPercentageToMigrate: lbpImmutableData.bptPercentageToMigrate,
             migrationWeightProjectToken: lbpImmutableData.migrationWeightProjectToken,
             migrationWeightReserveToken: lbpImmutableData.migrationWeightReserveToken
@@ -229,7 +229,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         uint256 reserveAmountOut = (projectAmountOut.mulDown(migrationWeightReserveToken)).divDown(
             price.mulDown(migrationWeightProjectToken)
         );
-        );
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
@@ -245,10 +244,10 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         // Calculate the exact amounts in based on the share to migrate.
         exactAmountsIn[data.projectTokenIndex] = projectAmountOut
-            .mulDown(_bptPercentageToMigrate)
+            .mulDown(bptPercentageToMigrate_)
             .toRawUndoRateRoundDown(decimalScalingFactors[data.projectTokenIndex], tokenRates[data.projectTokenIndex]);
         exactAmountsIn[data.reserveTokenIndex] = reserveAmountOut
-            .mulDown(_bptPercentageToMigrate)
+            .mulDown(bptPercentageToMigrate_)
             .toRawUndoRateRoundDown(decimalScalingFactors[data.reserveTokenIndex], tokenRates[data.reserveTokenIndex]);
     }
 }

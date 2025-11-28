@@ -6,27 +6,33 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {
-    ILBPool,
-    LBPParams,
-    LBPoolImmutableData
-} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
+import { LBPValidation } from "../../contracts/lbp/LBPValidation.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
-import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
-contract LBPoolFactoryTest is BaseLBPTest {
+contract LBPoolFactoryTest is WeightedLBPTest {
     using ArrayHelpers for *;
 
-    uint256 private constant _DEFAULT_WEIGHT = 50e16;
+    uint32 internal defaultStartTime;
+    uint32 internal defaultEndTime;
+
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        defaultStartTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        defaultEndTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        return _createLBPool(alice, defaultStartTime, defaultEndTime, DEFAULT_PROJECT_TOKENS_SWAP_IN);
+    }
 
     function testPoolRegistrationOnCreate() public view {
         // Verify pool was registered in the factory.
@@ -52,7 +58,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testInvalidTrustedRouter() public {
-        vm.expectRevert(LBPoolFactory.InvalidTrustedRouter.selector);
+        vm.expectRevert(BaseLBPFactory.InvalidTrustedRouter.selector);
         new LBPoolFactory(
             vault,
             365 days,
@@ -60,6 +66,18 @@ contract LBPoolFactoryTest is BaseLBPTest {
             poolVersion,
             ZERO_ADDRESS, // invalid trusted router address
             ZERO_ADDRESS // migration router address
+        );
+    }
+
+    function testGetMaxBptLockDuration() public view {
+        assertEq(lbPoolFactory.getMaxBptLockDuration(), MAX_BPT_LOCK_DURATION, "Wrong bpt lock duration");
+    }
+
+    function testGetMinReserveTokenMigrationWeight() public view {
+        assertEq(
+            lbPoolFactory.getMinReserveTokenMigrationWeight(),
+            MIN_RESERVE_TOKEN_MIGRATION_WEIGHT,
+            "Wrong reserve token weight"
         );
     }
 
@@ -77,22 +95,27 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testCreatePoolWithInvalidOwner() public {
-        // Create LBP params with owner set to zero address
-        LBPParams memory params = LBPParams({
+        LBPCommonParams memory commonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
             owner: ZERO_ADDRESS,
             projectToken: projectToken,
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            projectTokenStartWeight: _DEFAULT_WEIGHT,
-            projectTokenEndWeight: _DEFAULT_WEIGHT,
-            reserveTokenStartWeight: _DEFAULT_WEIGHT,
-            reserveTokenEndWeight: _DEFAULT_WEIGHT,
             blockProjectTokenSwapsIn: true
         });
 
-        vm.expectRevert(LBPoolFactory.InvalidOwner.selector);
-        lbPoolFactory.create("LBPool", "LBP", params, swapFee, ZERO_BYTES32, address(0));
+        // Create LBP params with owner set to zero address
+        LBPParams memory params = LBPParams({
+            projectTokenStartWeight: DEFAULT_WEIGHT,
+            projectTokenEndWeight: DEFAULT_WEIGHT,
+            reserveTokenStartWeight: DEFAULT_WEIGHT,
+            reserveTokenEndWeight: DEFAULT_WEIGHT
+        });
+
+        vm.expectRevert(LBPValidation.InvalidOwner.selector);
+        lbPoolFactory.create(commonParams, params, swapFee, ZERO_BYTES32, address(0));
     }
 
     function testCreatePool() public {
@@ -103,9 +126,31 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
-        assertEq(data.bptLockDuration, 0, "BPT lock duration should be zero");
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(address(pool));
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(address(data.tokens[i]), address(tokens[i]), "Token address mismatch");
+            assertEq(data.decimalScalingFactors[i], decimalScalingFactors[i], "Decimal scaling factor mismatch");
+            assertEq(data.startWeights[i], startWeights[i], "Wrong start weight");
+            assertEq(data.endWeights[i], endWeights[i], "Wrong end weight");
+        }
+
+        assertEq(data.startTime, defaultStartTime, "Wrong start time");
+        assertEq(data.endTime, defaultEndTime, "Wrong end time");
+        assertEq(data.projectTokenIndex, projectIdx, "Wrong project token index");
+        assertEq(data.reserveTokenIndex, reserveIdx, "Wrong reserve token index");
+        assertEq(
+            data.isProjectTokenSwapInBlocked,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            "Wrong project token swap blocked flag"
+        );
+
+        assertEq(data.migrationRouter, address(0), "Migration router not zero");
+
+        assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
         assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
         assertEq(data.migrationWeightReserveToken, 0, "Reserve token weight should be zero");
@@ -121,6 +166,15 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
+        vm.expectEmit(false, true, true, true);
+        emit BaseLBPFactory.MigrationParamsSet(
+            address(0),
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
+
         (pool, ) = _createLBPoolWithMigration(
             bob,
             initBptLockDuration,
@@ -133,14 +187,61 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
 
         assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
-        assertEq(data.bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(data.lockDurationAfterMigration, initBptLockDuration, "BPT lock duration mismatch");
         assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
         assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
         assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
         assertEq(vault.getPoolRoleAccounts(pool).poolCreator, bob, "Incorrect pool creator");
+    }
+
+    function testCreatePoolWithMigrationParamsButNoRouter() public {
+        vm.expectRevert(BaseLBPFactory.InvalidMigrationRouter.selector);
+        lbPoolFactory = deployLBPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(router),
+            address(0) // no migration router
+        );
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        MigrationParams memory migrationParams = MigrationParams({
+            lockDurationAfterMigration: 30 days,
+            bptPercentageToMigrate: 50e16,
+            migrationWeightProjectToken: 60e16,
+            migrationWeightReserveToken: 40e16
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx]
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(0), // no router
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(LBPValidation.MigrationRouterRequired.selector);
+        new LBPool(lbpCommonParams, migrationParams, lbpParams, factoryParams);
     }
 
     function testCreatePoolWithInvalidMigrationWeights() public {
@@ -149,13 +250,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 minReserveTokenWeight = 20e16; // 20%
         uint256 maxProjectTokenWeight = 100e16 - minReserveTokenWeight;
 
-        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
 
-        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
 
-        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -164,10 +265,10 @@ contract LBPoolFactoryTest is BaseLBPTest {
             minReserveTokenWeight - 1
         );
 
-        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
 
-        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
     }
 
@@ -177,7 +278,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         // BPT percentage to migrate cannot be zero
-        vm.expectRevert(LBPoolFactory.InvalidBptPercentageToMigrate.selector);
+        vm.expectRevert(LBPValidation.InvalidBptPercentageToMigrate.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -193,7 +294,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         // BPT percentage to migrate cannot be zero
-        vm.expectRevert(LBPoolFactory.InvalidBptPercentageToMigrate.selector);
+        vm.expectRevert(LBPValidation.InvalidBptPercentageToMigrate.selector);
         _createLBPoolWithMigration(
             address(0),
             initBptLockDuration,
@@ -208,7 +309,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
+        vm.expectRevert(LBPValidation.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
             address(0),
             366 days,
@@ -223,7 +324,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
+        vm.expectRevert(LBPValidation.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
             address(0),
             0,
@@ -271,5 +372,84 @@ contract LBPoolFactoryTest is BaseLBPTest {
         vault.setStaticSwapFeePercentage(pool, newSwapFee);
 
         assertEq(vault.getStaticSwapFeePercentage(pool), newSwapFee);
+    }
+
+    function _createLBPoolWithMigration(
+        address poolCreator,
+        uint256 lockDurationAfterMigration,
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "LBPool";
+        string memory symbol = "LBP";
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: name,
+            symbol: symbol,
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        MigrationParams memory migrationParams = MigrationParams({
+            lockDurationAfterMigration: lockDurationAfterMigration,
+            bptPercentageToMigrate: bptPercentageToMigrate,
+            migrationWeightProjectToken: migrationWeightProjectToken,
+            migrationWeightReserveToken: migrationWeightReserveToken
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx]
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(migrationRouter),
+            poolVersion: poolVersion
+        });
+
+        // Copy to local variable to free up parameter stack slot before operations that create temporaries.
+        uint256 salt = _saltCounter++;
+        address poolCreator_ = poolCreator;
+
+        newPool = lbPoolFactory.createWithMigration(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            swapFee,
+            bytes32(salt),
+            poolCreator_
+        );
+
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams);
+
+        return (newPool, poolArgs);
+    }
+
+    function _createLBPool(
+        address poolCreator,
+        uint32 startTime,
+        uint32 endTime,
+        bool blockProjectTokenSwapsIn
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        return
+            _createLBPoolWithCustomWeights(
+                poolCreator,
+                startWeights[projectIdx],
+                startWeights[reserveIdx],
+                endWeights[projectIdx],
+                endWeights[reserveIdx],
+                startTime,
+                endTime,
+                blockProjectTokenSwapsIn
+            );
     }
 }
