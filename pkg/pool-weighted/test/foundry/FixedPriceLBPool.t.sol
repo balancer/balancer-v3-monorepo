@@ -427,6 +427,62 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         amountCalculated = IBasePool(pool).onSwap(request);
     }
 
+    function testRunSale() public {
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        // Buy half the tokens
+        uint256 swapAmount = poolInitAmount / 2;
+
+        vm.prank(alice);
+        uint256 swapAmountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            reserveToken,
+            projectToken,
+            swapAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        // Verify amount calculated is the same as the amount given.
+        assertEq(swapAmountOut, swapAmount.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement()), "Wrong amount out");
+
+        // Now bob should be able to withdraw.
+        uint256 bptAmountIn = IERC20(pool).balanceOf(bob);
+
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        // Can only withdraw proportionally (since `computeBalance` isn't implemented).
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vm.prank(bob);
+        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, reserveToken, 1, false, bytes(""));
+
+        vm.prank(bob);
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(pool),
+            bptAmountIn,
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        // Pool state after swap.
+        uint256 projectInPool = poolInitAmount - swapAmountOut; // 505
+        uint256 reserveInPool = swapAmount; // 500
+
+        // Total supply = initial invariant = poolInitAmount (since rate is 1:1).
+        uint256 totalSupply = poolInitAmount;
+
+        // Expected proportional amounts (accounting for locked 1e6 minimum BPT)
+        uint256 expectedProjectOut = (projectInPool * bptAmountIn) / totalSupply;
+        uint256 expectedReserveOut = (reserveInPool * bptAmountIn) / totalSupply;
+
+        assertEq(amountsOut[projectIdx], expectedProjectOut, "Wrong project token amount");
+        assertEq(amountsOut[reserveIdx], expectedReserveOut, "Wrong reserve token amount");
+    }
+
     /*******************************************************************************
                                       Pool Hooks
     *******************************************************************************/
