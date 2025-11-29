@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
@@ -33,6 +34,7 @@ import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
 import { FixedPriceLBPool } from "../../contracts/lbp/FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "../../contracts/lbp/BaseLBPFactory.sol";
+import { LBPValidation } from "../../contracts/lbp/LBPValidation.sol";
 import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
@@ -765,6 +767,58 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         });
 
         vm.expectRevert(LBPCommon.MigrationUnsupported.selector);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+    }
+
+    function testDirectDeployValidation() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: address(0),
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            migrationRouter: address(0),
+            poolVersion: poolVersion
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+
+        lbpCommonParams.owner = bob;
+        lbpCommonParams.projectToken = IERC20(address(0));
+        vm.expectRevert(LBPValidation.InvalidProjectToken.selector);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+
+        lbpCommonParams.projectToken = projectToken;
+        lbpCommonParams.reserveToken = IERC20(address(0));
+        vm.expectRevert(LBPValidation.InvalidReserveToken.selector);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+
+        lbpCommonParams.reserveToken = projectToken;
+        vm.expectRevert(LBPValidation.TokensMustBeDifferent.selector);
+        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
+
+        lbpCommonParams.reserveToken = reserveToken;
+        lbpCommonParams.startTime = lbpCommonParams.endTime + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                GradualValueChange.InvalidStartTime.selector,
+                lbpCommonParams.startTime,
+                lbpCommonParams.endTime
+            )
+        );
         new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
     }
 
