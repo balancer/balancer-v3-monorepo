@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
+import { LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
@@ -12,7 +13,6 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 import { FixedPriceLBPool } from "./FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPValidation } from "./LBPValidation.sol";
-import { LBPoolLib } from "../lib/LBPoolLib.sol";
 
 /**
  * @notice Factory for Fixed Price LBPools.
@@ -39,13 +39,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         uint256 projectTokenRate
     );
 
-    /**
-     * @dev BaseLBPFactory requires a non-zero migration router. This is because we want this router specified at the
-     * factory level. While migration is optional for LBPs, any that do choose migration should all use the same router
-     * for it. Since Fixed Price LBPs don't support migration, we don't need to pass one in: but we still want this
-     * factory-level guarantee generally. So we need to pass a non-zero (though clearly invalid) migration router
-     * address. This doesn't matter, since we know it will never be used.
-     */
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -66,7 +59,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @param projectTokenRate The price of the project token in terms of the reserve
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
-     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
+     * @param poolCreator Address that will be registered as the pool creator, who receives a cut of the protocol fees
      */
     function create(
         LBPCommonParams memory lbpCommonParams,
@@ -134,6 +127,10 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         roleAccounts.swapFeeManager = lbpCommonParams.owner;
         roleAccounts.poolCreator = poolCreator;
 
+        // Only allow proportional add/remove (computeBalance is not implemented).
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
         _registerPoolWithVault(
             pool,
             _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
@@ -141,7 +138,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             false, // not exempt from protocol fees
             roleAccounts,
             pool, // register the pool itself as the hook contract
-            getDefaultLiquidityManagement()
+            liquidityManagement
         );
     }
 }
