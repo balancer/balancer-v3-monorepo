@@ -17,6 +17,7 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
+import { LBPValidation } from "./LBPValidation.sol";
 import { LBPCommon } from "./LBPCommon.sol";
 
 /**
@@ -69,6 +70,9 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
     {
+        // wake-disable-next-line unchecked-return-value
+        LBPValidation.validateCommonParams(lbpCommonParams);
+
         if (projectTokenRate == 0) {
             revert InvalidProjectTokenRate();
         }
