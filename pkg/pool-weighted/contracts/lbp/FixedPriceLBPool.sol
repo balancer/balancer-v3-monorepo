@@ -26,14 +26,13 @@ import { LBPCommon } from "./LBPCommon.sol";
  * token balance * rate + reserve). This avoids the complexity and gas cost of weight adjustments, while still
  * benefiting from Balancer's vault infrastructure.
  *
- * If created as "buy only" - with `blockProjectTokenSwapsIn` set to true - it is "seedless," and must be initialized
- * with only project tokens.
+ * Since all fixed price LBPs are "buy-only,"" it is "seedless," and must be initialized with project tokens only.
  *
  * Key features:
  * - Constant price throughout the sale period
  * - Simple swap math: multiply or divide by the fixed rate
  * - Simple constant sum invariant: inv = projectBalance * projectTokenRate + reserveBalance
- * - No reserve tokens required on initialization for "buy only" sales
+ * - No reserve tokens required on initialization
  */
 contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, PoolInfo, Version {
     using FixedPoint for uint256;
@@ -164,6 +163,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
 
     /// @inheritdoc IBasePool
     function computeBalance(uint256[] memory, uint256, uint256) external pure returns (uint256) {
+        // This is unused in these pools.
         revert UnsupportedOperation();
     }
 
@@ -220,23 +220,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             return false;
         }
 
-        // Validate the initialization amounts are reasonable given the rate
-        _validateInitializationAmounts(exactAmountsInScaled18);
-
-        return true;
-    }
-
-    /**
-     * @notice Validate that initialization amounts are appropriate for the pool configuration.
-     * @dev For one-way pools (blockProjectTokenSwapsIn=true), only project tokens are required since
-     * reserve tokens only flow IN through swaps. For two-way pools, both tokens are required and must
-     * match the expected ratio within tolerance.
-     *
-     * @param amountsScaled18 The scaled initialization amounts
-     */
-    function _validateInitializationAmounts(uint256[] memory amountsScaled18) private view {
-        uint256 projectAmount = amountsScaled18[_projectTokenIndex];
-        uint256 reserveAmount = amountsScaled18[_reserveTokenIndex];
+        uint256 projectAmount = exactAmountsInScaled18[_projectTokenIndex];
+        uint256 reserveAmount = exactAmountsInScaled18[_reserveTokenIndex];
 
         // One-way pool: only buying project tokens with reserve.
         // Therefore, there is no point adding reserve tokens, as they will never be tokenOut in a swap.
@@ -244,5 +229,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         if (projectAmount == 0 || reserveAmount != 0) {
             revert InvalidInitializationAmount();
         }
+
+        return true;
     }
 }
