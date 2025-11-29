@@ -58,6 +58,7 @@ library LBPValidation {
      * @return resolvedStartTime The final start time (might be "fast forwarded" if the start time is in the past)
      */
     function validateCommonParams(LBPCommonParams memory lbpCommonParams) internal view returns (uint256) {
+        // In practice, this is already checked by Ownable.
         if (lbpCommonParams.owner == address(0)) {
             revert InvalidOwner();
         }
