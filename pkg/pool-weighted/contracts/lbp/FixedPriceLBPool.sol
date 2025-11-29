@@ -27,7 +27,7 @@ import { LBPCommon } from "./LBPCommon.sol";
  * token balance * rate + reserve). This avoids the complexity and gas cost of weight adjustments, while still
  * benefiting from Balancer's vault infrastructure.
  *
- * Since all fixed price LBPs are "buy-only,"" it is "seedless," and must be initialized with project tokens only.
+ * Since all fixed price LBPs are "buy-only," it is "seedless," and must be initialized with project tokens only.
  *
  * Key features:
  * - Constant price throughout the sale period
@@ -70,9 +70,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
     {
-        // wake-disable-next-line unchecked-return-value
-        LBPValidation.validateCommonParams(lbpCommonParams);
-
         if (projectTokenRate == 0) {
             revert InvalidProjectTokenRate();
         }
