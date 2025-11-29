@@ -53,7 +53,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
     }
 
     /**
-     * @notice Deploys a new `LBPool`.
+     * @notice Deploys a new `FixedPriceLBPool`.
      * @dev This method does not support native ETH management; WETH needs to be used instead.
      * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
      * @param projectTokenRate The price of the project token in terms of the reserve
