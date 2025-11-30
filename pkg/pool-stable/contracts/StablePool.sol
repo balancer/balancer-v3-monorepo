@@ -146,15 +146,33 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) external view returns (uint256 invariant) {
+        (invariant, ) = _computeInvariant(balancesLiveScaled18, rounding);
+    }
 
-        uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+    // Internal version that also returns the amp factor, to save gas.
+    function _computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) internal view returns (uint256 invariant, uint256 currentAmp) {
+        (currentAmp, ) = _getAmplificationParameter();
+
+        invariant = _computeInvariant(balancesLiveScaled18, currentAmp, rounding);
+    }
+
+    // Internal version when the amp factor is already known.
+    function _computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        uint256 currentAmp,
+        Rounding rounding
+    ) internal pure returns (uint256 invariant) {
+        invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
         if (invariant > 0) {
             invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
         }
-
-        return invariant;
     }
 
     /// @inheritdoc IBasePool
@@ -163,21 +181,15 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+        (uint256 invariant, uint256 currentAmp) = _computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP);
 
         return
-            StableMath.computeBalance(
-                currentAmp,
-                balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
-                tokenInIndex
-            );
+            StableMath.computeBalance(currentAmp, balancesLiveScaled18, invariant.mulUp(invariantRatio), tokenInIndex);
     }
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) public view virtual returns (uint256 amountCalculatedScaled18) {
-        uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+        (uint256 invariant, uint256 currentAmp) = _computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
 
         if (request.kind == SwapKind.EXACT_IN) {
             amountCalculatedScaled18 = StableMath.computeOutGivenExactIn(
@@ -216,7 +228,8 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 }
             }
 
-            if (computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN) < invariant) {
+            // We are in the same block, so the amp factor must be the same as calculated above.
+            if (_computeInvariant(request.balancesScaled18, currentAmp, Rounding.ROUND_DOWN) < invariant) {
                 revert SwapDecreasedInvariant();
             }
         }
