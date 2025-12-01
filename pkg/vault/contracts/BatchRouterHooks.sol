@@ -225,8 +225,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount
         // when performing the operation. These tokens might be the output of a previous step, in which case
-        // the user will have a BPT credit. In the prepaid case, we assume BPT tokens are transferred to the
-        // Router, and not the Vault.
+        // the user will have a BPT credit.
         if (isFirstStep) {
             if (stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer them to the
@@ -562,8 +561,7 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         // Remove liquidity is not transient for BPT, meaning the caller needs to have the required amount when
         // performing the operation. In this case, the BPT amount needed for the operation is not known in advance,
-        // so we take a flashloan for all the available reserves. In the prepaid case, we assume BPT tokens were
-        // transferred to the Router, and not the Vault.
+        // so we take a flashloan for all the available reserves.
         //
         // The last step is the one that defines the inputs for this path. The caller should have enough
         // BPT to burn already if that's the case, so we just skip this step if so.
