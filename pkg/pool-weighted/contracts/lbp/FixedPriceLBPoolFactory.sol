@@ -127,7 +127,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         roleAccounts.poolCreator = poolCreator;
 
         // Only allow proportional add/remove (computeBalance is not implemented).
-        LiquidityManagement memory liquidityManagement;
+        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.disableUnbalancedLiquidity = true;
 
         _registerPoolWithVault(
