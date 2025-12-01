@@ -91,6 +91,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         });
 
         MigrationParams memory migrationParams = MigrationParams({
+            migrationRouter: address(migrationRouter),
             lockDurationAfterMigration: lockDurationAfterMigration,
             bptPercentageToMigrate: bptPercentageToMigrate,
             migrationWeightProjectToken: migrationWeightProjectToken,
@@ -163,7 +164,6 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
             poolVersion: poolVersion
         });
 

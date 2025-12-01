@@ -170,7 +170,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
             poolVersion: poolVersion
         });
 
@@ -196,7 +195,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
             poolVersion: poolVersion
         });
 
@@ -744,32 +742,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
     }
 
-    function testCreateWithMigrationRouter() public {
-        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
-            name: "FixedPriceLBPool",
-            symbol: "FLBP",
-            owner: bob,
-            projectToken: projectToken,
-            reserveToken: reserveToken,
-            startTime: startTime,
-            endTime: endTime,
-            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
-        });
-
-        FactoryParams memory factoryParams = FactoryParams({
-            vault: vault,
-            trustedRouter: address(router),
-            migrationRouter: address(router),
-            poolVersion: poolVersion
-        });
-
-        vm.expectRevert(LBPCommon.MigrationUnsupported.selector);
-        new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE);
-    }
-
     function testDirectDeployValidation() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
@@ -788,7 +760,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(0),
             poolVersion: poolVersion
         });
 
@@ -863,7 +834,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(0),
             poolVersion: poolVersion
         });
 

@@ -94,7 +94,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            migrationRouter: address(0), // Migration unsupported for fixed price LBPs
             poolVersion: _poolVersion
         });
 

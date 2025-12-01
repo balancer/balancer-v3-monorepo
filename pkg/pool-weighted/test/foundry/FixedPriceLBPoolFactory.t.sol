@@ -27,10 +27,6 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
 
     uint256 internal constant DEFAULT_RATE = FixedPoint.ONE;
 
-    // Bounds on the project token rate.
-    uint256 private constant MIN_PROJECT_TOKEN_RATE = FixedPoint.ONE / 10_000;
-    uint256 private constant MAX_PROJECT_TOKEN_RATE = FixedPoint.ONE * 10_000;
-
     FixedPriceLBPoolFactory internal lbPoolFactory;
 
     uint32 internal defaultStartTime;
@@ -261,7 +257,6 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(0),
             poolVersion: poolVersion
         });
 

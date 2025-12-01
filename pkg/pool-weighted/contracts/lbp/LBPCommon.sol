@@ -67,9 +67,6 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     /// @notice The LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
 
-    /// @notice A migration router was supplied for a pool type that doesn't support migration.
-    error MigrationUnsupported();
-
     /// @notice Only allow adding liquidity (including initialization) before the sale.
     modifier onlyBeforeSale() {
         if (block.timestamp >= _startTime) {
@@ -145,6 +142,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     function getMigrationParameters() external view returns (MigrationParams memory) {
         return
             MigrationParams({
+                migrationRouter: _migrationRouter,
                 lockDurationAfterMigration: _lockDurationAfterMigration,
                 bptPercentageToMigrate: _bptPercentageToMigrate,
                 migrationWeightProjectToken: _migrationWeightProjectToken,

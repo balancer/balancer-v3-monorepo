@@ -78,11 +78,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert TokenSwapsInUnsupported();
         }
 
-        // We ignore this and pass zero above, but check it for consistency.
-        if (factoryParams.migrationRouter != address(0)) {
-            revert MigrationUnsupported();
-        }
-
         _projectTokenRate = projectTokenRate;
     }
 
