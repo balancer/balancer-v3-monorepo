@@ -132,6 +132,9 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert SwapOfProjectTokenIn();
         }
 
+        // Calculated amount is amount out; round down to favor the Vault.
+        // When buying project (reserve in): amountOut = amountIn / rate
+        // When selling project (project in): amountOut = amountIn * rate
         amountCalculatedScaled18 = request.kind == SwapKind.EXACT_IN
             ? request.amountGivenScaled18.divDown(_projectTokenRate)
             : request.amountGivenScaled18.mulUp(_projectTokenRate);
