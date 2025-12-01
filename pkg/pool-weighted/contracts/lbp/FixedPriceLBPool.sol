@@ -81,10 +81,8 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         _projectTokenRate = projectTokenRate;
     }
 
-    function _getEmptyMigrationParams() private pure returns (MigrationParams memory) {
-        MigrationParams memory params;
-
-        return params;
+    function _getEmptyMigrationParams() private pure returns (MigrationParams memory params) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IFixedPriceLBPool
