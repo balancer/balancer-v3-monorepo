@@ -427,6 +427,97 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         amountCalculated = IBasePool(pool).onSwap(request);
     }
 
+    function testMultipleSwap() public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        // Use non-unitary rate
+        uint256 rate = 2.5e18;
+
+        (address newPool, ) = _createFixedPriceLBPool(address(0), startTime, endTime, rate);
+
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        uint256 amount = 1e18;
+
+        // Create swap request params - swapping reserve token for project token
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: amount,
+            balancesScaled18: vault.getCurrentLiveBalances(pool),
+            indexIn: reserveIdx,
+            indexOut: projectIdx,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // Ensure different swap amounts use the same rate
+        for (uint256 i = 0; i < 5; ++i) {
+            // Mock vault call to onSwap
+            vm.prank(address(vault));
+            uint256 amountCalculated = IBasePool(newPool).onSwap(request);
+
+            // Verify amount calculated is the same as the amount given
+            assertEq(amountCalculated, amount.divDown(rate), "Swap amount should match amount given / rate");
+
+            amount *= 2;
+            request.amountGivenScaled18 = amount;
+        }
+    }
+
+    function testMultipleSwap__Fuzz(uint256 rate, uint256 amountOut) public {
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        // Use non-unitary rate
+        rate = bound(rate, 1e16, 100e18);
+        amountOut = bound(amountOut, 1e18, poolInitAmount / 3);
+
+        (address newPool, ) = _createFixedPriceLBPool(address(0), startTime, endTime, rate);
+        vault.manualSetStaticSwapFeePercentage(newPool, 0);
+
+        vm.startPrank(bob); // Bob is the owner of the pool
+        _initPool(newPool, _computeInitAmounts(), 0);
+        vm.stopPrank();
+
+        uint256 swapAmount = amountOut.mulUp(rate);
+        uint256 expectedAmountOut = swapAmount.divDown(rate);
+
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.startPrank(alice);
+        uint256 calculatedProjectTokenOut = router.swapSingleTokenExactIn(
+            address(newPool),
+            reserveToken,
+            projectToken,
+            swapAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        assertEq(calculatedProjectTokenOut, expectedAmountOut, "ExactIn swap output mismatch");
+
+        uint256 calculatedReserveTokenIn = router.swapSingleTokenExactOut(
+            address(newPool),
+            reserveToken,
+            projectToken,
+            expectedAmountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        // ExactOut rounds up, so it should require >= the original input.
+        assertGe(calculatedReserveTokenIn, swapAmount, "ExactOut required less than ExactIn");
+        assertApproxEqAbs(swapAmount, calculatedReserveTokenIn, 1, "ExactIn/Out differ by more than rounding");
+    }
+
     function testRunSale() public {
         // Warp to when swaps are enabled
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
