@@ -216,8 +216,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             tokenRates[data.reserveTokenIndex]
         );
 
-        uint256 priceScaled18 = (projectAmountOutScaled18.mulDown(currentWeights[data.reserveTokenIndex])).divDown(
-            reserveAmountRemovedScaled18.mulDown(currentWeights[data.projectTokenIndex])
+        uint256 priceScaled18 = (projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex] / reserveAmountRemovedScaled18).divDown(
+            currentWeights[data.projectTokenIndex]
+        )
         );
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
