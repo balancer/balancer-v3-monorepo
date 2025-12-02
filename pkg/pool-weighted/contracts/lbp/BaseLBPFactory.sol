@@ -59,13 +59,6 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
     /// @notice The zero address was given for the trusted router.
     error InvalidTrustedRouter();
 
-    /**
-     * @notice The zero address was given for the migration router.
-     * @dev Migration is optional for LBPs, but the *factory* has to have it. We don't want people to be able to deploy
-     * pools with random migration routers.
-     */
-    error InvalidMigrationRouter();
-
     constructor(
         string memory factoryVersion,
         string memory poolVersion,
@@ -76,17 +69,14 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
             revert InvalidTrustedRouter();
         }
 
-        if (migrationRouter == address(0)) {
-            revert InvalidMigrationRouter();
-        }
-
         // LBPools are deployed with a router known to reliably report the originating address on operations.
         // This is used to ensure that only the owner can add liquidity to an LBP.
         _trustedRouter = trustedRouter;
 
-        // The factory must have a valid migration router, which withdraws, deploys a successor weighted pool,
-        // and locks up the BPT for the specified duration. Migration is optional per LBP, but the factory must
-        // have it: we don't want different factories for migration/no migration.
+        // In order to support migration, the factory must have a valid migration router, which withdraws, deploys a
+        // successor weighted pool, and locks up the BPT for the specified duration. Migration is optional per LBP,
+        // but all pools that choose migration must use the same router, set at the factory level. If this is zero,
+        // migration is unsupported for the pool type.
         _migrationRouter = migrationRouter;
 
         _poolVersion = poolVersion;

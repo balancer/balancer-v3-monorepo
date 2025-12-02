@@ -38,12 +38,14 @@ struct LBPCommonParams {
  * @dev `bptPercentageToMigrate` is immutable to provide a liquidity guarantee to token buyers. Choose its value
  * carefully: a lower percentage with a shorter lock may be preferable if sale performance is uncertain.
  *
+ * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
  * @param lockDurationAfterMigration The duration for which the BPT will be locked after migration
  * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
  * @param migrationWeightProjectToken The weight of the project token
  * @param migrationWeightReserveToken The weight of the reserve token
  */
 struct MigrationParams {
+    address migrationRouter;
     uint256 lockDurationAfterMigration;
     uint256 bptPercentageToMigrate;
     uint256 migrationWeightProjectToken;
@@ -55,13 +57,11 @@ struct MigrationParams {
  * @dev This struct was factored out initially because of stack-too-deep, but also makes the interface cleaner.
  * @param vault The address of the Balancer Vault
  * @param trustedRouter The address of the trusted router (i.e., one that reliably stores the real sender)
- * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
  * @param poolVersion The pool version deployed by the factory
  */
 struct FactoryParams {
     IVault vault;
     address trustedRouter;
-    address migrationRouter;
     string poolVersion;
 }
 

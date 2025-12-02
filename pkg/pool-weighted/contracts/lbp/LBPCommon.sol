@@ -142,6 +142,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     function getMigrationParameters() external view returns (MigrationParams memory) {
         return
             MigrationParams({
+                migrationRouter: _migrationRouter,
                 lockDurationAfterMigration: _lockDurationAfterMigration,
                 bptPercentageToMigrate: _bptPercentageToMigrate,
                 migrationWeightProjectToken: _migrationWeightProjectToken,
