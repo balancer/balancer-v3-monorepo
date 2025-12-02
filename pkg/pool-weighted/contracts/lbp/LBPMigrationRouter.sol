@@ -216,10 +216,8 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             tokenRates[data.reserveTokenIndex]
         );
 
-        uint256 priceScaled18 = (projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex] / reserveAmountRemovedScaled18).divDown(
-            currentWeights[data.projectTokenIndex]
-        )
-        );
+        uint256 priceScaled18 = ((projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex]) /
+            reserveAmountRemovedScaled18).divDown(currentWeights[data.projectTokenIndex]);
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
         // We start by assuming we can withdraw the entire project token balance. We want to use as much as possible,
@@ -235,9 +233,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         // projectAmountOut based on the price and the new weights.
         if (reserveAmountOutScaled18 > reserveAmountRemovedScaled18) {
             reserveAmountOutScaled18 = reserveAmountRemovedScaled18;
-            projectAmountOutScaled18 = (
-                priceScaled18 * reserveAmountOutScaled18
-            ).mulDown(migrationWeightProjectToken) / migrationWeightReserveToken;
+            projectAmountOutScaled18 =
+                (priceScaled18 * reserveAmountOutScaled18).mulDown(migrationWeightProjectToken) /
+                migrationWeightReserveToken;
         }
 
         // Stack too deep.
