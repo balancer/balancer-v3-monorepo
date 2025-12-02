@@ -36,7 +36,6 @@ struct FixedPriceLBPoolImmutableData {
  * there are withdrawals, raw and live balances will be out of sync until Recovery Mode is disabled.
  *
  * @param balancesLiveScaled18 18-decimal FP token balances, sorted in token registration order
- * @param normalizedWeights Current token weights, sorted in token registration order
  * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage
  * @param totalSupply The current total supply of the pool tokens (BPT)
  * @param isPoolInitialized If false, the pool has not been seeded with initial liquidity, so operations will revert
