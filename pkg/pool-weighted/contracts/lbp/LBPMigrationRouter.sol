@@ -235,10 +235,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         // projectAmountOut based on the price and the new weights.
         if (reserveAmountOutScaled18 > reserveAmountRemovedScaled18) {
             reserveAmountOutScaled18 = reserveAmountRemovedScaled18;
-            projectAmountOutScaled18 = priceScaled18
-                .mulDown(reserveAmountOutScaled18)
-                .mulDown(migrationWeightProjectToken)
-                .divDown(migrationWeightReserveToken);
+            projectAmountOutScaled18 = (
+                priceScaled18 * reserveAmountOutScaled18
+            ).mulDown(migrationWeightProjectToken) / migrationWeightReserveToken;
         }
 
         // Stack too deep.
