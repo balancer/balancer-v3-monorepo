@@ -78,7 +78,7 @@ class EclpLPOracleBenchmark extends LPOracleBenchmark {
 
   override async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo> {
     const oracle = (await deploy('v3-oracles/EclpLPOracleMock', {
-      args: [await this.vault.getAddress(), poolAddress, feeds, 1],
+      args: [await this.vault.getAddress(), poolAddress, feeds, ZERO_ADDRESS, 0, true, 1],
     })) as unknown as AggregatorV3Interface;
     return {
       oracle: oracle,

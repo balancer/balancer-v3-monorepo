@@ -8,13 +8,13 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
-import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
+import { FixedPriceLBPoolFactory } from "../../../contracts/lbp/FixedPriceLBPoolFactory.sol";
 
 /**
- * @dev This contract contains functions for deploying mocks and contracts related to the "LBPool".
+ * @dev This contract contains functions for deploying mocks and contracts related to the "FixedPriceLBPool".
  * These functions should have support for reusing artifacts from the hardhat compilation.
  */
-contract LBPoolContractsDeployer is BaseContractsDeployer {
+contract FixedPriceLBPoolContractsDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
 
     constructor() {
@@ -24,24 +24,23 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployLBPoolFactory(
+    function deployFixedPriceLBPoolFactory(
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address router,
-        address migrationRouter
-    ) internal returns (LBPoolFactory) {
+        address router
+    ) internal returns (FixedPriceLBPoolFactory) {
         if (reusingArtifacts) {
             return
-                LBPoolFactory(
+                FixedPriceLBPoolFactory(
                     deployCode(
-                        _computeLBPoolPath(type(LBPoolFactory).name),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router, migrationRouter)
+                        _computeLBPoolPath(type(FixedPriceLBPoolFactory).name),
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router)
                     )
                 );
         } else {
-            return new LBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router, migrationRouter);
+            return new FixedPriceLBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router);
         }
     }
 

@@ -199,6 +199,7 @@ library WeightedMath {
 
         uint256 denominator = balanceIn + amountIn;
         uint256 base = balanceIn.divUp(denominator);
+        // `base` is always smaller than 1. To round power up, we need to round the exponent down.
         uint256 exponent = weightIn.divDown(weightOut);
         uint256 power = base.powUp(exponent);
 

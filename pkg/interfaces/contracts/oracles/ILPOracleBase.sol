@@ -31,19 +31,13 @@ interface ILPOracleBase {
 
     /**
      * @notice Gets the latest feed data.
-     * @dev The feeds might have different update frequencies; e.g., one updates hourly, and another daily. For most
-     * applications, the "oldest" (i.e., least up-to-date) timestamp is a common way to represent the overall state,
-     * so it is returned for convenience as `minUpdatedAt`. However, some use cases may require more sophisticated
-     * analysis, so `updatedAt` returns all values.
+     * @dev The feeds might have different update frequencies; e.g., one updates hourly, and another daily.
+     * Some use cases may require sophisticated analysis, so `updatedAt` returns all values.
      *
      * @return prices An array of latest prices from the feeds
      * @return updatedAt An array of timestamps corresponding to the last update of each feed
-     * @return minUpdatedAt The oldest / least recent timestamp (the value returned by `latestRoundData`)
      */
-    function getFeedData()
-        external
-        view
-        returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt);
+    function getFeedData() external view returns (int256[] memory prices, uint256[] memory updatedAt);
 
     /**
      * @notice Gets the list of feeds used by the oracle.
@@ -62,4 +56,16 @@ interface ILPOracleBase {
      * @return tokens An array of token addresses, sorted in token registration order
      */
     function getPoolTokens() external view returns (IERC20[] memory tokens);
+
+    /**
+     * @notice Getter for the `latestRoundData` behavior flag.
+     * @dev If set, `latestRoundData` returns the current time for `updatedAt`, instead of calculating the minimum
+     * update time over all the feeds (i.e., using the update time of the "oldest" / most stale feed).
+     *
+     * @return shouldUseBlockTimeForOldestFeedUpdate The feed update flag setting
+     */
+    function getShouldUseBlockTimeForOldestFeedUpdate()
+        external
+        view
+        returns (bool shouldUseBlockTimeForOldestFeedUpdate);
 }

@@ -32,7 +32,10 @@
     "color-name": "1.1.4",
     "is-core-module": "2.13.1",
     "error-ex": "1.3.2",
-    "has-ansi": "5.0.1"
+    "has-ansi": "5.0.1",
+    "sha-js": "2.4.12",
+    "cipher-base": "1.0.5",
+    "lodash": "4.17.21"
   },
   "packageManager": "yarn@4.0.0-rc.42",
   "contributors": [
@@ -50,7 +53,7 @@
     "test": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test",
     "test:hardhat": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test:hardhat",
     "test:forge": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test:forge",
-    "coverage": "yarn workspaces foreach --parallel --jobs unlimited --verbose run coverage",
+    "coverage": "yarn workspaces foreach --verbose run coverage:all",
     "gas": "yarn workspaces foreach --parallel --jobs unlimited --verbose run gas",
     "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install https://github.com/crytic/slither/releases/download/0.10.1/0.10.1.zip'",
     "slither": "yarn workspaces foreach --parallel --jobs unlimited --verbose run slither"

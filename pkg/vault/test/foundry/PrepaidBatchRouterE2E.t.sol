@@ -12,7 +12,7 @@ import {
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BatchRouterE2ETest } from "./BatchRouterE2E.t.sol";
 
-contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
+contract PrepaidBatchRouterE2ETest is BatchRouterE2ETest {
     using SafeERC20 for IERC20;
 
     /***************************************************************************
@@ -29,7 +29,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         uint256 snapshot = vm.snapshotState();
 
         _prankStaticCall();
-        (pathAmountsOut, tokensOut, amountsOut) = aggregatorBatchRouter.querySwapExactIn(
+        (pathAmountsOut, tokensOut, amountsOut) = prepaidBatchRouter.querySwapExactIn(
             pathsExactIn,
             address(0),
             bytes("")
@@ -50,7 +50,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         vm.startPrank(alice);
         _prepay(pathsExactIn, wethIsEth);
 
-        (calculatedPathAmountsOut, tokensOut, amountsOut) = aggregatorBatchRouter.swapExactIn{ value: ethAmount }(
+        (calculatedPathAmountsOut, tokensOut, amountsOut) = prepaidBatchRouter.swapExactIn{ value: ethAmount }(
             pathsExactIn,
             MAX_UINT256,
             wethIsEth,
@@ -70,7 +70,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         _prepay(pathsExactIn, wethIsEth);
 
         vm.expectRevert(error);
-        aggregatorBatchRouter.swapExactIn{ value: ethAmount }(pathsExactIn, deadline, wethIsEth, bytes(""));
+        prepaidBatchRouter.swapExactIn{ value: ethAmount }(pathsExactIn, deadline, wethIsEth, bytes(""));
 
         vm.stopPrank();
     }
@@ -89,7 +89,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         uint256 snapshot = vm.snapshotState();
 
         _prankStaticCall();
-        (pathAmountsIn, tokensIn, amountsIn) = aggregatorBatchRouter.querySwapExactOut(
+        (pathAmountsIn, tokensIn, amountsIn) = prepaidBatchRouter.querySwapExactOut(
             pathsExactOut,
             address(0),
             bytes("")
@@ -110,7 +110,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         vm.startPrank(alice);
         _prepay(pathsExactOut, wethIsEth);
 
-        (pathAmountsIn, tokensIn, amountsIn) = aggregatorBatchRouter.swapExactOut{ value: ethAmount }(
+        (pathAmountsIn, tokensIn, amountsIn) = prepaidBatchRouter.swapExactOut{ value: ethAmount }(
             pathsExactOut,
             MAX_UINT256,
             wethIsEth,
@@ -130,7 +130,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
         _prepay(pathsExactOut, wethIsEth);
 
         vm.expectRevert(error);
-        aggregatorBatchRouter.swapExactOut{ value: ethAmount }(pathsExactOut, deadline, wethIsEth, bytes(""));
+        prepaidBatchRouter.swapExactOut{ value: ethAmount }(pathsExactOut, deadline, wethIsEth, bytes(""));
         vm.stopPrank();
     }
 
@@ -145,15 +145,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            if (
-                address(pathsExactIn[i].tokenIn) == pathsExactIn[i].steps[0].pool &&
-                pathsExactIn[i].steps[0].isBuffer == false
-            ) {
-                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
-                pathsExactIn[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactIn[i].exactAmountIn);
-            } else {
-                pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
-            }
+            pathsExactIn[i].tokenIn.safeTransfer(address(vault), pathsExactIn[i].exactAmountIn);
         }
     }
 
@@ -164,12 +156,7 @@ contract AggregatorBatchRouterE2ETest is BatchRouterE2ETest {
                 continue;
             }
 
-            if (address(pathsExactOut[i].tokenIn) == pathsExactOut[i].steps[0].pool) {
-                // Note that in the prepaid case, we transfer tokens to the Router, and not the Vault.
-                pathsExactOut[i].tokenIn.safeTransfer(address(aggregatorBatchRouter), pathsExactOut[i].maxAmountIn);
-            } else {
-                pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
-            }
+            pathsExactOut[i].tokenIn.safeTransfer(address(vault), pathsExactOut[i].maxAmountIn);
         }
     }
 }
