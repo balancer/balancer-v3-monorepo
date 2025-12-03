@@ -146,7 +146,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         invariant = _computeInvariant(balancesLiveScaled18, currentAmp, rounding);
     }
 
-    // Internal version when the amp factor is already known.
+    /// @dev Internal version when the amp factor is already known.
     function _computeInvariant(
         uint256[] memory balancesLiveScaled18,
         uint256 currentAmp,
