@@ -21,6 +21,13 @@ import { RouterHooks } from "./RouterHooks.sol";
  * the standard router, then checks the limits.
  */
 contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter {
+    /**
+     * @notice The proportional add contributed too few of the "exact" tokens, requiring an unsupported swap.
+     * @param proportionalAmount The amount contributed by the proportional add operation
+     * @param exactAmount The exact amount specified for the swap operation
+     */
+    error ExactAmountExceedsProportionalContribution(uint256 proportionalAmount, uint256 exactAmount);
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -126,15 +133,11 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
      * - Limit check: Ensure total amount of `adjustableToken` doesn't exceed maxAmountIn
      *
      * Case 2 - Proportional add contributed too little `exactToken`
-     * - EXACT_IN swap of `exactToken` for `adjustableToken`: remove some adjustable token to make up the deficit
-     * - No limit check needed: we're returning `adjustableToken`, not taking more
+     * - Unsupported
+     * - Doesn't make economic sense, and will almost certainly underflow
      *
-     * - NOTE: This branch seems to be unreachable with standard constant-product pools. The proportional add logic
-     *   always maintains pool ratios, making it extremely unlikely for the proportional add to contribute less
-     *   `exactToken` than requested when using minBptAmountOut derived from the standard router. The branch exists as
-     *   defensive code, but in practice `SwapLimit` will be triggered first.
-     *
-     * Final result: Net contribution of `exactToken` exactly equals exactAmountIn
+     * End result: Net contribution of `exactToken` exactly equals exactAmountIn
+     * Final check: ensures that the adjustable amount doesn't exceed the limit
      */
     function _computeAddLiquidityUnbalancedViaSwap(
         AddLiquidityAndSwapHookParams calldata hookParams
@@ -182,29 +185,16 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
             amountsIn[adjustableTokenIndex] += swapAmountIn;
             amountsIn[exactTokenIndex] -= swapAmountOut;
         } else if (amountsIn[exactTokenIndex] < hookParams.operationParams.exactAmount) {
-            // This branch, where the proportional add creates a deficit of the exact token, should not happen.
-            uint256 swapAmount = hookParams.operationParams.exactAmount - amountsIn[exactTokenIndex];
-
-            (, uint256 swapAmountIn, uint256 swapAmountOut) = _vault.swap(
-                VaultSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    pool: hookParams.pool,
-                    tokenIn: hookParams.operationParams.exactToken,
-                    tokenOut: tokens[adjustableTokenIndex],
-                    amountGivenRaw: swapAmount,
-                    limitRaw: 0,
-                    userData: hookParams.operationParams.swapUserData
-                })
+            revert ExactAmountExceedsProportionalContribution(
+                amountsIn[exactTokenIndex],
+                hookParams.operationParams.exactAmount
             );
-
-            amountsIn[exactTokenIndex] += swapAmountIn;
-            amountsIn[adjustableTokenIndex] -= swapAmountOut;
         }
 
-        if (amountsIn[exactTokenIndex] != hookParams.operationParams.exactAmount) {
-            // This should never happen, given the swap logic.
-            revert AmountInDoesNotMatchExact(amountsIn[exactTokenIndex], hookParams.operationParams.exactAmount);
-        } else if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
+        // If equal, no swap needed - amountsIn are already correct.
+
+        // Finally, ensure that the adjustable amount respects the limit.
+        if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
             revert AmountInAboveMaxAdjustableAmount(
                 amountsIn[adjustableTokenIndex],
                 hookParams.operationParams.maxAdjustableAmount
