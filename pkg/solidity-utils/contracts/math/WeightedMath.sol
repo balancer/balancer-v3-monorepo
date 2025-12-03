@@ -148,10 +148,10 @@ library WeightedMath {
         //
         // Regarding `balanceRatio`, the exponent is always > FP(1), but the invariant ratio can be either greater or
         // lower than FP(1) depending on whether this is solving an `add` or a `remove` operation.
-        // - For i > 1, we need to round the exponent up, as i^x is monotonically increasing for i > 1.
-        // - For i < 1, we need to round the exponent down, as as i^x is monotonically decreasing for i < 1.
+        // - For i > FP(1), we need to round the exponent up, as i^x is monotonically increasing for i > FP(1).
+        // - For i < FP(1), we need to round the exponent down, as as i^x is monotonically decreasing for i < FP(1).
 
-        function(uint256, uint256) internal pure returns (uint256) divUpOrDown = invariantRatio > 1
+        function(uint256, uint256) internal pure returns (uint256) divUpOrDown = invariantRatio > FixedPoint.ONE
             ? FixedPoint.divUp
             : FixedPoint.divDown;
 

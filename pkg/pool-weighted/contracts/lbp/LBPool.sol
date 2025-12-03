@@ -55,7 +55,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         LBPParams memory lbpParams,
         FactoryParams memory factoryParams
     )
-        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, factoryParams.migrationRouter)
+        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, migrationParams.migrationRouter)
         WeightedPool(
             _buildWeightedPoolParams(lbpCommonParams, lbpParams, factoryParams.poolVersion),
             factoryParams.vault
