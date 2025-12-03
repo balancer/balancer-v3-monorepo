@@ -114,12 +114,9 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
 
-        address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
-
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            migrationRouter: migrationRouterOrZero,
             poolVersion: _poolVersion
         });
 

@@ -198,16 +198,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testCreatePoolWithMigrationParamsButNoRouter() public {
-        vm.expectRevert(BaseLBPFactory.InvalidMigrationRouter.selector);
-        lbPoolFactory = deployLBPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            factoryVersion,
-            poolVersion,
-            address(router),
-            address(0) // no migration router
-        );
-
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "LBPool",
             symbol: "LBP",
@@ -220,6 +210,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         });
 
         MigrationParams memory migrationParams = MigrationParams({
+            migrationRouter: address(0), // no router
             lockDurationAfterMigration: 30 days,
             bptPercentageToMigrate: 50e16,
             migrationWeightProjectToken: 60e16,
@@ -236,7 +227,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(0), // no router
             poolVersion: poolVersion
         });
 
@@ -396,6 +386,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         });
 
         MigrationParams memory migrationParams = MigrationParams({
+            migrationRouter: address(migrationRouter),
             lockDurationAfterMigration: lockDurationAfterMigration,
             bptPercentageToMigrate: bptPercentageToMigrate,
             migrationWeightProjectToken: migrationWeightProjectToken,
@@ -412,7 +403,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            migrationRouter: address(migrationRouter),
             poolVersion: poolVersion
         });
 
