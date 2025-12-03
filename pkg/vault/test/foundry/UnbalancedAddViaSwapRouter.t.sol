@@ -226,4 +226,46 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         unbalancedAddViaSwapRouter.addLiquidityUnbalanced(pool, 0, false, params);
     }
+
+    function testRevertExactAmountExceedsProportionalContribution() public {
+        uint256 totalSupply = IERC20(pool).totalSupply();
+        uint256[] memory balances = vault.getCurrentLiveBalances(pool);
+
+        uint256 requestedBpt = totalSupply / 100;
+
+        // Proportional contribution would be ~1% of each token balance.
+        // Request *more* (10%) of the token balance as the "exact" amount, to trigger the revert.
+        uint256 exactAmount = balances[wethIdx] / 10;
+
+        // Query to get the actual proportional contribution.
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory proportionalAmounts = router.queryAddLiquidityProportional(
+            pool,
+            requestedBpt,
+            alice,
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
+            .AddLiquidityAndSwapParams({
+                exactBptAmountOut: requestedBpt,
+                exactToken: weth,
+                exactAmount: exactAmount,
+                maxAdjustableAmount: type(uint256).max,
+                addLiquidityUserData: bytes(""),
+                swapUserData: bytes("")
+            });
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UnbalancedAddViaSwapRouter.ExactAmountExceedsProportionalContribution.selector,
+                proportionalAmounts[wethIdx],
+                exactAmount
+            )
+        );
+        unbalancedAddViaSwapRouter.addLiquidityUnbalanced(pool, MAX_UINT256, false, params);
+    }
 }
