@@ -43,6 +43,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
     uint256 constant WBTC8_SCALING_FACTOR = 1e10;
     uint256 constant DEFAULT_RATE = 1e18;
     uint256 constant DELTA = 1e7;
+    uint256 constant DELTA_REL = 0.0000001e16; // 0.0000001%
     uint256 internal constant DEFAULT_BPT_LOCK_DURATION = 10 days;
     uint256 internal constant DEFAULT_SHARE_TO_MIGRATE = 70e16; // 70% of the pool
     uint256 internal constant DEFAULT_WEIGHT_PROJECT_TOKEN = 30e16; // 30% for project token
@@ -53,9 +54,9 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
     string constant VERSION = "LBP Migration Router v1";
 
     address excessReceiver = makeAddr("excessReceiver");
-
-    uint256 usdc6DecimalsInitAmount = 10_000e6;
-    uint256 wbtc8DecimalsInitAmount = 1_000e8;
+    // At 70% reserve, 30% project token end weights, the TVL should be 10M, and the spot price should be 100,000.
+    uint256 usdc6DecimalsInitAmount = 7_000_000e6;
+    uint256 wbtc8DecimalsInitAmount = 30e8;
 
     function setUp() public virtual override {
         super.setUp();
@@ -465,7 +466,9 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             );
         vm.stopPrank();
 
-        _checkPrice(weightedPool, lbpBalancesBeforeScaled18, weights);
+        (uint256 lbpPrice, uint256 weightedPoolPrice) = _checkPrice(weightedPool, lbpBalancesBeforeScaled18, weights);
+        assertApproxEqRel(lbpPrice, 100_000e18, DELTA_REL, "LBP price should be 100,000");
+        assertApproxEqRel(weightedPoolPrice, 100_000e18, DELTA_REL, "Weighted pool price should be 100,000");
 
         uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
         (
@@ -533,16 +536,16 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             uint256[] memory weightedPoolBalancesScaled18
         ) = vault.getPoolTokenInfo(address(weightedPool));
 
-        assertApproxEqAbs(
+        assertApproxEqRel(
             weightedPoolBalancesScaled18[projectIdx],
             expectedLBPBalancesAfterScaled18[projectIdx],
-            DELTA,
+            DELTA_REL,
             "Live balance mismatch for project token"
         );
-        assertApproxEqAbs(
+        assertApproxEqRel(
             weightedPoolBalancesScaled18[reserveIdx],
             expectedLBPBalancesAfterScaled18[reserveIdx],
-            DELTA,
+            DELTA_REL,
             "Live balance mismatch for reserve token"
         );
 
@@ -630,24 +633,26 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         IWeightedPool weightedPool,
         uint256[] memory lbpBalancesBeforeScaled18,
         uint256[] memory weight
-    ) internal view {
+    ) internal view returns (uint256 lbpPrice, uint256 weightedPoolPrice) {
         uint256[] memory weightedPoolBalancesScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
-        uint256 weightedPoolPrice = (weightedPoolBalancesScaled18[projectIdx].mulDown(weight[reserveIdx])).divDown(
-            weightedPoolBalancesScaled18[reserveIdx].mulDown(weight[projectIdx])
+        // Price: project tokens in terms of reserve tokens.
+        weightedPoolPrice = (weightedPoolBalancesScaled18[reserveIdx].mulDown(weight[projectIdx])).divDown(
+            weightedPoolBalancesScaled18[projectIdx].mulDown(weight[reserveIdx])
         );
 
         uint256[] memory lbpWeights = new uint256[](2);
         lbpWeights[projectIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[projectIdx];
         lbpWeights[reserveIdx] = ILBPool(pool).getLBPoolDynamicData().normalizedWeights[reserveIdx];
 
-        uint256 lbpPrice = (lbpBalancesBeforeScaled18[projectIdx].mulDown(lbpWeights[reserveIdx])).divDown(
-            lbpBalancesBeforeScaled18[reserveIdx].mulDown(lbpWeights[projectIdx])
+        // Price: project tokens in terms of reserve tokens.
+        lbpPrice = (lbpBalancesBeforeScaled18[reserveIdx].mulDown(lbpWeights[projectIdx])).divDown(
+            lbpBalancesBeforeScaled18[projectIdx].mulDown(lbpWeights[reserveIdx])
         );
 
-        assertApproxEqAbs(
+        assertApproxEqRel(
             weightedPoolPrice,
             lbpPrice,
-            1e8,
+            DELTA_REL,
             "Price mismatch between LBP and Weighted Pool after migration"
         );
     }
