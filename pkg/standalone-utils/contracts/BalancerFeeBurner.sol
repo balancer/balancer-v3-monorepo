@@ -23,7 +23,7 @@ import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, VaultGuard, FeeBurnerAuthentication {
     using SafeERC20 for IERC20;
 
-    mapping(IERC20 => SwapPathStep[] steps) internal _burnSteps;
+    mapping(IERC20 => StepsInfo) internal _burnStepsInfo;
 
     constructor(
         IVault vault,
@@ -35,16 +35,47 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
 
     /// @inheritdoc IBalancerFeeBurner
     function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external onlyFeeRecipientOrOwner {
-        delete _burnSteps[feeToken];
+        uint256 index = _burnStepsInfo[feeToken].currentIndex + 1;
 
+        IERC20 stepTokenIn = feeToken;
         for (uint256 i = 0; i < steps.length; i++) {
-            _burnSteps[feeToken].push(steps[i]);
+            SwapPathStep memory step = steps[i];
+
+            if (step.isBuffer) {
+                bool isUnwrap = step.pool == address(stepTokenIn);
+                IERC4626 wrappedToken = IERC4626(step.pool);
+                address underlyingToken = wrappedToken.asset();
+
+                if (isUnwrap && step.tokenOut != IERC20(underlyingToken)) {
+                    revert InvalidBufferTokenOut(step.tokenOut, i);
+                } else if (isUnwrap == false && step.tokenOut != IERC20(address(wrappedToken))) {
+                    revert InvalidBufferTokenOut(step.tokenOut, i);
+                }
+            } else {
+                IERC20[] memory poolTokens = _vault.getPoolTokens(step.pool);
+                if (_tokenExists(stepTokenIn, poolTokens) == false) {
+                    revert TokenDoesNotExistInPool(stepTokenIn, i);
+                } else if (_tokenExists(step.tokenOut, poolTokens) == false) {
+                    revert TokenDoesNotExistInPool(step.tokenOut, i);
+                }
+            }
+
+            stepTokenIn = step.tokenOut;
+
+            _burnStepsInfo[feeToken].steps[index].push(steps[i]);
         }
+
+        _burnStepsInfo[feeToken].currentIndex = index;
     }
 
     /// @inheritdoc IBalancerFeeBurner
-    function getBurnPath(IERC20 feeToken) public view returns (SwapPathStep[] memory steps) {
-        steps = _burnSteps[feeToken];
+    function getBurnPath(IERC20 feeToken) external view returns (SwapPathStep[] memory steps) {
+        return _getBurnPath(feeToken);
+    }
+
+    function _getBurnPath(IERC20 feeToken) internal view returns (SwapPathStep[] memory steps) {
+        uint256 index = _burnStepsInfo[feeToken].currentIndex;
+        steps = _burnStepsInfo[feeToken].steps[index];
 
         if (steps.length == 0) {
             revert BurnPathDoesNotExist();
@@ -89,7 +120,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         IERC20 targetToken = params.targetToken;
         uint256 feeTokenAmount = params.feeTokenAmount;
 
-        SwapPathStep[] memory steps = getBurnPath(feeToken);
+        SwapPathStep[] memory steps = _getBurnPath(feeToken);
         uint256 lastStepIndex = steps.length - 1;
         if (steps[lastStepIndex].tokenOut != targetToken) {
             revert TargetTokenOutMismatch();
@@ -141,5 +172,15 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         _vault.sendTo(stepTokenIn, params.recipient, stepExactAmountIn);
 
         emit ProtocolFeeBurned(params.pool, feeToken, feeTokenAmount, targetToken, stepExactAmountIn, params.recipient);
+    }
+
+    function _tokenExists(IERC20 token, IERC20[] memory tokens) private pure returns (bool) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == token) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

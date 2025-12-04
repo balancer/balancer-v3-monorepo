@@ -440,14 +440,14 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
     function testBurnRevertIfLastPathStepNotTargetToken() external {
         SwapPathStep[] memory steps = new SwapPathStep[](1);
-        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: weth, isBuffer: false });
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
 
         vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
         vm.startPrank(address(feeSweeper));
         vm.expectRevert(IBalancerFeeBurner.TargetTokenOutMismatch.selector);
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, weth, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
     }
 
@@ -506,6 +506,42 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         SwapPathStep[] memory steps;
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeBurner.setBurnPath(dai, steps);
+    }
+
+    function testSetBurnPathRevertIfInvalidTokenIn() external {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IBalancerFeeBurner.TokenDoesNotExistInPool.selector, weth, 0));
+        feeBurner.setBurnPath(weth, steps);
+    }
+
+    function testSetBurnPathRevertIfInvalidTokenOut() external {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: weth, isBuffer: false });
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IBalancerFeeBurner.TokenDoesNotExistInPool.selector, weth, 0));
+        feeBurner.setBurnPath(dai, steps);
+    }
+
+    function testSetBurnPathRevertIfInvalidBufferUnwrapTokenOut() external {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IBalancerFeeBurner.InvalidBufferTokenOut.selector, waDAI, 0));
+        feeBurner.setBurnPath(waDAI, steps);
+    }
+
+    function testSetBurnPathRevertIfInvalidBufferWrapTokenOut() external {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IBalancerFeeBurner.InvalidBufferTokenOut.selector, dai, 0));
         feeBurner.setBurnPath(dai, steps);
     }
 
