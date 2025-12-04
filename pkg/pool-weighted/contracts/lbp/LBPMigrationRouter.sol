@@ -15,6 +15,7 @@ import {
     RemoveLiquidityKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -33,6 +34,7 @@ import { LBPool } from "./LBPool.sol";
 contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard, BPTTimeLocker {
     using FixedPoint for uint256;
     using SafeCast for uint256;
+    using ScalingHelpers for uint256;
 
     // LBPs are constrained to two tokens: project and reserve.
     uint256 private constant _TWO_TOKENS = 2;
@@ -201,11 +203,21 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         uint256[] memory currentWeights = lbp.getLBPoolDynamicData().normalizedWeights;
         LBPoolImmutableData memory data = lbp.getLBPoolImmutableData();
 
-        // Compute the spot price (reserve tokens per project token) based on the current weights and the amounts out
+        (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates) = _vault.getPoolTokenRates(address(lbp));
+
+        // Compute the spot price (project token per reserve tokens) based on the current weights and the amounts out
         // from the LBP.
-        uint256 price = (removeAmountsOut[data.projectTokenIndex] * currentWeights[data.reserveTokenIndex]).divDown(
-            removeAmountsOut[data.reserveTokenIndex] * currentWeights[data.projectTokenIndex]
+        uint256 projectAmountOutScaled18 = removeAmountsOut[data.projectTokenIndex].toScaled18ApplyRateRoundDown(
+            decimalScalingFactors[data.projectTokenIndex],
+            tokenRates[data.projectTokenIndex]
         );
+        uint256 reserveAmountRemovedScaled18 = removeAmountsOut[data.reserveTokenIndex].toScaled18ApplyRateRoundDown(
+            decimalScalingFactors[data.reserveTokenIndex],
+            tokenRates[data.reserveTokenIndex]
+        );
+
+        uint256 priceScaled18 = ((projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex]) /
+            reserveAmountRemovedScaled18).divDown(currentWeights[data.projectTokenIndex]);
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
         // We start by assuming we can withdraw the entire project token balance. We want to use as much as possible,
@@ -213,24 +225,28 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         //
         // If this isn't possible, since using the full project balance would require more reserve tokens than we have
         // available, we fall back on using the full reserve balance and calculating the project amount instead.
-        uint256 reserveAmountOut = (removeAmountsOut[data.projectTokenIndex] * migrationWeightReserveToken).divDown(
-            price * migrationWeightProjectToken
+        uint256 reserveAmountOutScaled18 = (projectAmountOutScaled18.mulDown(migrationWeightReserveToken)).divDown(
+            priceScaled18.mulDown(migrationWeightProjectToken)
         );
-        uint256 projectAmountOut;
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
-        if (reserveAmountOut > removeAmountsOut[data.reserveTokenIndex]) {
-            reserveAmountOut = removeAmountsOut[data.reserveTokenIndex];
-            projectAmountOut = price.mulDown(reserveAmountOut).mulDown(migrationWeightProjectToken).divDown(
-                migrationWeightReserveToken
-            );
-        } else {
-            projectAmountOut = removeAmountsOut[data.projectTokenIndex];
+        if (reserveAmountOutScaled18 > reserveAmountRemovedScaled18) {
+            reserveAmountOutScaled18 = reserveAmountRemovedScaled18;
+            projectAmountOutScaled18 =
+                (priceScaled18 * reserveAmountOutScaled18).mulDown(migrationWeightProjectToken) /
+                migrationWeightReserveToken;
         }
 
+        // Stack too deep.
+        uint256 bptPercentageToMigrate_ = bptPercentageToMigrate;
+
         // Calculate the exact amounts in based on the share to migrate.
-        exactAmountsIn[data.projectTokenIndex] = projectAmountOut.mulDown(bptPercentageToMigrate);
-        exactAmountsIn[data.reserveTokenIndex] = reserveAmountOut.mulDown(bptPercentageToMigrate);
+        exactAmountsIn[data.projectTokenIndex] = projectAmountOutScaled18
+            .mulDown(bptPercentageToMigrate_)
+            .toRawUndoRateRoundDown(decimalScalingFactors[data.projectTokenIndex], tokenRates[data.projectTokenIndex]);
+        exactAmountsIn[data.reserveTokenIndex] = reserveAmountOutScaled18
+            .mulDown(bptPercentageToMigrate_)
+            .toRawUndoRateRoundDown(decimalScalingFactors[data.reserveTokenIndex], tokenRates[data.reserveTokenIndex]);
     }
 }
