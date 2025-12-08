@@ -62,10 +62,6 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         bool disableUnbalancedLiquidity,
         bytes32 salt
     ) external returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.enableDonation = enableDonation;
         // disableUnbalancedLiquidity must be set to true if a hook has the flag enableHookAdjustedAmounts = true.
