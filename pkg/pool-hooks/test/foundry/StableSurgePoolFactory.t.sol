@@ -150,27 +150,6 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
         );
     }
 
-    function testCreateWithPoolCreator() public {
-        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-
-        PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = lp;
-
-        // Balancer factories do not allow poolCreator.
-        vm.expectRevert(BasePoolFactory.StandardPoolWithCreator.selector);
-        stablePoolFactory.create(
-            "Pool with Creator",
-            "CREATOR",
-            tokenConfig,
-            DEFAULT_AMP_FACTOR,
-            roleAccounts,
-            MAX_SWAP_FEE_PERCENTAGE,
-            false,
-            ZERO_BYTES32
-        );
-    }
-
     function _deployAndInitializeStablePool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
