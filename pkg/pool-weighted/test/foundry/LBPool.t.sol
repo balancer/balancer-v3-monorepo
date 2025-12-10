@@ -263,8 +263,10 @@ contract LBPoolTest is WeightedLBPTest {
 
         vm.revertToState(preCreateSnapshotId);
 
+        bool isSeedless = reserveTokenVirtualBalance > 0;
+
         vm.expectEmit();
-        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false, isSeedless); // no migration
 
         vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);

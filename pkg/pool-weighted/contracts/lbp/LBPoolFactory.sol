@@ -30,12 +30,14 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @param owner Address of the pool's owner
      * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
      * @param hasMigration True if the pool will be migrated after the sale
+     * @param isSeedless True if this is a seedless LBP (i.e., no reserve token supplied on initialization)
      */
     event WeightedLBPoolCreated(
         address indexed pool,
         address indexed owner,
         bool blockProjectTokenSwapsIn,
-        bool hasMigration
+        bool hasMigration,
+        bool isSeedless
     );
 
     constructor(
@@ -113,6 +115,7 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         );
 
         bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
+        bool isSeedless = lbpParams.reserveTokenVirtualBalance > 0;
 
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
@@ -123,7 +126,13 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
         // Emit type-specific event first.
-        emit WeightedLBPoolCreated(pool, lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
+        emit WeightedLBPoolCreated(
+            pool,
+            lbpCommonParams.owner,
+            lbpCommonParams.blockProjectTokenSwapsIn,
+            hasMigration,
+            isSeedless
+        );
 
         // Emit common events via base contract helper.
         _emitPoolCreatedEvents(
