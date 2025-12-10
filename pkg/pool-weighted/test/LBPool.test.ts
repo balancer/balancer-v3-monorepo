@@ -88,33 +88,6 @@ describe('LBPool', function () {
     return (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
   }
 
-  async function deploySeedlessPool(
-    projectTokenStartWeight: bigint,
-    reserveTokenStartWeight: bigint,
-    projectTokenEndWeight: bigint,
-    reserveTokenEndWeight: bigint,
-    startTime: bigint,
-    endTime: bigint,
-    blockProjectTokenSwapsIn: boolean,
-    reserveTokenVirtualBalance: bigint
-  ): Promise<LBPool> {
-    const tx = await deployPoolTx(
-      projectTokenStartWeight,
-      reserveTokenStartWeight,
-      projectTokenEndWeight,
-      reserveTokenEndWeight,
-      startTime,
-      endTime,
-      blockProjectTokenSwapsIn,
-      reserveTokenVirtualBalance
-    );
-
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-    return (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
-  }
-
   async function deployPoolTx(
     projectTokenStartWeight: bigint,
     reserveTokenStartWeight: bigint,
