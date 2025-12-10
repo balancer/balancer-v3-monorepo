@@ -74,7 +74,7 @@ contract LBPoolTest is WeightedLBPTest {
             reserveTokenStartWeight: 10e16,
             projectTokenEndWeight: 10e16,
             reserveTokenEndWeight: 90e16,
-            reserveTokenVirtualBalance: 0
+            reserveTokenVirtualBalance: reserveTokenVirtualBalance
         });
 
         vm.expectRevert(LBPValidation.InvalidProjectToken.selector);
@@ -580,6 +580,20 @@ contract LBPoolTest is WeightedLBPTest {
         assertEq(data.endWeights.length, endWeights.length, "End weights length mismatch");
         assertEq(data.endWeights[projectIdx], endWeights[projectIdx], "Project end weight mismatch");
         assertEq(data.endWeights[reserveIdx], endWeights[reserveIdx], "Reserve end weight mismatch");
+
+        assertEq(
+            data.reserveTokenVirtualBalance,
+            reserveTokenVirtualBalance,
+            "Wrong reserve token balance (immutable data)"
+        );
+    }
+
+    function testReserveVirtualBalance() public view {
+        assertEq(
+            ILBPool(pool).getReserveTokenVirtualBalance(),
+            reserveTokenVirtualBalance,
+            "Wrong reserve token balance (direct getter)"
+        );
     }
 
     /*******************************************************************************
