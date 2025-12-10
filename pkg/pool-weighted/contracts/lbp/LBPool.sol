@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -31,6 +32,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     uint256 private immutable _reserveTokenStartWeight;
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
+
+    // Offset applied to reserve token balance in seedless LBPs.
+    uint256 private immutable _reserveTokenVirtualBalanceScaled18;
+    uint256 private immutable _reserveTokenScalingFactor;
 
     /**
      * @notice Emitted on deployment to record the sale parameters.
@@ -73,6 +78,11 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
 
         _projectTokenEndWeight = lbpParams.projectTokenEndWeight;
         _reserveTokenEndWeight = lbpParams.reserveTokenEndWeight;
+
+        _reserveTokenScalingFactor = _computeScalingFactor(lbpCommonParams.reserveToken);
+
+        // The reserve virtual balance is given in native decimals; scale up to store as scaled18.
+        _reserveTokenVirtualBalanceScaled18 = _toScaled18(lbpParams.reserveTokenVirtualBalance, _reserveTokenScalingFactor);
 
         // Preserve event compatibility with previous LBP versions.
         uint256[] memory startWeights = new uint256[](_TWO_TOKENS);
@@ -161,6 +171,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         data.endWeights = new uint256[](_TWO_TOKENS);
         data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
         data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
+
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            data.reserveTokenVirtualBalance = _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+        }
 
         // Migration-related params, non-zero if the pool supports migration.
         data.migrationRouter = _migrationRouter;

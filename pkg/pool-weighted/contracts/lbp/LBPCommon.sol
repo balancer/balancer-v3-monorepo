@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
@@ -17,6 +19,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPValidation } from "./LBPValidation.sol";
 
 abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
+    using FixedPoint for uint256;
+
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
@@ -258,5 +262,17 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     function _isSwapEnabled() internal view returns (bool) {
         return block.timestamp >= _startTime && block.timestamp <= _endTime;
+    }
+
+    function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
+        return 10 ** (18 - IERC20Metadata(address(token)).decimals());
+    }
+
+    function _toScaled18(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return amount.mulDown(scalingFactor);
+    }
+
+    function _toRaw(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return amount.divDown(scalingFactor);
     }
 }

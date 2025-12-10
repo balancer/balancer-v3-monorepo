@@ -8,17 +8,23 @@ import { ILBPCommon } from "./ILBPCommon.sol";
 
 /**
  * @notice Structure containing LBP-specific parameters.
- * @dev See `LBPCommonParams` in ILBPCommon.sol for general parameters.
+ * @dev See `LBPCommonParams` in ILBPCommon.sol for general parameters. Seedless LBPs do not require any reserve tokens
+ * for initialization. However, we do need the amount that *would be* required for a non-seedless LBP, in order to set
+ * the initial price properly. Since we cannot intercept initialization (which goes directly through the Vault), this
+ * parameter must be set at deployment time. When calling initialize, the caller must specify 0 reserve tokens.
+ *
  * @param projectTokenStartWeight The project token weight at the start of the sale (normally higher than the reserve)
  * @param reserveTokenStartWeight The reserve token weight at the start of the sale (normally lower than the project)
  * @param projectTokenEndWeight The project token weight at the end of the sale (should go down over time)
  * @param reserveTokenEndWeight The reserve token weight at the end of the sale (should go up over time)
+ * @param reserveTokenVirtualBalance The amount of reserve tokens needed to set the initial price; 0 for non-seedless
  */
 struct LBPParams {
     uint256 projectTokenStartWeight;
     uint256 reserveTokenStartWeight;
     uint256 projectTokenEndWeight;
     uint256 reserveTokenEndWeight;
+    uint256 reserveTokenVirtualBalance;
 }
 
 /**
@@ -33,6 +39,7 @@ struct LBPParams {
  * @param isProjectTokenSwapInBlocked If true, it is impossible to sell the project token back into the pool
  * @param startWeights Starting weights for the LBP, sorted in token registration order
  * @param endWeights Ending weights for the LBP, sorted in token registration order
+ * @param reserveVirtualBalance An offset applied to the reserve token balance for seedless LBPs
  * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
  * @param lockDurationAfterMigration The duration for which the BPT will be locked after migration
  * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
@@ -48,9 +55,10 @@ struct LBPoolImmutableData {
     uint256 projectTokenIndex;
     uint256 reserveTokenIndex;
     bool isProjectTokenSwapInBlocked;
-    // LBPool-specific parameters (weight transitions)
+    // LBPool-specific parameters (weight transitions / seedless flag
     uint256[] startWeights;
     uint256[] endWeights;
+    uint256 reserveTokenVirtualBalance;
     // Migration parameters (if migrationRouter == address(0), the pool does not support migration).
     address migrationRouter;
     uint256 lockDurationAfterMigration;
