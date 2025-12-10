@@ -170,7 +170,6 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
         );
     }
 
-
     function _deployAndInitializeStablePool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
