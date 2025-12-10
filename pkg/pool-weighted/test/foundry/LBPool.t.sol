@@ -73,7 +73,8 @@ contract LBPoolTest is WeightedLBPTest {
             projectTokenStartWeight: 90e16,
             reserveTokenStartWeight: 10e16,
             projectTokenEndWeight: 10e16,
-            reserveTokenEndWeight: 90e16
+            reserveTokenEndWeight: 90e16,
+            reserveTokenVirtualBalance: 0
         });
 
         vm.expectRevert(LBPValidation.InvalidProjectToken.selector);

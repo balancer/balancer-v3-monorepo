@@ -102,7 +102,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             projectTokenStartWeight: startWeights[projectIdx],
             reserveTokenStartWeight: startWeights[reserveIdx],
             projectTokenEndWeight: endWeights[projectIdx],
-            reserveTokenEndWeight: endWeights[reserveIdx]
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            reserveTokenVirtualBalance: 0
         });
 
         // Copy to local variable to free up parameter stack slot.
@@ -156,7 +157,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             projectTokenStartWeight: projectTokenStartWeight,
             reserveTokenStartWeight: reserveTokenStartWeight,
             projectTokenEndWeight: projectTokenEndWeight,
-            reserveTokenEndWeight: reserveTokenEndWeight
+            reserveTokenEndWeight: reserveTokenEndWeight,
+            reserveTokenVirtualBalance: 0
         });
 
         MigrationParams memory migrationParams;

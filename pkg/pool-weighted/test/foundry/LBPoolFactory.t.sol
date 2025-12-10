@@ -111,7 +111,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             projectTokenStartWeight: DEFAULT_WEIGHT,
             projectTokenEndWeight: DEFAULT_WEIGHT,
             reserveTokenStartWeight: DEFAULT_WEIGHT,
-            reserveTokenEndWeight: DEFAULT_WEIGHT
+            reserveTokenEndWeight: DEFAULT_WEIGHT,
+            reserveTokenVirtualBalance: 0
         });
 
         vm.expectRevert(LBPValidation.InvalidOwner.selector);
@@ -221,7 +222,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             projectTokenStartWeight: startWeights[projectIdx],
             reserveTokenStartWeight: startWeights[reserveIdx],
             projectTokenEndWeight: endWeights[projectIdx],
-            reserveTokenEndWeight: endWeights[reserveIdx]
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            reserveTokenVirtualBalance: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({
@@ -397,7 +399,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             projectTokenStartWeight: startWeights[projectIdx],
             reserveTokenStartWeight: startWeights[reserveIdx],
             projectTokenEndWeight: endWeights[projectIdx],
-            reserveTokenEndWeight: endWeights[reserveIdx]
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            reserveTokenVirtualBalance: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({
