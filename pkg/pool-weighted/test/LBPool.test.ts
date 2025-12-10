@@ -78,7 +78,35 @@ describe('LBPool', function () {
       reserveTokenEndWeight,
       startTime,
       endTime,
-      blockProjectTokenSwapsIn
+      blockProjectTokenSwapsIn,
+      bn(0) // virtual balance
+    );
+
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+    return (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
+  }
+
+  async function deploySeedlessPool(
+    projectTokenStartWeight: bigint,
+    reserveTokenStartWeight: bigint,
+    projectTokenEndWeight: bigint,
+    reserveTokenEndWeight: bigint,
+    startTime: bigint,
+    endTime: bigint,
+    blockProjectTokenSwapsIn: boolean,
+    reserveTokenVirtualBalance: bigint
+  ): Promise<LBPool> {
+    const tx = await deployPoolTx(
+      projectTokenStartWeight,
+      reserveTokenStartWeight,
+      projectTokenEndWeight,
+      reserveTokenEndWeight,
+      startTime,
+      endTime,
+      blockProjectTokenSwapsIn,
+      reserveTokenVirtualBalance
     );
 
     const receipt = await tx.wait();
@@ -94,7 +122,8 @@ describe('LBPool', function () {
     reserveTokenEndWeight: bigint,
     startTime: bigint,
     endTime: bigint,
-    blockProjectTokenSwapsIn: boolean
+    blockProjectTokenSwapsIn: boolean,
+    reserveTokenVirtualBalance: bigint
   ): Promise<ContractTransactionResponse> {
     const tokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
@@ -114,6 +143,7 @@ describe('LBPool', function () {
       reserveTokenStartWeight,
       projectTokenEndWeight,
       reserveTokenEndWeight,
+      reserveTokenVirtualBalance,
     };
 
     return factory.create(lbpCommonParams, lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
@@ -243,7 +273,16 @@ describe('LBPool', function () {
         const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await deployPoolTx(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
+        const tx = await deployPoolTx(
+          WEIGHTS[0],
+          WEIGHTS[1],
+          endWeights[0],
+          endWeights[1],
+          startTime,
+          endTime,
+          false,
+          bn(0)
+        );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
@@ -296,27 +335,27 @@ describe('LBPool', function () {
 
         // Try to set start weight below 1%
         await expect(
-          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set start weight above 99%
         await expect(
-          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight below 1%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight above 99%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Valid weight update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)).to.not.be
-          .reverted;
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))).to.not
+          .be.reverted;
       });
 
       it('should not allow endTime before startTime', async () => {
@@ -325,12 +364,13 @@ describe('LBPool', function () {
 
         // Try to set endTime before startTime
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
 
         // Valid time update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
-          .to.not.be.reverted;
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false, bn(0))
+        ).to.not.be.reverted;
       });
 
       it('should always sum weights to 1', async () => {
