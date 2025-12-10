@@ -82,7 +82,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         _reserveTokenScalingFactor = _computeScalingFactor(lbpCommonParams.reserveToken);
 
         // The reserve virtual balance is given in native decimals; scale up to store as scaled18.
-        _reserveTokenVirtualBalanceScaled18 = _toScaled18(lbpParams.reserveTokenVirtualBalance, _reserveTokenScalingFactor);
+        _reserveTokenVirtualBalanceScaled18 = _toScaled18(
+            lbpParams.reserveTokenVirtualBalance,
+            _reserveTokenScalingFactor
+        );
 
         // Preserve event compatibility with previous LBP versions.
         uint256[] memory startWeights = new uint256[](_TWO_TOKENS);
@@ -184,9 +187,65 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         data.migrationWeightReserveToken = _migrationWeightReserveToken;
     }
 
+    /// @inheritdoc ILBPool
+    function getReserveTokenVirtualBalance() external view returns (uint256) {
+        return _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+    }
+
     /*******************************************************************************
                                     Base Pool Hooks
     *******************************************************************************/
+
+    /**
+     * @inheritdoc WeightedPool
+     * @notice Implementation of computeInvariant that adjusts for the virtual balance in seedless LBPs.
+     * @dev The Vault calls this during liquidity operations.
+     */
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) public view override(IBasePool, WeightedPool) returns (uint256 invariant) {
+        // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
+        if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            return super.computeInvariant(balancesLiveScaled18, rounding);
+        }
+
+        return super.computeInvariant(_getEffectiveBalances(balancesLiveScaled18), rounding);
+    }
+
+    /// @inheritdoc WeightedPool
+    function computeBalance(
+        uint256[] memory balancesLiveScaled18,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) public view override(IBasePool, WeightedPool) returns (uint256 newBalance) {
+        if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
+            newBalance = super.computeBalance(balancesLiveScaled18, tokenInIndex, invariantRatio);
+        } else {
+            // This is a seedless LBP - use virtual balances.
+            newBalance = super.computeBalance(
+                _getEffectiveBalances(balancesLiveScaled18),
+                tokenInIndex,
+                invariantRatio
+            );
+
+            // The Vault expects the real balance, so we need to adjust for the virtual balance if this is the reserve.
+            // Will underflow if the operation would require a negative real balance.
+            if (tokenInIndex == _reserveTokenIndex) {
+                newBalance -= _reserveTokenVirtualBalanceScaled18;
+            }
+        }
+    }
+
+    function _getEffectiveBalances(
+        uint256[] memory realBalances
+    ) internal view returns (uint256[] memory effectiveBalances) {
+        effectiveBalances = new uint256[](2);
+
+        effectiveBalances[_projectTokenIndex] = realBalances[_projectTokenIndex];
+        effectiveBalances[_reserveTokenIndex] = realBalances[_reserveTokenIndex] + _reserveTokenVirtualBalanceScaled18;
+    }
 
     /// @inheritdoc WeightedPool
     function onSwap(PoolSwapParams memory request) public view override(IBasePool, WeightedPool) returns (uint256) {
@@ -200,7 +259,59 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             revert SwapOfProjectTokenIn();
         }
 
-        return super.onSwap(request);
+        // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
+        if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            return super.onSwap(request);
+        }
+
+        // This is a seedless LBP, modify the request to use the virtual balance.
+        PoolSwapParams memory seedlessRequest = PoolSwapParams({
+            kind: request.kind,
+            amountGivenScaled18: request.amountGivenScaled18,
+            balancesScaled18: new uint256[](2), // LBPs are 2-token only
+            indexIn: request.indexIn,
+            indexOut: request.indexOut,
+            router: request.router,
+            userData: request.userData
+        });
+        seedlessRequest.balancesScaled18[_projectTokenIndex] = request.balancesScaled18[_projectTokenIndex];
+        seedlessRequest.balancesScaled18[_reserveTokenIndex] =
+            request.balancesScaled18[_reserveTokenIndex] +
+            _reserveTokenVirtualBalanceScaled18;
+
+        uint256 calculatedAmountScaled18 = super.onSwap(seedlessRequest);
+
+        // If we are returning reserve tokens, ensure we have enough real balance to cover it.
+        if (
+            request.indexOut == _reserveTokenIndex &&
+            calculatedAmountScaled18 > request.balancesScaled18[_reserveTokenIndex]
+        ) {
+            revert InsufficientRealReserveBalance(
+                calculatedAmountScaled18,
+                request.balancesScaled18[_reserveTokenIndex]
+            );
+        }
+
+        return calculatedAmountScaled18;
+    }
+
+    /**
+     * @inheritdoc LBPCommon
+     * @dev Ensure the owner is initializing the pool, and ensure seedless LBPs do not accept reserve tokens.
+     * @return success Allow the initialization to proceed if the conditions have been met
+     */
+    function onBeforeInitialize(
+        uint256[] memory exactAmountsIn,
+        bytes memory
+    ) public view override onlyBeforeSale returns (bool) {
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            // This is a seedless LBP; ensure the caller is initializing with 0 reserve tokens.
+            if (exactAmountsIn[_reserveTokenIndex] > 0) {
+                revert SeedlessLBPInitializationWithNonZeroReserve();
+            }
+        }
+
+        return ISenderGuard(_trustedRouter).getSender() == owner();
     }
 
     /*******************************************************************************
