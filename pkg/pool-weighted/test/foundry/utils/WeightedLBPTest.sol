@@ -22,6 +22,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
     uint256[] internal startWeights;
     uint256[] internal endWeights;
 
+    uint256 internal reserveTokenVirtualBalance; // 0 for non-seedless LBPs
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -103,7 +105,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             reserveTokenStartWeight: startWeights[reserveIdx],
             projectTokenEndWeight: endWeights[projectIdx],
             reserveTokenEndWeight: endWeights[reserveIdx],
-            reserveTokenVirtualBalance: 0
+            reserveTokenVirtualBalance: reserveTokenVirtualBalance
         });
 
         // Copy to local variable to free up parameter stack slot.
@@ -158,7 +160,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             reserveTokenStartWeight: reserveTokenStartWeight,
             projectTokenEndWeight: projectTokenEndWeight,
             reserveTokenEndWeight: reserveTokenEndWeight,
-            reserveTokenVirtualBalance: 0
+            reserveTokenVirtualBalance: reserveTokenVirtualBalance
         });
 
         MigrationParams memory migrationParams;
