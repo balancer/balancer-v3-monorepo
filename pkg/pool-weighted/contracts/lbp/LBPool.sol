@@ -54,6 +54,9 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     /// @notice LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
     error NotImplemented();
 
+    /// @notice Attempted withdrawal of reserve tokens with an insufficient real balance.
+    error SingleTokenRemovalExceedsRealReserve();
+
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
@@ -233,6 +236,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             // The Vault expects the real balance, so we need to adjust for the virtual balance if this is the reserve.
             // Will underflow if the operation would require a negative real balance.
             if (tokenInIndex == _reserveTokenIndex) {
+                if (newBalance < _reserveTokenVirtualBalanceScaled18) {
+                    revert SingleTokenRemovalExceedsRealReserve();
+                }
+
                 newBalance -= _reserveTokenVirtualBalanceScaled18;
             }
         }
