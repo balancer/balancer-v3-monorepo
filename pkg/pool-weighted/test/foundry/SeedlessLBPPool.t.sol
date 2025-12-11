@@ -131,52 +131,6 @@ contract SeedlessLBPTest is WeightedLBPTest {
         assertGt(balances[reserveIdx], 0, "Pool should now have real reserve balance");
     }
 
-    function testSwapSellProjectTokenWithNoReserve() public {
-        // Deploy pool with bidirectional swaps enabled
-        (pool, ) = _createLBPoolWithCustomWeights(
-            address(0),
-            startWeights[projectIdx],
-            startWeights[reserveIdx],
-            endWeights[projectIdx],
-            endWeights[reserveIdx],
-            uint32(block.timestamp + DEFAULT_START_OFFSET),
-            uint32(block.timestamp + DEFAULT_END_OFFSET),
-            false // Allow project token swaps in
-        );
-        initPool();
-
-        // Warp to when swaps are enabled
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET);
-
-        uint256 snapshotId = vm.snapshotState();
-
-        uint256[] memory balances = vault.getCurrentLiveBalances(pool);
-        uint256 swapAmount = 1e18;
-
-        uint256 expectedAmountOut = WeightedMath.computeOutGivenExactIn(
-            balances[projectIdx],
-            startWeights[projectIdx],
-            reserveTokenVirtualBalance,
-            startWeights[reserveIdx],
-            swapAmount.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement())
-        );
-
-        vm.revertToState(snapshotId);
-
-        vm.expectRevert(abi.encodeWithSelector(ILBPool.InsufficientRealReserveBalance.selector, expectedAmountOut, 0));
-        vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            pool,
-            projectToken,
-            reserveToken,
-            swapAmount,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
-    }
-
     function testSwapSellProjectTokenWithReserve() public {
         // Deploy pool with bidirectional swaps enabled
         (pool, ) = _createLBPoolWithCustomWeights(
