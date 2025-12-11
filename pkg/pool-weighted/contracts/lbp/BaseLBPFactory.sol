@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import { MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { LBPValidation } from "./LBPValidation.sol";
@@ -20,7 +22,7 @@ import { LBPValidation } from "./LBPValidation.sol";
  * @dev This is a factory for LBPools, allowing only two tokens and restricting the LBP to a single token sale, with
  * common parameters specified on deployment. Derived LBP factories may have additional type-specific features.
  */
-abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Version {
+abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGuardTransient, Version {
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
     uint256 internal constant _TWO_TOKENS = 2;
 
@@ -60,11 +62,14 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
     error InvalidTrustedRouter();
 
     constructor(
+        IVault vault,
+        uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
         address trustedRouter,
-        address migrationRouter
-    ) Version(factoryVersion) {
+        address migrationRouter,
+        bytes memory creationCode
+    ) BasePoolFactory(vault, pauseWindowDuration, creationCode) Version(factoryVersion) {
         if (trustedRouter == address(0)) {
             revert InvalidTrustedRouter();
         }
@@ -133,6 +138,32 @@ abstract contract BaseLBPFactory is IPoolVersion, ReentrancyGuardTransient, Vers
         (tokenConfig[0].token, tokenConfig[1].token) = projectToken < reserveToken
             ? (projectToken, reserveToken)
             : (reserveToken, projectToken);
+    }
+
+    function _registerLBP(
+        address pool,
+        LBPCommonParams memory lbpCommonParams,
+        uint256 swapFeePercentage,
+        address poolCreator,
+        bool disableUnbalancedLiquidity
+    ) internal {
+        PoolRoleAccounts memory roleAccounts;
+        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
+        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
+
+        // This account can change the static swap fee for the pool.
+        roleAccounts.swapFeeManager = lbpCommonParams.owner;
+        roleAccounts.poolCreator = poolCreator;
+
+        _registerPoolWithVault(
+            pool,
+            _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
+            swapFeePercentage,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            pool, // register the pool itself as the hook contract
+            liquidityManagement
+        );
     }
 
     /**

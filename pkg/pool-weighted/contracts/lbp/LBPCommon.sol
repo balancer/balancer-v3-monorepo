@@ -73,7 +73,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     /// @notice Single token liquidity operations (that call `computeBalance` are unsupported.
     error UnsupportedOperation();
-    
+
     /// @notice Only allow adding liquidity (including initialization) before the sale.
     modifier onlyBeforeSale() {
         if (block.timestamp >= _startTime) {

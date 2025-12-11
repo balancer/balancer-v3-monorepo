@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
-import { LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-
-import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
 import { FixedPriceLBPool } from "./FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
@@ -19,7 +16,7 @@ import { LBPValidation } from "./LBPValidation.sol";
  * @dev This is a factory specific to Fixed Price LBPools, similar to regular Weighted LBPools, but where the token
  * price is fixed throughout the entire sale.
  */
-contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
+contract FixedPriceLBPoolFactory is BaseLBPFactory {
     /**
      * @notice Event emitted when a fixed price LBP is deployed.
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
@@ -46,8 +43,15 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
         string memory poolVersion,
         address trustedRouter
     )
-        BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, address(0)) // no migration router
-        BasePoolFactory(vault, pauseWindowDuration, type(FixedPriceLBPool).creationCode)
+        BaseLBPFactory(
+            vault,
+            pauseWindowDuration,
+            factoryVersion,
+            poolVersion,
+            trustedRouter,
+            address(0),
+            type(FixedPriceLBPool).creationCode
+        ) // no migration router
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -121,24 +125,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory, BasePoolFactory {
             false // Migration unsupported for fixed price LBPs
         );
 
-        PoolRoleAccounts memory roleAccounts;
-
-        // This account can change the static swap fee for the pool.
-        roleAccounts.swapFeeManager = lbpCommonParams.owner;
-        roleAccounts.poolCreator = poolCreator;
-
-        // Only allow proportional add/remove (computeBalance is not implemented).
-        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        liquidityManagement.disableUnbalancedLiquidity = true;
-
-        _registerPoolWithVault(
-            pool,
-            _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
-            swapFeePercentage,
-            false, // not exempt from protocol fees
-            roleAccounts,
-            pool, // register the pool itself as the hook contract
-            liquidityManagement
-        );
+        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator, true); // disable unbalanced liquidity
     }
 }

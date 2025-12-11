@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-
-import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPValidation } from "./LBPValidation.sol";
@@ -19,7 +16,7 @@ import { LBPool } from "./LBPool.sol";
  * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
  * with parameters specified on deployment.
  */
-contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
+contract LBPoolFactory is BaseLBPFactory {
     /**
      * @notice Event emitted when a standard weighted LBPool is deployed.
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
@@ -48,8 +45,15 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         address trustedRouter,
         address migrationRouter
     )
-        BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, migrationRouter)
-        BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode)
+        BaseLBPFactory(
+            vault,
+            pauseWindowDuration,
+            factoryVersion,
+            poolVersion,
+            trustedRouter,
+            migrationRouter,
+            type(LBPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -125,6 +129,11 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
+        // Unbalanced liquidity is not disabled entirely, because we still want to support unbalanced adds.
+        // Single-token liquidity is not supported, but there is no separate flag for that; any such operations
+        // will revert with `UnsupportedOperation`.
+        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator, false);
+
         // Emit type-specific event first.
         emit WeightedLBPoolCreated(
             pool,
@@ -141,22 +150,6 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpCommonParams.reserveToken,
             migrationParams,
             hasMigration
-        );
-
-        PoolRoleAccounts memory roleAccounts;
-
-        // This account can change the static swap fee for the pool.
-        roleAccounts.swapFeeManager = lbpCommonParams.owner;
-        roleAccounts.poolCreator = poolCreator;
-
-        _registerPoolWithVault(
-            pool,
-            _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
-            swapFeePercentage,
-            false, // not exempt from protocol fees
-            roleAccounts,
-            pool, // register the pool itself as the hook contract
-            getDefaultLiquidityManagement()
         );
     }
 }
