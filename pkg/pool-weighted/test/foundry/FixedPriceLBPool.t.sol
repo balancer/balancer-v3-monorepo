@@ -805,7 +805,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testComputeBalance() public {
-        vm.expectRevert(FixedPriceLBPool.UnsupportedOperation.selector);
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
         IBasePool(pool).computeBalance(new uint256[](2), 0, FixedPoint.ONE);
     }
 

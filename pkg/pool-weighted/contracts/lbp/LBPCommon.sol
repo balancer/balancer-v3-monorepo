@@ -71,6 +71,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     /// @notice The LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
 
+    /// @notice Single token liquidity operations (that call `computeBalance` are unsupported.
+    error UnsupportedOperation();
+    
     /// @notice Only allow adding liquidity (including initialization) before the sale.
     modifier onlyBeforeSale() {
         if (block.timestamp >= _startTime) {
