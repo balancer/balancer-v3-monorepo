@@ -16,6 +16,7 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
+import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract SeedlessLBPTest is WeightedLBPTest {
@@ -457,96 +458,24 @@ contract SeedlessLBPTest is WeightedLBPTest {
     }
 
     function testSingleTokenExactOutAddProjectToken() public {
-        // Turn off the fee, since that complicates the math, and we're not testing fees here
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
         uint256 bptAmountOut = 100e18;
         uint256 maxAmountIn = poolInitAmount;
 
-        // Get state before
-        uint256[] memory realBalances = vault.getCurrentLiveBalances(pool);
-        uint256 totalSupply = IERC20(pool).totalSupply();
-
-        // For single token exact out, invariantRatio = (totalSupply + bptOut) / totalSupply
-        uint256 invariantRatio = (totalSupply + bptAmountOut).divUp(totalSupply);
-
-        // Calculate expected amount in using weighted math
-        // For project token, effective == real (no virtual component)
-        uint256 newProjectBalance = WeightedMath.computeBalanceOutGivenInvariant(
-            realBalances[projectIdx],
-            startWeights[projectIdx], // before the sale, so weights are at the start
-            invariantRatio
-        );
-        uint256 expectedAmountIn = newProjectBalance - realBalances[projectIdx];
-
-        uint256 projectBefore = projectToken.balanceOf(bob);
-        uint256 bptBefore = IERC20(pool).balanceOf(bob);
-
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
         vm.prank(bob);
         router.addLiquiditySingleTokenExactOut(pool, projectToken, maxAmountIn, bptAmountOut, false, bytes(""));
-
-        uint256 projectSpent = projectBefore - projectToken.balanceOf(bob);
-        uint256 bptReceived = IERC20(pool).balanceOf(bob) - bptBefore;
-
-        assertEq(bptReceived, bptAmountOut, "Wrong BPT amount");
-        assertApproxEqAbs(projectSpent, expectedAmountIn, 1, "Project amount mismatch");
-
-        // Verify pool balances updated correctly
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
-        assertEq(balancesAfter[projectIdx], realBalances[projectIdx] + projectSpent, "Pool project balance mismatch");
-        assertEq(balancesAfter[reserveIdx], 0, "Reserve should still be zero");
     }
 
     function testSingleTokenExactOutAddReserveToken() public {
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
         uint256 bptAmountOut = 100e18;
         uint256 maxAmountIn = poolInitAmount;
 
-        // Get state before
-        uint256[] memory realBalances = vault.getCurrentLiveBalances(pool);
-        uint256 totalSupply = IERC20(pool).totalSupply();
-
-        assertEq(realBalances[reserveIdx], 0, "Reserve should start at zero");
-
-        // For single token exact out, invariantRatio = (totalSupply + bptOut) / totalSupply
-        uint256 invariantRatio = (totalSupply + bptAmountOut).divUp(totalSupply);
-
-        // For reserve token, computeBalance uses effective balance (real + virtual)
-        uint256 effectiveReserve = realBalances[reserveIdx] + reserveTokenVirtualBalance;
-
-        uint256 newEffectiveBalance = WeightedMath.computeBalanceOutGivenInvariant(
-            effectiveReserve,
-            startWeights[reserveIdx], // before the sale, so weights are at the start
-            invariantRatio
-        );
-
-        // The pool returns real balance = newEffective - virtual
-        uint256 newRealBalance = newEffectiveBalance - reserveTokenVirtualBalance;
-        uint256 expectedAmountIn = newRealBalance - realBalances[reserveIdx];
-
-        uint256 reserveBefore = reserveToken.balanceOf(bob);
-        uint256 bptBefore = IERC20(pool).balanceOf(bob);
-
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
         vm.prank(bob);
         router.addLiquiditySingleTokenExactOut(pool, reserveToken, maxAmountIn, bptAmountOut, false, bytes(""));
-
-        uint256 reserveSpent = reserveBefore - reserveToken.balanceOf(bob);
-        uint256 bptReceived = IERC20(pool).balanceOf(bob) - bptBefore;
-
-        assertEq(bptReceived, bptAmountOut, "Wrong BPT amount");
-        assertApproxEqAbs(reserveSpent, expectedAmountIn, 1, "Reserve amount mismatch");
-
-        // Verify pool balances updated correctly
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
-        assertEq(balancesAfter[projectIdx], realBalances[projectIdx], "Project should be unchanged");
-        assertEq(balancesAfter[reserveIdx], reserveSpent, "Pool reserve balance mismatch");
-        assertGt(balancesAfter[reserveIdx], 0, "Reserve should now be non-zero");
     }
 
     function testSingleTokenExactInRemoveProjectToken() public {
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
         vm.warp(block.timestamp + DEFAULT_START_OFFSET);
 
         uint256 buyAmount = 10e18;
@@ -566,55 +495,19 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Warp to after sale
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
-        // Get state before removal
-        uint256[] memory realBalances = vault.getCurrentLiveBalances(pool);
-        uint256 totalSupply = IERC20(pool).totalSupply();
-
-        uint256 bptAmountIn = 1e18;
-
-        // For single token exact in remove, invariantRatio = (totalSupply - bptIn) / totalSupply
-        uint256 invariantRatio = (totalSupply - bptAmountIn).divDown(totalSupply);
-
-        // For project token, effective == real (no virtual component)
-        uint256 newProjectBalance = WeightedMath.computeBalanceOutGivenInvariant(
-            realBalances[projectIdx],
-            endWeights[projectIdx], // after the sale, so weights are at the end
-            invariantRatio
-        );
-        uint256 expectedAmountOut = realBalances[projectIdx] - newProjectBalance;
-
-        uint256 projectBefore = projectToken.balanceOf(bob);
-        uint256 bptBefore = IERC20(pool).balanceOf(bob);
-
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
         vm.prank(bob);
         router.removeLiquiditySingleTokenExactIn(
             pool,
-            bptAmountIn,
+            1e18,
             projectToken,
             1, // minAmountOut
             false,
             bytes("")
         );
-
-        uint256 projectReceived = projectToken.balanceOf(bob) - projectBefore;
-        uint256 bptSpent = bptBefore - IERC20(pool).balanceOf(bob);
-
-        assertEq(bptSpent, bptAmountIn, "Wrong BPT amount burned");
-        assertApproxEqRel(projectReceived, expectedAmountOut, 1e12, "Project amount mismatch"); // 0.0001% tolerance
-
-        // Verify pool balances updated correctly
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
-        assertApproxEqAbs(
-            balancesAfter[projectIdx],
-            realBalances[projectIdx] - projectReceived,
-            1,
-            "Pool project balance mismatch"
-        );
     }
 
     function testSingleTokenExactInRemoveReserveToken() public {
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
         vm.warp(block.timestamp + DEFAULT_START_OFFSET);
 
         // Need enough reserve in pool to support removal
@@ -635,90 +528,16 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Warp to after sale
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
-        // Get state before removal
-        uint256[] memory realBalances = vault.getCurrentLiveBalances(pool);
-        uint256 totalSupply = IERC20(pool).totalSupply();
-
-        assertGt(realBalances[reserveIdx], 0, "Need real reserve balance");
-
-        // Use small bptAmountIn to avoid underflow (can't remove more than real reserve)
-        uint256 bptAmountIn = 0.1e18;
-
-        // For single token exact in remove, invariantRatio = (totalSupply - bptIn) / totalSupply
-        uint256 invariantRatio = (totalSupply - bptAmountIn).divDown(totalSupply);
-
-        // For reserve token, computeBalance uses effective balance (real + virtual)
-        uint256 effectiveReserve = realBalances[reserveIdx] + reserveTokenVirtualBalance;
-
-        uint256 newEffectiveBalance = WeightedMath.computeBalanceOutGivenInvariant(
-            effectiveReserve,
-            endWeights[reserveIdx], // after the sale, so weights are at the end
-            invariantRatio
-        );
-
-        // The pool returns real balance = newEffective - virtual
-        uint256 newRealBalance = newEffectiveBalance - reserveTokenVirtualBalance;
-        uint256 expectedAmountOut = realBalances[reserveIdx] - newRealBalance;
-
-        uint256 reserveBefore = reserveToken.balanceOf(bob);
-        uint256 bptBefore = IERC20(pool).balanceOf(bob);
-
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
         vm.prank(bob);
         router.removeLiquiditySingleTokenExactIn(
             pool,
-            bptAmountIn,
+            1e18,
             reserveToken,
             1, // minAmountOut
             false,
             bytes("")
         );
-
-        uint256 reserveReceived = reserveToken.balanceOf(bob) - reserveBefore;
-        uint256 bptSpent = bptBefore - IERC20(pool).balanceOf(bob);
-
-        assertEq(bptSpent, bptAmountIn, "Wrong BPT amount burned");
-        assertApproxEqRel(reserveReceived, expectedAmountOut, 1e12, "Reserve amount mismatch"); // 0.0001% tolerance
-
-        // Verify pool balances updated correctly
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
-        assertApproxEqAbs(
-            balancesAfter[reserveIdx],
-            realBalances[reserveIdx] - reserveReceived,
-            1,
-            "Pool reserve balance mismatch"
-        );
-    }
-
-    function testSingleTokenRemoveReserveExceedsRealBalance() public {
-        // Minimal swaps, so real reserve is low
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET);
-        uint256 buyAmount = 1e18;
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            pool,
-            reserveToken,
-            projectToken,
-            buyAmount,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
-
-        // Warp to after sale
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        // Use a BPT amount that passes invariant ratio check (>0.7) but still triggers underflow
-        // With invariant ratio = 0.75, new effective reserve ≈ effective * 0.75^(1/0.7) ≈ effective * 0.65
-        // If effective = 1001e18, new effective ≈ 650e18, which is < virtual (1000e18) → underflow
-        uint256 totalSupply = IERC20(pool).totalSupply();
-        uint256 bptAmount = (totalSupply * 25) / 100; // 25% removal gives ~0.75 ratio
-
-        // This should revert due to underflow in computeBalance (newEffective - virtual < 0)
-        vm.expectRevert(LBPool.SingleTokenRemovalExceedsRealReserve.selector);
-        vm.prank(bob);
-        router.removeLiquiditySingleTokenExactIn(pool, bptAmount, reserveToken, 1, false, bytes(""));
     }
 
     /*******************************************************************************
@@ -862,20 +681,5 @@ contract SeedlessLBPTest is WeightedLBPTest {
 
         assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
         assertEq(poolBalances[reserveIdx], vaultBalances[reserveIdx], "Reserve balance should match exactly");
-
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        // Included for 100% test coverage
-        vm.startPrank(bob);
-        IERC20(nonSeedlessPool).approve(address(router), type(uint256).max);
-        router.removeLiquiditySingleTokenExactIn(
-            nonSeedlessPool,
-            1e18,
-            projectToken,
-            1, // minAmountOut
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
     }
 }
