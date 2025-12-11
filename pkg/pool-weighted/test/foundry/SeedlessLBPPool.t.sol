@@ -6,8 +6,9 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolConfig, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfig, Rounding, TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { ILBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -775,5 +776,77 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Owner should get all the accumulated reserve (proceeds) and remaining project tokens
         assertApproxEqRel(reserveReceived, totalBought, 0.01e18, "Owner should receive sale proceeds");
         assertGt(projectReceived, 0, "Owner should receive remaining project tokens");
+    }
+
+    /*******************************************************************************
+                                    PoolInfo Functions
+    *******************************************************************************/
+
+    function testGetCurrentLiveBalancesIncludesVirtual() public view {
+        uint256[] memory poolBalances = IPoolInfo(pool).getCurrentLiveBalances();
+        uint256[] memory vaultBalances = vault.getCurrentLiveBalances(pool);
+
+        assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
+        assertEq(
+            poolBalances[reserveIdx],
+            vaultBalances[reserveIdx] + reserveTokenVirtualBalance,
+            "Reserve should include virtual"
+        );
+    }
+
+    function testGetTokenInfoIncludesVirtual() public view {
+        (, , uint256[] memory balancesRaw, uint256[] memory lastBalancesLiveScaled18) = IPoolInfo(pool).getTokenInfo();
+
+        (, , uint256[] memory realBalancesRaw, uint256[] memory realLastBalancesLiveScaled18) = vault.getPoolTokenInfo(
+            pool
+        );
+
+        assertEq(balancesRaw[projectIdx], realBalancesRaw[projectIdx], "Project raw balance mismatch");
+        assertEq(
+            lastBalancesLiveScaled18[projectIdx],
+            realLastBalancesLiveScaled18[projectIdx],
+            "Project live balance mismatch"
+        );
+
+        assertEq(
+            balancesRaw[reserveIdx],
+            realBalancesRaw[reserveIdx] + reserveTokenVirtualBalance,
+            "Reserve raw should include virtual"
+        );
+        assertEq(
+            lastBalancesLiveScaled18[reserveIdx],
+            realLastBalancesLiveScaled18[reserveIdx] + reserveTokenVirtualBalance,
+            "Reserve live should include virtual"
+        );
+    }
+
+    function testGetCurrentLiveBalancesNonSeedless() public {
+        // Create a non-seedless pool
+        reserveTokenVirtualBalance = 0;
+
+        (address nonSeedlessPool, ) = _createLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+
+        // Initialize with both tokens
+        uint256[] memory initAmounts = new uint256[](2);
+        initAmounts[projectIdx] = poolInitAmount;
+        initAmounts[reserveIdx] = poolInitAmount;
+
+        vm.startPrank(bob);
+        _initPool(nonSeedlessPool, initAmounts, 0);
+        vm.stopPrank();
+
+        // Pool and vault should return same balances
+        uint256[] memory poolBalances = IPoolInfo(nonSeedlessPool).getCurrentLiveBalances();
+        uint256[] memory vaultBalances = vault.getCurrentLiveBalances(nonSeedlessPool);
+
+        assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
+        assertEq(poolBalances[reserveIdx], vaultBalances[reserveIdx], "Reserve balance should match exactly");
+
+        //reserveTokenVirtualBalance = savedVirtual;
     }
 }
