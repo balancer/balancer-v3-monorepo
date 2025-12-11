@@ -55,7 +55,7 @@ abstract contract BasePoolFactory is
 
     bool private _disabled;
 
-    /// @notice A pool creator was specified for a pool from a Balancer core pool type.
+    /// @notice A pool creator was specified for a pool type that doesn't support it.
     error StandardPoolWithCreator();
 
     constructor(

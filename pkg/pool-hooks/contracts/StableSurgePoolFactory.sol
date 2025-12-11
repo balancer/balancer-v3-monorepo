@@ -72,10 +72,6 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
         bool enableDonation,
         bytes32 salt
     ) external returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
         // As the Stable Pool deployment does not know about the tokens, and the registration doesn't know about the
         // pool type, we enforce the token limit at the factory level.
         if (tokens.length > StableMath.MAX_STABLE_TOKENS) {

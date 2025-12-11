@@ -157,8 +157,7 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
-        // Balancer factories do not allow poolCreator.
-        vm.expectRevert(BasePoolFactory.StandardPoolWithCreator.selector);
+        // Should not revert; stable surge pools can now have a pool creator.
         stablePoolFactory.create(
             "Pool with Creator",
             "CREATOR",

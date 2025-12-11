@@ -75,6 +75,8 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = alice;
+
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
@@ -175,5 +177,11 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
+    }
+
+    function testPoolCreator() public view {
+        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
+
+        assertEq(roleAccounts.poolCreator, alice, "Wrong pool creator");
     }
 }
