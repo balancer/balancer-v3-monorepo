@@ -55,9 +55,6 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     /// @notice LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
     error NotImplemented();
 
-    /// @notice Attempted withdrawal of reserve tokens with an insufficient real balance.
-    error SingleTokenRemovalExceedsRealReserve();
-
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
@@ -211,51 +208,27 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     ) public view override(IBasePool, WeightedPool) returns (uint256 invariant) {
         if (_reserveTokenVirtualBalanceScaled18 == 0) {
             // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
-            return super.computeInvariant(balancesLiveScaled18, rounding);
-        }
+            invariant = super.computeInvariant(balancesLiveScaled18, rounding);
+        } else {
+            uint256 originalReserveBalance = balancesLiveScaled18[_reserveTokenIndex];
+            balancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
 
-        // Include virtual balance in the invariant computation for seedless LBPs.
-        return super.computeInvariant(_getEffectiveBalancesScaled18(balancesLiveScaled18), rounding);
+            // Include virtual balance in the invariant computation for seedless LBPs.
+            invariant = super.computeInvariant(balancesLiveScaled18, rounding);
+
+            // Restore original so that we don't mutate memory parameters.
+            balancesLiveScaled18[_reserveTokenIndex] = originalReserveBalance;
+        }
     }
 
     /// @inheritdoc WeightedPool
     function computeBalance(
-        uint256[] memory balancesLiveScaled18,
-        uint256 tokenInIndex,
-        uint256 invariantRatio
-    ) public view override(IBasePool, WeightedPool) returns (uint256 newBalance) {
-        if (_reserveTokenVirtualBalanceScaled18 == 0) {
-            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
-            newBalance = super.computeBalance(balancesLiveScaled18, tokenInIndex, invariantRatio);
-        } else {
-            // Include virtual balance in the invariant computation for seedless LBPs.
-            newBalance = super.computeBalance(
-                _getEffectiveBalancesScaled18(balancesLiveScaled18),
-                tokenInIndex,
-                invariantRatio
-            );
-
-            // The Vault expects the real balance, so we need to adjust for the virtual balance if this is the reserve.
-            // Will underflow if the operation would require a negative real balance.
-            if (tokenInIndex == _reserveTokenIndex) {
-                if (newBalance < _reserveTokenVirtualBalanceScaled18) {
-                    revert SingleTokenRemovalExceedsRealReserve();
-                }
-
-                newBalance -= _reserveTokenVirtualBalanceScaled18;
-            }
-        }
-    }
-
-    function _getEffectiveBalancesScaled18(
-        uint256[] memory realBalancesScaled18
-    ) internal view returns (uint256[] memory effectiveBalancesScaled18) {
-        effectiveBalancesScaled18 = new uint256[](2);
-
-        effectiveBalancesScaled18[_projectTokenIndex] = realBalancesScaled18[_projectTokenIndex];
-        effectiveBalancesScaled18[_reserveTokenIndex] =
-            realBalancesScaled18[_reserveTokenIndex] +
-            _reserveTokenVirtualBalanceScaled18;
+        uint256[] memory,
+        uint256,
+        uint256
+    ) public pure override(IBasePool, WeightedPool) returns (uint256) {
+        // This is unused in these pools. We do not support single-token liquidity operations.
+        revert UnsupportedOperation();
     }
 
     /// @inheritdoc WeightedPool
