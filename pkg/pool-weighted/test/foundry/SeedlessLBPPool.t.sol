@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { PoolConfig, Rounding, TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
-import { ILBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
@@ -346,6 +346,67 @@ contract SeedlessLBPTest is WeightedLBPTest {
 
         uint256 effectivePrice = swapAmount.divDown(projectReceived);
         assertApproxEqAbs(effectivePrice, expectedSpotPrice, 1e13, "Wrong effective price");
+    }
+
+    /*******************************************************************************
+                                    Immutable Data
+    *******************************************************************************/
+
+    function testGetLBPoolImmutableData() public view {
+        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
+
+        // Check tokens array matches pool tokens
+        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
+        assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
+        assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
+        assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
+        assertEq(data.projectTokenIndex, projectIdx, "Project token index mismatch");
+        assertEq(data.reserveTokenIndex, reserveIdx, "Reserve token index mismatch");
+
+        // Check decimal scaling factors
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
+        assertEq(
+            data.decimalScalingFactors.length,
+            decimalScalingFactors.length,
+            "decimalScalingFactors length mismatch"
+        );
+        assertEq(
+            data.decimalScalingFactors[projectIdx],
+            decimalScalingFactors[projectIdx],
+            "Project scaling factor mismatch"
+        );
+        assertEq(
+            data.decimalScalingFactors[reserveIdx],
+            decimalScalingFactors[reserveIdx],
+            "Reserve scaling factor mismatch"
+        );
+
+        // Check project token swap in setting
+        assertEq(
+            data.isProjectTokenSwapInBlocked,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            "Project token swap in setting mismatch"
+        );
+
+        // Check start and end times
+        assertEq(data.startTime, block.timestamp + DEFAULT_START_OFFSET, "Start time mismatch");
+        assertEq(data.endTime, block.timestamp + DEFAULT_END_OFFSET, "End time mismatch");
+
+        // Check start weights
+        assertEq(data.startWeights.length, startWeights.length, "Start weights length mismatch");
+        assertEq(data.startWeights[projectIdx], startWeights[projectIdx], "Project start weight mismatch");
+        assertEq(data.startWeights[reserveIdx], startWeights[reserveIdx], "Reserve start weight mismatch");
+
+        // Check end weights
+        assertEq(data.endWeights.length, endWeights.length, "End weights length mismatch");
+        assertEq(data.endWeights[projectIdx], endWeights[projectIdx], "Project end weight mismatch");
+        assertEq(data.endWeights[reserveIdx], endWeights[reserveIdx], "Reserve end weight mismatch");
+
+        assertEq(
+            data.reserveTokenVirtualBalance,
+            reserveTokenVirtualBalance,
+            "Wrong reserve token balance (immutable data)"
+        );
     }
 
     /*******************************************************************************
@@ -847,6 +908,19 @@ contract SeedlessLBPTest is WeightedLBPTest {
         assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
         assertEq(poolBalances[reserveIdx], vaultBalances[reserveIdx], "Reserve balance should match exactly");
 
-        //reserveTokenVirtualBalance = savedVirtual;
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        // Included for 100% test coverage
+        vm.startPrank(bob);
+        IERC20(nonSeedlessPool).approve(address(router), type(uint256).max);
+        router.removeLiquiditySingleTokenExactIn(
+            nonSeedlessPool,
+            1e18,
+            projectToken,
+            1, // minAmountOut
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
     }
 }
