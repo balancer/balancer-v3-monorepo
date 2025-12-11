@@ -207,7 +207,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
      * @dev Take care to set the start time far enough in advance to allow for funding; otherwise the pool will remain
      * unfunded and need to be redeployed. Note that initialization does not pass the router address, so we cannot
      * directly check that here, though there has to be a call on the trusted router for its `getSender` to be
-     * non-zero.
+     * non-zero. Note that this is overridden in all existing LBPools, so this will never be called. We are leaving it
+     * in for future LBP types.
      *
      * @return success Always true: allow the initialization to proceed if the time condition has been met
      */
