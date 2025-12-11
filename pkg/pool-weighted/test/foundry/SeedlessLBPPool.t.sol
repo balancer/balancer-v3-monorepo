@@ -311,7 +311,8 @@ contract SeedlessLBPTest is WeightedLBPTest {
 
         // Check tokens array matches pool tokens
         IERC20[] memory poolTokens = vault.getPoolTokens(pool);
-        assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
+        assertEq(data.tokens.length, poolTokens.length, "Tokens length mismatch");
+        assertEq(data.tokens.length, 2, "Not two tokens");
         assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
         assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
         assertEq(data.projectTokenIndex, projectIdx, "Project token index mismatch");
