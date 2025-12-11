@@ -23,7 +23,7 @@ import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, VaultGuard, FeeBurnerAuthentication {
     using SafeERC20 for IERC20;
 
-    mapping(IERC20 => StepsInfo) internal _burnStepsInfo;
+    mapping(IERC20 => SwapPathStep[]) private _burnSteps;
 
     constructor(
         IVault vault,
@@ -35,7 +35,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
 
     /// @inheritdoc IBalancerFeeBurner
     function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external onlyFeeRecipientOrOwner {
-        uint256 index = _burnStepsInfo[feeToken].currentIndex + 1;
+        delete _burnSteps[feeToken];
 
         IERC20 stepTokenIn = feeToken;
         for (uint256 i = 0; i < steps.length; i++) {
@@ -62,10 +62,8 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
 
             stepTokenIn = step.tokenOut;
 
-            _burnStepsInfo[feeToken].steps[index].push(steps[i]);
+            _burnSteps[feeToken].push(steps[i]);
         }
-
-        _burnStepsInfo[feeToken].currentIndex = index;
     }
 
     /// @inheritdoc IBalancerFeeBurner
@@ -74,8 +72,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
     }
 
     function _getBurnPath(IERC20 feeToken) internal view returns (SwapPathStep[] memory steps) {
-        uint256 index = _burnStepsInfo[feeToken].currentIndex;
-        steps = _burnStepsInfo[feeToken].steps[index];
+        steps = _burnSteps[feeToken];
 
         if (steps.length == 0) {
             revert BurnPathDoesNotExist();

@@ -9,11 +9,6 @@ import { SwapPathStep } from "../vault/BatchRouterTypes.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IBalancerFeeBurner is IProtocolFeeBurner {
-    struct StepsInfo {
-        uint256 currentIndex;
-        mapping(uint256 => SwapPathStep[]) steps;
-    }
-
     /**
      * @notice Invalid token out for buffer step.
      * @param tokenOut The invalid token.
