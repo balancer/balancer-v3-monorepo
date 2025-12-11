@@ -12,6 +12,7 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
@@ -319,6 +320,39 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         }
 
         return ISenderGuard(_trustedRouter).getSender() == owner();
+    }
+
+    /*******************************************************************************
+                                  PoolInfo Functions
+    *******************************************************************************/
+
+    /// @inheritdoc PoolInfo
+    function getTokenInfo()
+        external
+        view
+        override
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory lastBalancesLiveScaled18
+        )
+    {
+        (tokens, tokenInfo, balancesRaw, lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(this));
+
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            lastBalancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+            balancesRaw[_reserveTokenIndex] += _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+        }
+    }
+
+    /// @inheritdoc PoolInfo
+    function getCurrentLiveBalances() external view override returns (uint256[] memory balancesLiveScaled18) {
+        balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            balancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+        }
     }
 
     /*******************************************************************************
