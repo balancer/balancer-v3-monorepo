@@ -209,11 +209,12 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         uint256[] memory balancesLiveScaled18,
         Rounding rounding
     ) public view override(IBasePool, WeightedPool) returns (uint256 invariant) {
-        // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
         if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
             return super.computeInvariant(balancesLiveScaled18, rounding);
         }
 
+        // Include virtual balance in the invariant computation for seedless LBPs.
         return super.computeInvariant(_getEffectiveBalances(balancesLiveScaled18), rounding);
     }
 
@@ -227,7 +228,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
             newBalance = super.computeBalance(balancesLiveScaled18, tokenInIndex, invariantRatio);
         } else {
-            // This is a seedless LBP - use virtual balances.
+            // Include virtual balance in the invariant computation for seedless LBPs.
             newBalance = super.computeBalance(
                 _getEffectiveBalances(balancesLiveScaled18),
                 tokenInIndex,
@@ -267,12 +268,12 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             revert SwapOfProjectTokenIn();
         }
 
-        // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
         if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
             return super.onSwap(request);
         }
 
-        // This is a seedless LBP, modify the request to use the virtual balance.
+        // This is a seedless LBP, modify the request to use the virtual balance. Copy to avoid mutating memory params.
         PoolSwapParams memory seedlessRequest = PoolSwapParams({
             kind: request.kind,
             amountGivenScaled18: request.amountGivenScaled18,
@@ -289,7 +290,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
 
         uint256 calculatedAmountScaled18 = super.onSwap(seedlessRequest);
 
-        // If we are returning reserve tokens, ensure we have enough real balance to cover it.
+        // If we are returning reserve tokens, ensure we have enough real balance.
         if (
             request.indexOut == _reserveTokenIndex &&
             calculatedAmountScaled18 > request.balancesScaled18[_reserveTokenIndex]
