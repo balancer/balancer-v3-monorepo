@@ -215,7 +215,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         }
 
         // Include virtual balance in the invariant computation for seedless LBPs.
-        return super.computeInvariant(_getEffectiveBalances(balancesLiveScaled18), rounding);
+        return super.computeInvariant(_getEffectiveBalancesScaled18(balancesLiveScaled18), rounding);
     }
 
     /// @inheritdoc WeightedPool
@@ -230,7 +230,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         } else {
             // Include virtual balance in the invariant computation for seedless LBPs.
             newBalance = super.computeBalance(
-                _getEffectiveBalances(balancesLiveScaled18),
+                _getEffectiveBalancesScaled18(balancesLiveScaled18),
                 tokenInIndex,
                 invariantRatio
             );
@@ -247,13 +247,13 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         }
     }
 
-    function _getEffectiveBalances(
-        uint256[] memory realBalances
-    ) internal view returns (uint256[] memory effectiveBalances) {
-        effectiveBalances = new uint256[](2);
+    function _getEffectiveBalancesScaled18(
+        uint256[] memory realBalancesScaled18
+    ) internal view returns (uint256[] memory effectiveBalancesScaled18) {
+        effectiveBalancesScaled18 = new uint256[](2);
 
-        effectiveBalances[_projectTokenIndex] = realBalances[_projectTokenIndex];
-        effectiveBalances[_reserveTokenIndex] = realBalances[_reserveTokenIndex] + _reserveTokenVirtualBalanceScaled18;
+        effectiveBalancesScaled18[_projectTokenIndex] = realBalancesScaled18[_projectTokenIndex];
+        effectiveBalancesScaled18[_reserveTokenIndex] = realBalancesScaled18[_reserveTokenIndex] + _reserveTokenVirtualBalanceScaled18;
     }
 
     /// @inheritdoc WeightedPool
