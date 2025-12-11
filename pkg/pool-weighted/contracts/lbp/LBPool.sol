@@ -253,7 +253,9 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         effectiveBalancesScaled18 = new uint256[](2);
 
         effectiveBalancesScaled18[_projectTokenIndex] = realBalancesScaled18[_projectTokenIndex];
-        effectiveBalancesScaled18[_reserveTokenIndex] = realBalancesScaled18[_reserveTokenIndex] + _reserveTokenVirtualBalanceScaled18;
+        effectiveBalancesScaled18[_reserveTokenIndex] =
+            realBalancesScaled18[_reserveTokenIndex] +
+            _reserveTokenVirtualBalanceScaled18;
     }
 
     /// @inheritdoc WeightedPool
@@ -273,33 +275,19 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             return super.onSwap(request);
         }
 
-        // This is a seedless LBP, modify the request to use the virtual balance. Copy to avoid mutating memory params.
-        PoolSwapParams memory seedlessRequest = PoolSwapParams({
-            kind: request.kind,
-            amountGivenScaled18: request.amountGivenScaled18,
-            balancesScaled18: new uint256[](2), // LBPs are 2-token only
-            indexIn: request.indexIn,
-            indexOut: request.indexOut,
-            router: request.router,
-            userData: request.userData
-        });
-        seedlessRequest.balancesScaled18[_projectTokenIndex] = request.balancesScaled18[_projectTokenIndex];
-        seedlessRequest.balancesScaled18[_reserveTokenIndex] =
-            request.balancesScaled18[_reserveTokenIndex] +
-            _reserveTokenVirtualBalanceScaled18;
+        // Mutate the request to add the virtual balance for seedless LBPs, and restore it later.
+        uint256 originalReserveBalance = request.balancesScaled18[_reserveTokenIndex];
+        request.balancesScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
 
-        uint256 calculatedAmountScaled18 = super.onSwap(seedlessRequest);
+        uint256 calculatedAmountScaled18 = super.onSwap(request);
 
         // If we are returning reserve tokens, ensure we have enough real balance.
-        if (
-            request.indexOut == _reserveTokenIndex &&
-            calculatedAmountScaled18 > request.balancesScaled18[_reserveTokenIndex]
-        ) {
-            revert InsufficientRealReserveBalance(
-                calculatedAmountScaled18,
-                request.balancesScaled18[_reserveTokenIndex]
-            );
+        if (request.indexOut == _reserveTokenIndex && calculatedAmountScaled18 > originalReserveBalance) {
+            revert InsufficientRealReserveBalance(calculatedAmountScaled18, originalReserveBalance);
         }
+
+        // Restore the original request reserve balance.
+        request.balancesScaled18[_reserveTokenIndex] = originalReserveBalance;
 
         return calculatedAmountScaled18;
     }
