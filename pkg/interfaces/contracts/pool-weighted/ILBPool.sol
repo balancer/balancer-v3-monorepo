@@ -83,7 +83,7 @@ struct LBPoolImmutableData {
     uint256 projectTokenIndex;
     uint256 reserveTokenIndex;
     bool isProjectTokenSwapInBlocked;
-    // LBPool-specific parameters (weight transitions / seedless flag)
+    // LBPool-specific parameters (weight transitions / virtual balance for seedless)
     uint256[] startWeights;
     uint256[] endWeights;
     uint256 reserveTokenVirtualBalance;
