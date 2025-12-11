@@ -269,10 +269,10 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     function _toScaled18(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return amount.mulDown(scalingFactor);
+        return amount * scalingFactor;
     }
 
     function _toRaw(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return amount.divDown(scalingFactor);
+        return amount / scalingFactor;
     }
 }
