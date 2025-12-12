@@ -52,9 +52,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      */
     uint256 private immutable _projectTokenRate;
 
-    /// @notice Single token liquidity operations (that call `computeBalance` are unsupported.
-    error UnsupportedOperation();
-
     constructor(
         LBPCommonParams memory lbpCommonParams,
         FactoryParams memory factoryParams,

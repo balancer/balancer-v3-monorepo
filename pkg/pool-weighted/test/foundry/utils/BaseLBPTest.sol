@@ -38,10 +38,20 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     IERC20 internal projectToken;
     IERC20 internal reserveToken;
 
+    IERC20 internal projectTokenNon18;
+    IERC20 internal reserveTokenNon18;
+
     uint256 internal projectIdx;
     uint256 internal reserveIdx;
 
+    uint256 internal projectIdxNon18;
+    uint256 internal reserveIdxNon18;
+
     uint256 internal _saltCounter;
+
+    address internal poolNon18;
+
+    uint256[] internal poolInitAmountsNon18;
 
     BalancerContractRegistry internal balancerContractRegistry;
     WeightedPoolFactory internal weightedPoolFactory;
@@ -56,6 +66,15 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
         reserveToken = usdc;
 
         (projectIdx, reserveIdx) = getSortedIndexes(address(projectToken), address(reserveToken));
+
+        projectTokenNon18 = wbtc8Decimals;
+        reserveTokenNon18 = usdc6Decimals;
+
+        (projectIdxNon18, reserveIdxNon18) = getSortedIndexes(address(projectTokenNon18), address(reserveTokenNon18));
+
+        poolInitAmountsNon18 = new uint256[](2);
+        poolInitAmountsNon18[projectIdxNon18] = 1e3 * 1e8;
+        poolInitAmountsNon18[reserveIdxNon18] = 1e3 * 1e6;
 
         weightedPoolFactory = deployWeightedPoolFactory(
             IVault(address(vault)),
@@ -100,6 +119,15 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function _createLBPoolNon18(
+        address poolCreator,
+        uint32 startTime,
+        uint32 endTime,
+        bool blockProjectTokenSwapsIn
+    ) internal virtual returns (address newPool, bytes memory poolArgs) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     function _createLBPoolWithMigration(
         address poolCreator,
         uint256 lockDurationAfterMigration,
@@ -108,5 +136,20 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
         uint256 migrationWeightReserveToken
     ) internal virtual returns (address newPool, bytes memory poolArgs) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function _deployAndInitPoolNon18() internal {
+        (poolNon18, ) = _createLBPoolNon18(
+            address(0), // Pool creator
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+        uint256[] memory initAmountsNon18 = new uint256[](2);
+        initAmountsNon18[projectIdxNon18] = poolInitAmountsNon18[projectIdxNon18];
+
+        vm.startPrank(bob); // Bob is the owner of the pool.
+        _initPool(poolNon18, initAmountsNon18, 0); // Zero reserve tokens
+        vm.stopPrank();
     }
 }
