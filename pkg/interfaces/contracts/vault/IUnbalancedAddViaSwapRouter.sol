@@ -26,13 +26,6 @@ interface IUnbalancedAddViaSwapRouter {
     }
 
     /**
-     * @notice The amountIn for the exact token does not match the exactAmount specified.
-     * @param amountIn The total token amount in
-     * @param exactAmount The amount that was expected
-     */
-    error AmountInDoesNotMatchExact(uint256 amountIn, uint256 exactAmount);
-
-    /**
      * @notice The amountIn for the adjustable token exceeds the maxAdjustableAmount specified.
      * @param amountIn The total token amount in
      * @param maxAdjustableAmount The amount of the limit that has been exceeded
