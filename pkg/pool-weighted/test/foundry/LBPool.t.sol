@@ -73,7 +73,8 @@ contract LBPoolTest is WeightedLBPTest {
             projectTokenStartWeight: 90e16,
             reserveTokenStartWeight: 10e16,
             projectTokenEndWeight: 10e16,
-            reserveTokenEndWeight: 90e16
+            reserveTokenEndWeight: 90e16,
+            reserveTokenVirtualBalance: reserveTokenVirtualBalance
         });
 
         vm.expectRevert(LBPValidation.InvalidProjectToken.selector);
@@ -262,8 +263,10 @@ contract LBPoolTest is WeightedLBPTest {
 
         vm.revertToState(preCreateSnapshotId);
 
+        bool isSeedless = reserveTokenVirtualBalance > 0;
+
         vm.expectEmit();
-        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false); // no migration
+        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false, isSeedless); // no migration
 
         vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
@@ -535,7 +538,8 @@ contract LBPoolTest is WeightedLBPTest {
 
         // Check tokens array matches pool tokens
         IERC20[] memory poolTokens = vault.getPoolTokens(pool);
-        assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
+        assertEq(data.tokens.length, poolTokens.length, "Tokens length mismatch");
+        assertEq(data.tokens.length, 2, "Not two tokens");
         assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
         assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
         assertEq(data.projectTokenIndex, projectIdx, "Project token index mismatch");
@@ -579,6 +583,18 @@ contract LBPoolTest is WeightedLBPTest {
         assertEq(data.endWeights.length, endWeights.length, "End weights length mismatch");
         assertEq(data.endWeights[projectIdx], endWeights[projectIdx], "Project end weight mismatch");
         assertEq(data.endWeights[reserveIdx], endWeights[reserveIdx], "Reserve end weight mismatch");
+
+        assertEq(
+            data.reserveTokenVirtualBalance,
+            reserveTokenVirtualBalance,
+            "Wrong reserve token balance (immutable data)"
+        );
+    }
+
+    function testReserveVirtualBalance() public view {
+        (uint256 virtualBalanceRaw, ) = ILBPool(pool).getReserveTokenVirtualBalance();
+
+        assertEq(virtualBalanceRaw, reserveTokenVirtualBalance, "Wrong reserve token balance (direct getter)");
     }
 
     /*******************************************************************************
@@ -838,7 +854,9 @@ contract LBPoolTest is WeightedLBPTest {
         );
     }
 
-    function testOnBeforeRemoveLiquidityBeforeEndTime() public {
+    function testOnBeforeRemoveLiquidityDuringSale() public {
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
         // Try to remove liquidity before end time.
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.RemovingLiquidityNotAllowed.selector);
@@ -851,6 +869,24 @@ contract LBPoolTest is WeightedLBPTest {
             new uint256[](0),
             bytes("")
         );
+    }
+
+    function testOnBeforeRemoveLiquidityBeforeStartTime() public {
+        // Warp to just before start time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        vm.prank(address(vault));
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
     function testOnBeforeRemoveLiquidityAfterEndTime() public {

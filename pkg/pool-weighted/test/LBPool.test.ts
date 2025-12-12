@@ -5,7 +5,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ONE, FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import {
   MAX_UINT256,
   MAX_UINT160,
@@ -78,7 +78,8 @@ describe('LBPool', function () {
       reserveTokenEndWeight,
       startTime,
       endTime,
-      blockProjectTokenSwapsIn
+      blockProjectTokenSwapsIn,
+      bn(0) // virtual balance
     );
 
     const receipt = await tx.wait();
@@ -94,7 +95,8 @@ describe('LBPool', function () {
     reserveTokenEndWeight: bigint,
     startTime: bigint,
     endTime: bigint,
-    blockProjectTokenSwapsIn: boolean
+    blockProjectTokenSwapsIn: boolean,
+    reserveTokenVirtualBalance: bigint
   ): Promise<ContractTransactionResponse> {
     const tokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
@@ -114,6 +116,7 @@ describe('LBPool', function () {
       reserveTokenStartWeight,
       projectTokenEndWeight,
       reserveTokenEndWeight,
+      reserveTokenVirtualBalance,
     };
 
     return factory.create(lbpCommonParams, lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
@@ -243,7 +246,16 @@ describe('LBPool', function () {
         const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await deployPoolTx(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
+        const tx = await deployPoolTx(
+          WEIGHTS[0],
+          WEIGHTS[1],
+          endWeights[0],
+          endWeights[1],
+          startTime,
+          endTime,
+          false,
+          bn(0)
+        );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
@@ -257,14 +269,17 @@ describe('LBPool', function () {
       it('should only allow owner to be the LP', async () => {
         await advanceToTimestamp(globalPoolStartTime - bn(MINUTE));
 
-        const amounts: bigint[] = [FP_ZERO, FP_ZERO];
-        amounts[tokenAIdx] = SWAP_AMOUNT;
+        const amounts: bigint[] = [SWAP_AMOUNT, SWAP_AMOUNT];
 
         await expect(
           router.addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
         ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
 
-        await router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x');
+        await expect(
+          router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
+
+        router.connect(admin).addLiquidityProportional(globalPool, amounts, FP_ONE, false, '0x');
       });
     });
 
@@ -296,27 +311,27 @@ describe('LBPool', function () {
 
         // Try to set start weight below 1%
         await expect(
-          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set start weight above 99%
         await expect(
-          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight below 1%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight above 99%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Valid weight update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)).to.not.be
-          .reverted;
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))).to.not
+          .be.reverted;
       });
 
       it('should not allow endTime before startTime', async () => {
@@ -325,12 +340,13 @@ describe('LBPool', function () {
 
         // Try to set endTime before startTime
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
 
         // Valid time update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
-          .to.not.be.reverted;
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false, bn(0))
+        ).to.not.be.reverted;
       });
 
       it('should always sum weights to 1', async () => {

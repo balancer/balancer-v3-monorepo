@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-
-import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPValidation } from "./LBPValidation.sol";
@@ -19,7 +16,7 @@ import { LBPool } from "./LBPool.sol";
  * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
  * with parameters specified on deployment.
  */
-contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
+contract LBPoolFactory is BaseLBPFactory {
     /**
      * @notice Event emitted when a standard weighted LBPool is deployed.
      * @dev The common factory emits LBPoolCreated (with the pool address and project/reserve tokens). This event gives
@@ -30,12 +27,14 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
      * @param owner Address of the pool's owner
      * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
      * @param hasMigration True if the pool will be migrated after the sale
+     * @param isSeedless True if this is a seedless LBP (i.e., no reserve token supplied on initialization)
      */
     event WeightedLBPoolCreated(
         address indexed pool,
         address indexed owner,
         bool blockProjectTokenSwapsIn,
-        bool hasMigration
+        bool hasMigration,
+        bool isSeedless
     );
 
     constructor(
@@ -46,8 +45,15 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         address trustedRouter,
         address migrationRouter
     )
-        BaseLBPFactory(factoryVersion, poolVersion, trustedRouter, migrationRouter)
-        BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode)
+        BaseLBPFactory(
+            vault,
+            pauseWindowDuration,
+            factoryVersion,
+            poolVersion,
+            trustedRouter,
+            migrationRouter,
+            type(LBPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -113,6 +119,7 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
         );
 
         bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
+        bool isSeedless = lbpParams.reserveTokenVirtualBalance > 0;
 
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
@@ -122,8 +129,16 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
+        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
+
         // Emit type-specific event first.
-        emit WeightedLBPoolCreated(pool, lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, hasMigration);
+        emit WeightedLBPoolCreated(
+            pool,
+            lbpCommonParams.owner,
+            lbpCommonParams.blockProjectTokenSwapsIn,
+            hasMigration,
+            isSeedless
+        );
 
         // Emit common events via base contract helper.
         _emitPoolCreatedEvents(
@@ -132,22 +147,6 @@ contract LBPoolFactory is BaseLBPFactory, BasePoolFactory {
             lbpCommonParams.reserveToken,
             migrationParams,
             hasMigration
-        );
-
-        PoolRoleAccounts memory roleAccounts;
-
-        // This account can change the static swap fee for the pool.
-        roleAccounts.swapFeeManager = lbpCommonParams.owner;
-        roleAccounts.poolCreator = poolCreator;
-
-        _registerPoolWithVault(
-            pool,
-            _buildTokenConfig(lbpCommonParams.projectToken, lbpCommonParams.reserveToken),
-            swapFeePercentage,
-            false, // not exempt from protocol fees
-            roleAccounts,
-            pool, // register the pool itself as the hook contract
-            getDefaultLiquidityManagement()
         );
     }
 }
