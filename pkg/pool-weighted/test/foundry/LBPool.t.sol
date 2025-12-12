@@ -592,11 +592,9 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testReserveVirtualBalance() public view {
-        assertEq(
-            ILBPool(pool).getReserveTokenVirtualBalance(),
-            reserveTokenVirtualBalance,
-            "Wrong reserve token balance (direct getter)"
-        );
+        (uint256 virtualBalanceRaw, ) = ILBPool(pool).getReserveTokenVirtualBalance();
+
+        assertEq(virtualBalanceRaw, reserveTokenVirtualBalance, "Wrong reserve token balance (direct getter)");
     }
 
     /*******************************************************************************
