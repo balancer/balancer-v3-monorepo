@@ -22,7 +22,9 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
     uint256[] internal startWeights;
     uint256[] internal endWeights;
 
-    uint256 internal reserveTokenVirtualBalance; // 0 for non-seedless LBPs
+    // Virtual balances will be zero for non-seedless LBPs
+    uint256 internal reserveTokenVirtualBalance;
+    uint256 internal reserveTokenVirtualBalanceNon18;
 
     function setUp() public virtual override {
         super.setUp();
@@ -63,6 +65,25 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
     ) internal virtual override returns (address newPool, bytes memory poolArgs) {
         return
             _createLBPoolWithCustomWeights(
+                poolCreator,
+                startWeights[projectIdx],
+                startWeights[reserveIdx],
+                endWeights[projectIdx],
+                endWeights[reserveIdx],
+                startTime,
+                endTime,
+                blockProjectTokenSwapsIn
+            );
+    }
+
+    function _createLBPoolNon18(
+        address poolCreator,
+        uint32 startTime,
+        uint32 endTime,
+        bool blockProjectTokenSwapsIn
+    ) internal virtual override returns (address newPool, bytes memory poolArgs) {
+        return
+            _createLBPoolWithCustomWeightsNon18(
                 poolCreator,
                 startWeights[projectIdx],
                 startWeights[reserveIdx],
@@ -161,6 +182,52 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             projectTokenEndWeight: projectTokenEndWeight,
             reserveTokenEndWeight: reserveTokenEndWeight,
             reserveTokenVirtualBalance: reserveTokenVirtualBalance
+        });
+
+        MigrationParams memory migrationParams;
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            poolVersion: poolVersion
+        });
+
+        // Copy to local variable to free up parameter stack slot.
+        address poolCreator_ = poolCreator;
+        uint256 salt = _saltCounter++;
+
+        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_);
+
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
+    }
+
+    function _createLBPoolWithCustomWeightsNon18(
+        address poolCreator,
+        uint256 projectTokenStartWeight,
+        uint256 reserveTokenStartWeight,
+        uint256 projectTokenEndWeight,
+        uint256 reserveTokenEndWeight,
+        uint32 startTime,
+        uint32 endTime,
+        bool blockProjectTokenSwapsIn
+    ) internal returns (address newPool, bytes memory poolArgs) {
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: projectTokenNon18,
+            reserveToken: reserveTokenNon18,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: projectTokenStartWeight,
+            reserveTokenStartWeight: reserveTokenStartWeight,
+            projectTokenEndWeight: projectTokenEndWeight,
+            reserveTokenEndWeight: reserveTokenEndWeight,
+            reserveTokenVirtualBalance: reserveTokenVirtualBalanceNon18
         });
 
         MigrationParams memory migrationParams;
