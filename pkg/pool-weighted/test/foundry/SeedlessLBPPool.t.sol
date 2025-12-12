@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { PoolConfig, Rounding, TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -467,7 +468,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
         uint256 bptAmountOut = 100e18;
         uint256 maxAmountIn = poolInitAmount;
 
-        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.prank(bob);
         router.addLiquiditySingleTokenExactOut(pool, projectToken, maxAmountIn, bptAmountOut, false, bytes(""));
     }
@@ -476,7 +477,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
         uint256 bptAmountOut = 100e18;
         uint256 maxAmountIn = poolInitAmount;
 
-        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.prank(bob);
         router.addLiquiditySingleTokenExactOut(pool, reserveToken, maxAmountIn, bptAmountOut, false, bytes(""));
     }
@@ -501,7 +502,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Warp to after sale
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
-        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.prank(bob);
         router.removeLiquiditySingleTokenExactIn(
             pool,
@@ -534,7 +535,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Warp to after sale
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
-        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.prank(bob);
         router.removeLiquiditySingleTokenExactIn(
             pool,
