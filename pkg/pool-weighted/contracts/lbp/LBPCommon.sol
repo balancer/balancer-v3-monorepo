@@ -240,7 +240,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Only allow requests after the weight update is finished, and the sale is complete.
+     * @notice Only remove liquidity before the sale (to correct mistakes) or after the sale (withdrawal of proceeds).
      * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
      */
     function onBeforeRemoveLiquidity(
@@ -252,8 +252,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view virtual override returns (bool) {
-        // Only allow removing liquidity after end time.
-        if (block.timestamp <= _endTime) {
+        // Do not allow removing liquidity during the sale.
+        if (block.timestamp >= _startTime && block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 
