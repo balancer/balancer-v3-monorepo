@@ -125,6 +125,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             false // Migration unsupported for fixed price LBPs
         );
 
-        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator, true); // disable unbalanced liquidity
+        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
     }
 }

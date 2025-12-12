@@ -129,10 +129,7 @@ contract LBPoolFactory is BaseLBPFactory {
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
-        // Unbalanced liquidity is not disabled entirely, because we still want to support unbalanced adds.
-        // Single-token liquidity is not supported, but there is no separate flag for that; any such operations
-        // will revert with `UnsupportedOperation`.
-        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator, false);
+        _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
 
         // Emit type-specific event first.
         emit WeightedLBPoolCreated(

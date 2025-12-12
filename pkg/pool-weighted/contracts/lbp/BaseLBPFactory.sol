@@ -144,12 +144,11 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
         address pool,
         LBPCommonParams memory lbpCommonParams,
         uint256 swapFeePercentage,
-        address poolCreator,
-        bool disableUnbalancedLiquidity
+        address poolCreator
     ) internal {
         PoolRoleAccounts memory roleAccounts;
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
+        liquidityManagement.disableUnbalancedLiquidity = true;
 
         // This account can change the static swap fee for the pool.
         roleAccounts.swapFeeManager = lbpCommonParams.owner;
