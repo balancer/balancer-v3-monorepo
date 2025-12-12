@@ -619,6 +619,175 @@ contract SeedlessLBPTest is WeightedLBPTest {
         assertGt(projectReceived, 0, "Owner should receive remaining project tokens");
     }
 
+    struct SwapTestLocals {
+        address seedlessPool;
+        address seededPool;
+        IERC20 projToken;
+        IERC20 resToken;
+        uint256 projIdx;
+        uint256 resIdx;
+        uint256 virtualBalance;
+        uint256 projectInitAmount;
+    }
+
+    function testSeedlessVsSeededSwaps__Fuzz(uint256 swapAmount, uint256 timeOffset, bool useNon18Decimals) public {
+        uint256 saleLength = DEFAULT_END_OFFSET - DEFAULT_START_OFFSET;
+        timeOffset = bound(timeOffset, 0, saleLength - 1);
+
+        SwapTestLocals memory locals;
+
+        if (useNon18Decimals) {
+            locals.projToken = projectTokenNon18;
+            locals.resToken = reserveTokenNon18;
+            locals.projIdx = projectIdxNon18;
+            locals.resIdx = reserveIdxNon18;
+            locals.virtualBalance = reserveTokenVirtualBalanceNon18;
+            locals.projectInitAmount = poolInitAmountsNon18[locals.projIdx];
+
+            // Bound swap amount to reasonable range for 6-decimal token
+            swapAmount = bound(swapAmount, 1e4, locals.virtualBalance / 10); // 0.01 to 10% of virtual
+        } else {
+            locals.projToken = projectToken;
+            locals.resToken = reserveToken;
+            locals.projIdx = projectIdx;
+            locals.resIdx = reserveIdx;
+            locals.virtualBalance = reserveTokenVirtualBalance;
+            locals.projectInitAmount = poolInitAmount;
+
+            // Bound swap amount to reasonable range for 18-decimal token
+            swapAmount = bound(swapAmount, 1e15, locals.virtualBalance / 10);
+        }
+
+        function(address, uint32, uint32, bool) returns (address, bytes memory) _createLBP = useNon18Decimals
+            ? _createLBPoolNon18
+            : _createLBPool;
+
+        // Create seedless pool (virtual reserves, no real reserves)
+        {
+            (locals.seedlessPool, ) = _createLBP(
+                address(0),
+                uint32(block.timestamp + DEFAULT_START_OFFSET),
+                uint32(block.timestamp + DEFAULT_END_OFFSET),
+                DEFAULT_PROJECT_TOKENS_SWAP_IN
+            );
+
+            uint256[] memory seedlessInitAmounts = new uint256[](2);
+            seedlessInitAmounts[locals.projIdx] = locals.projectInitAmount;
+            seedlessInitAmounts[locals.resIdx] = 0; // No real reserves
+
+            vm.startPrank(bob);
+            _initPool(locals.seedlessPool, seedlessInitAmounts, 0);
+            vm.stopPrank();
+        }
+
+        // Create seeded pool (real reserves, no virtual)
+        {
+            // Temporarily set virtual balance to 0 for seeded pool creation
+            uint256 savedVirtual = useNon18Decimals ? reserveTokenVirtualBalanceNon18 : reserveTokenVirtualBalance;
+            if (useNon18Decimals) {
+                reserveTokenVirtualBalanceNon18 = 0;
+            } else {
+                reserveTokenVirtualBalance = 0;
+            }
+
+            (locals.seededPool, ) = _createLBP(
+                address(0),
+                uint32(block.timestamp + DEFAULT_START_OFFSET),
+                uint32(block.timestamp + DEFAULT_END_OFFSET),
+                DEFAULT_PROJECT_TOKENS_SWAP_IN
+            );
+
+            uint256[] memory seededInitAmounts = new uint256[](2);
+            seededInitAmounts[locals.projIdx] = locals.projectInitAmount;
+            seededInitAmounts[locals.resIdx] = locals.virtualBalance; // Real reserves equal to virtual
+
+            vm.startPrank(bob);
+            _initPool(locals.seededPool, seededInitAmounts, 0);
+            vm.stopPrank();
+
+            // Restore virtual balance setting
+            if (useNon18Decimals) {
+                reserveTokenVirtualBalanceNon18 = savedVirtual;
+            } else {
+                reserveTokenVirtualBalance = savedVirtual;
+            }
+        }
+
+        // Set identical swap fees (zero for exact comparison)
+        vault.manualUnsafeSetStaticSwapFeePercentage(locals.seedlessPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(locals.seededPool, 0);
+
+        // Warp to sale period
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + timeOffset);
+
+        // Verify both pools have same effective reserve balance
+        {
+            uint256[] memory seedlessBalances = IPoolInfo(locals.seedlessPool).getCurrentLiveBalances();
+            uint256[] memory seededBalances = IPoolInfo(locals.seededPool).getCurrentLiveBalances();
+
+            assertEq(seedlessBalances[locals.projIdx], seededBalances[locals.projIdx], "Project balances should match");
+            assertEq(
+                seedlessBalances[locals.resIdx],
+                seededBalances[locals.resIdx],
+                "Effective reserve balances should match"
+            );
+        }
+
+        // Test ExactIn: Buy project tokens with reserve tokens
+        {
+            uint256 seedlessOut = _swapExactIn(locals.seedlessPool, locals.resToken, locals.projToken, swapAmount);
+            uint256 seededOut = _swapExactIn(locals.seededPool, locals.resToken, locals.projToken, swapAmount);
+
+            assertEq(seedlessOut, seededOut, "ExactIn buy: outputs should be identical");
+        }
+
+        // Test ExactOut: Buy specific amount of project tokens
+        uint256 exactOutAmount = swapAmount / 3; // Use smaller amount to avoid exceeding balance
+        {
+            uint256 seedlessIn = _swapExactOut(locals.seedlessPool, locals.resToken, locals.projToken, exactOutAmount);
+            uint256 seededIn = _swapExactOut(locals.seededPool, locals.resToken, locals.projToken, exactOutAmount);
+
+            assertEq(seedlessIn, seededIn, "ExactOut buy: inputs should be identical");
+        }
+    }
+
+    function _swapExactIn(
+        address targetPool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountIn
+    ) internal returns (uint256 amountOut) {
+        uint256 balanceBefore = tokenOut.balanceOf(alice);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(targetPool, tokenIn, tokenOut, amountIn, 0, type(uint256).max, false, bytes(""));
+
+        amountOut = tokenOut.balanceOf(alice) - balanceBefore;
+    }
+
+    function _swapExactOut(
+        address targetPool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountOut
+    ) internal returns (uint256 amountIn) {
+        uint256 balanceBefore = tokenIn.balanceOf(alice);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactOut(
+            targetPool,
+            tokenIn,
+            tokenOut,
+            amountOut,
+            type(uint256).max,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
+        amountIn = balanceBefore - tokenIn.balanceOf(alice);
+    }
+
     /*******************************************************************************
                                     PoolInfo Functions
     *******************************************************************************/
