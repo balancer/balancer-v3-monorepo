@@ -5,7 +5,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ONE, FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import {
   MAX_UINT256,
   MAX_UINT160,
@@ -269,8 +269,7 @@ describe('LBPool', function () {
       it('should only allow owner to be the LP', async () => {
         await advanceToTimestamp(globalPoolStartTime - bn(MINUTE));
 
-        const amounts: bigint[] = [FP_ZERO, FP_ZERO];
-        amounts[tokenAIdx] = SWAP_AMOUNT;
+        const amounts: bigint[] = [SWAP_AMOUNT, SWAP_AMOUNT];
 
         await expect(
           router.addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
@@ -279,6 +278,8 @@ describe('LBPool', function () {
         await expect(
           router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
         ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
+
+        router.connect(admin).addLiquidityProportional(globalPool, amounts, FP_ONE, false, '0x');
       });
     });
 
