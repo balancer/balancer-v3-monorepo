@@ -137,4 +137,19 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     ) internal virtual returns (address newPool, bytes memory poolArgs) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function _deployAndInitPoolNon18() internal {
+        (poolNon18, ) = _createLBPoolNon18(
+            address(0), // Pool creator
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+        uint256[] memory initAmountsNon18 = new uint256[](2);
+        initAmountsNon18[projectIdxNon18] = poolInitAmountsNon18[projectIdxNon18];
+
+        vm.startPrank(bob); // Bob is the owner of the pool.
+        _initPool(poolNon18, initAmountsNon18, 0); // Zero reserve tokens
+        vm.stopPrank();
+    }
 }

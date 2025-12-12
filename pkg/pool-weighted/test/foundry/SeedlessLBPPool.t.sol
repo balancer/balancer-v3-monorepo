@@ -24,6 +24,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
 
     function setUp() public virtual override {
         reserveTokenVirtualBalance = poolInitAmount;
+        reserveTokenVirtualBalanceNon18 = 1e3 * 1e6; // 6 Decimals
 
         super.setUp();
     }
@@ -52,9 +53,14 @@ contract SeedlessLBPTest is WeightedLBPTest {
                                     Initialization
     *******************************************************************************/
 
-    function testVirtualBalanceIsSet() public view {
-        uint256 virtualBalance = ILBPool(pool).getReserveTokenVirtualBalance();
+    function testVirtualBalanceIsSet() public {
+        (uint256 virtualBalance, uint256 virtualBalanceScaled18) = ILBPool(pool).getReserveTokenVirtualBalance();
         assertEq(virtualBalance, poolInitAmount, "Pool virtual balance should equal the init amount");
+
+        _deployAndInitPoolNon18();
+
+        (virtualBalance, virtualBalanceScaled18) = ILBPool(poolNon18).getReserveTokenVirtualBalance();
+        assertEq(virtualBalance, poolInitAmountsNon18[reserveIdx], "Pool virtual balance should equal the init amount");
     }
 
     function testValidSeedlessInitialization() public view {
@@ -609,7 +615,7 @@ contract SeedlessLBPTest is WeightedLBPTest {
         uint256 projectReceived = projectToken.balanceOf(bob) - projectBefore;
 
         // Owner should get all the accumulated reserve (proceeds) and remaining project tokens
-        assertApproxEqRel(reserveReceived, totalBought, 0.01e18, "Owner should receive sale proceeds");
+        assertApproxEqRel(reserveReceived, totalBought, 1e3, "Owner should receive sale proceeds");
         assertGt(projectReceived, 0, "Owner should receive remaining project tokens");
     }
 
@@ -621,10 +627,28 @@ contract SeedlessLBPTest is WeightedLBPTest {
         uint256[] memory poolBalances = IPoolInfo(pool).getCurrentLiveBalances();
         uint256[] memory vaultBalances = vault.getCurrentLiveBalances(pool);
 
+        (, uint256 virtualBalanceScaled18) = ILBPool(pool).getReserveTokenVirtualBalance();
+
         assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
         assertEq(
             poolBalances[reserveIdx],
-            vaultBalances[reserveIdx] + reserveTokenVirtualBalance,
+            vaultBalances[reserveIdx] + virtualBalanceScaled18,
+            "Reserve should include virtual"
+        );
+    }
+
+    function testGetCurrentLiveBalancesIncludesVirtualNon18() public {
+        _deployAndInitPoolNon18();
+
+        uint256[] memory poolBalances = IPoolInfo(poolNon18).getCurrentLiveBalances();
+        uint256[] memory vaultBalances = vault.getCurrentLiveBalances(poolNon18);
+
+        (, uint256 virtualBalanceScaled18) = ILBPool(poolNon18).getReserveTokenVirtualBalance();
+
+        assertEq(poolBalances[projectIdx], vaultBalances[projectIdx], "Project balance mismatch");
+        assertEq(
+            poolBalances[reserveIdx],
+            vaultBalances[reserveIdx] + virtualBalanceScaled18,
             "Reserve should include virtual"
         );
     }
@@ -636,6 +660,8 @@ contract SeedlessLBPTest is WeightedLBPTest {
             pool
         );
 
+        (uint256 virtualBalanceRaw, uint256 virtualBalanceScaled18) = ILBPool(pool).getReserveTokenVirtualBalance();
+
         assertEq(balancesRaw[projectIdx], realBalancesRaw[projectIdx], "Project raw balance mismatch");
         assertEq(
             lastBalancesLiveScaled18[projectIdx],
@@ -645,14 +671,67 @@ contract SeedlessLBPTest is WeightedLBPTest {
 
         assertEq(
             balancesRaw[reserveIdx],
-            realBalancesRaw[reserveIdx] + reserveTokenVirtualBalance,
+            realBalancesRaw[reserveIdx] + virtualBalanceRaw,
             "Reserve raw should include virtual"
         );
         assertEq(
             lastBalancesLiveScaled18[reserveIdx],
-            realLastBalancesLiveScaled18[reserveIdx] + reserveTokenVirtualBalance,
+            realLastBalancesLiveScaled18[reserveIdx] + virtualBalanceScaled18,
             "Reserve live should include virtual"
         );
+    }
+
+    function testGetTokenInfoIncludesVirtualNon18() public {
+        _deployAndInitPoolNon18();
+
+        (, , uint256[] memory balancesRaw, uint256[] memory lastBalancesLiveScaled18) = IPoolInfo(poolNon18)
+            .getTokenInfo();
+
+        (, , uint256[] memory realBalancesRaw, uint256[] memory realLastBalancesLiveScaled18) = vault.getPoolTokenInfo(
+            poolNon18
+        );
+
+        (uint256 virtualBalanceRaw, uint256 virtualBalanceScaled18) = ILBPool(poolNon18)
+            .getReserveTokenVirtualBalance();
+
+        assertEq(balancesRaw[projectIdxNon18], realBalancesRaw[projectIdxNon18], "Project raw balance mismatch");
+        assertEq(
+            lastBalancesLiveScaled18[projectIdxNon18],
+            realLastBalancesLiveScaled18[projectIdxNon18],
+            "Project live balance mismatch"
+        );
+
+        assertEq(
+            balancesRaw[reserveIdxNon18],
+            realBalancesRaw[reserveIdxNon18] + virtualBalanceRaw,
+            "Reserve raw should include virtual"
+        );
+        assertEq(
+            lastBalancesLiveScaled18[reserveIdxNon18],
+            realLastBalancesLiveScaled18[reserveIdxNon18] + virtualBalanceScaled18,
+            "Reserve live should include virtual"
+        );
+    }
+
+    function testGetReserveTokenVirtualBalance() public view {
+        (uint256 virtualBalanceRaw, uint256 virtualBalanceScaled18) = ILBPool(pool).getReserveTokenVirtualBalance();
+
+        // For 18-decimal token, raw == scaled18
+        assertEq(virtualBalanceRaw, reserveTokenVirtualBalance, "Raw virtual balance mismatch");
+        assertEq(virtualBalanceScaled18, reserveTokenVirtualBalance, "Scaled18 virtual balance mismatch");
+        assertEq(virtualBalanceRaw, virtualBalanceScaled18, "For 18 decimals, raw should equal scaled18");
+    }
+
+    function testGetReserveTokenVirtualBalanceNon18() public {
+        _deployAndInitPoolNon18();
+
+        (uint256 virtualBalanceRaw, uint256 virtualBalanceScaled18) = ILBPool(poolNon18)
+            .getReserveTokenVirtualBalance();
+
+        // For 6-decimal token: raw = 1e9, scaled18 = 1e21
+        assertEq(virtualBalanceRaw, reserveTokenVirtualBalanceNon18, "Raw virtual balance mismatch");
+        assertEq(virtualBalanceScaled18, reserveTokenVirtualBalanceNon18 * 1e12, "Scaled18 virtual balance mismatch");
+        assertGt(virtualBalanceScaled18, virtualBalanceRaw, "Scaled18 should be larger for 6-decimal token");
     }
 
     function testGetCurrentLiveBalancesNonSeedless() public {
