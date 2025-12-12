@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
@@ -17,6 +19,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPValidation } from "./LBPValidation.sol";
 
 abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
+    using FixedPoint for uint256;
+
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
@@ -66,6 +70,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     /// @notice The LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
+
+    /// @notice Single token liquidity operations (that call `computeBalance` are unsupported.
+    error UnsupportedOperation();
 
     /// @notice Only allow adding liquidity (including initialization) before the sale.
     modifier onlyBeforeSale() {
@@ -203,7 +210,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
      * @dev Take care to set the start time far enough in advance to allow for funding; otherwise the pool will remain
      * unfunded and need to be redeployed. Note that initialization does not pass the router address, so we cannot
      * directly check that here, though there has to be a call on the trusted router for its `getSender` to be
-     * non-zero.
+     * non-zero. Note that this is overridden in all existing LBPools, so this will never be called. We are leaving it
+     * in for future LBP types.
      *
      * @return success Always true: allow the initialization to proceed if the time condition has been met
      */
@@ -232,7 +240,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Only allow requests after the weight update is finished, and the sale is complete.
+     * @notice Only remove liquidity before the sale (to correct mistakes) or after the sale (withdrawal of proceeds).
      * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
      */
     function onBeforeRemoveLiquidity(
@@ -244,8 +252,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view virtual override returns (bool) {
-        // Only allow removing liquidity after end time.
-        if (block.timestamp <= _endTime) {
+        // Do not allow removing liquidity during the sale.
+        if (block.timestamp >= _startTime && block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 
@@ -258,5 +266,17 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     function _isSwapEnabled() internal view returns (bool) {
         return block.timestamp >= _startTime && block.timestamp <= _endTime;
+    }
+
+    function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
+        return 10 ** (18 - IERC20Metadata(address(token)).decimals());
+    }
+
+    function _toScaled18(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return amount * scalingFactor;
+    }
+
+    function _toRaw(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return amount / scalingFactor;
     }
 }

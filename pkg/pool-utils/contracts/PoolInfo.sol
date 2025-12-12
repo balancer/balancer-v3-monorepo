@@ -29,6 +29,7 @@ contract PoolInfo is IPoolInfo {
     function getTokenInfo()
         external
         view
+        virtual
         returns (
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
@@ -40,7 +41,7 @@ contract PoolInfo is IPoolInfo {
     }
 
     /// @inheritdoc IPoolInfo
-    function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18) {
+    function getCurrentLiveBalances() external view virtual returns (uint256[] memory balancesLiveScaled18) {
         return _vault.getCurrentLiveBalances(address(this));
     }
 

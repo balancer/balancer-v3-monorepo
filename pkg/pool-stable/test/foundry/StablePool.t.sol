@@ -65,6 +65,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.swapFeeManager = alice;
+        roleAccounts.poolCreator = bob;
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
@@ -301,5 +302,11 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
+    }
+
+    function testPoolCreator() public view {
+        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
+
+        assertEq(roleAccounts.poolCreator, bob, "Wrong pool creator");
     }
 }

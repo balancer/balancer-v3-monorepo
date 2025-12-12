@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -11,6 +12,7 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
@@ -31,6 +33,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     uint256 private immutable _reserveTokenStartWeight;
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
+
+    // Offset applied to reserve token balance in seedless LBPs.
+    uint256 private immutable _reserveTokenVirtualBalanceScaled18;
+    uint256 private immutable _reserveTokenScalingFactor;
 
     /**
      * @notice Emitted on deployment to record the sale parameters.
@@ -73,6 +79,14 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
 
         _projectTokenEndWeight = lbpParams.projectTokenEndWeight;
         _reserveTokenEndWeight = lbpParams.reserveTokenEndWeight;
+
+        _reserveTokenScalingFactor = _computeScalingFactor(lbpCommonParams.reserveToken);
+
+        // The reserve virtual balance is given in native decimals; scale up to store as scaled18.
+        _reserveTokenVirtualBalanceScaled18 = _toScaled18(
+            lbpParams.reserveTokenVirtualBalance,
+            _reserveTokenScalingFactor
+        );
 
         // Preserve event compatibility with previous LBP versions.
         uint256[] memory startWeights = new uint256[](_TWO_TOKENS);
@@ -162,6 +176,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
         data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
 
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            data.reserveTokenVirtualBalance = _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+        }
+
         // Migration-related params, non-zero if the pool supports migration.
         data.migrationRouter = _migrationRouter;
         data.lockDurationAfterMigration = _lockDurationAfterMigration;
@@ -170,9 +188,51 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         data.migrationWeightReserveToken = _migrationWeightReserveToken;
     }
 
+    /// @inheritdoc ILBPool
+    function getReserveTokenVirtualBalance() external view returns (uint256, uint256) {
+        return (
+            _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor),
+            _reserveTokenVirtualBalanceScaled18
+        );
+    }
+
     /*******************************************************************************
                                     Base Pool Hooks
     *******************************************************************************/
+
+    /**
+     * @inheritdoc WeightedPool
+     * @notice Implementation of computeInvariant that adjusts for the virtual balance in seedless LBPs.
+     * @dev The Vault calls this during liquidity operations.
+     */
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) public view override(IBasePool, WeightedPool) returns (uint256 invariant) {
+        if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
+            invariant = super.computeInvariant(balancesLiveScaled18, rounding);
+        } else {
+            uint256 originalReserveBalance = balancesLiveScaled18[_reserveTokenIndex];
+            balancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+
+            // Include virtual balance in the invariant computation for seedless LBPs.
+            invariant = super.computeInvariant(balancesLiveScaled18, rounding);
+
+            // Restore original so that we don't mutate memory parameters.
+            balancesLiveScaled18[_reserveTokenIndex] = originalReserveBalance;
+        }
+    }
+
+    /// @inheritdoc WeightedPool
+    function computeBalance(
+        uint256[] memory,
+        uint256,
+        uint256
+    ) public pure override(IBasePool, WeightedPool) returns (uint256) {
+        // This is unused in these pools. We do not support single-token liquidity operations.
+        revert UnsupportedOperation();
+    }
 
     /// @inheritdoc WeightedPool
     function onSwap(PoolSwapParams memory request) public view override(IBasePool, WeightedPool) returns (uint256) {
@@ -186,7 +246,78 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             revert SwapOfProjectTokenIn();
         }
 
-        return super.onSwap(request);
+        if (_reserveTokenVirtualBalanceScaled18 == 0) {
+            // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
+            return super.onSwap(request);
+        }
+
+        // Mutate the request to add the virtual balance for seedless LBPs, and restore it later.
+        uint256 originalReserveBalance = request.balancesScaled18[_reserveTokenIndex];
+        request.balancesScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+
+        uint256 calculatedAmountScaled18 = super.onSwap(request);
+
+        // If we are returning reserve tokens, ensure we have enough real balance.
+        if (request.indexOut == _reserveTokenIndex && calculatedAmountScaled18 > originalReserveBalance) {
+            revert InsufficientRealReserveBalance(calculatedAmountScaled18, originalReserveBalance);
+        }
+
+        // Restore the original request reserve balance.
+        request.balancesScaled18[_reserveTokenIndex] = originalReserveBalance;
+
+        return calculatedAmountScaled18;
+    }
+
+    /**
+     * @inheritdoc LBPCommon
+     * @dev Ensure the owner is initializing the pool, and ensure seedless LBPs do not accept reserve tokens.
+     * @return success Allow the initialization to proceed if the conditions have been met
+     */
+    function onBeforeInitialize(
+        uint256[] memory exactAmountsIn,
+        bytes memory
+    ) public view override onlyBeforeSale returns (bool) {
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            // This is a seedless LBP; ensure the caller is initializing with 0 reserve tokens.
+            if (exactAmountsIn[_reserveTokenIndex] > 0) {
+                revert SeedlessLBPInitializationWithNonZeroReserve();
+            }
+        }
+
+        return ISenderGuard(_trustedRouter).getSender() == owner();
+    }
+
+    /*******************************************************************************
+                                  PoolInfo Functions
+    *******************************************************************************/
+
+    /// @inheritdoc PoolInfo
+    function getTokenInfo()
+        external
+        view
+        override
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory lastBalancesLiveScaled18
+        )
+    {
+        (tokens, tokenInfo, balancesRaw, lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(this));
+
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            lastBalancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+            balancesRaw[_reserveTokenIndex] += _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+        }
+    }
+
+    /// @inheritdoc PoolInfo
+    function getCurrentLiveBalances() external view override returns (uint256[] memory balancesLiveScaled18) {
+        balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+
+        if (_reserveTokenVirtualBalanceScaled18 > 0) {
+            balancesLiveScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+        }
     }
 
     /*******************************************************************************
