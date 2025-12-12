@@ -276,7 +276,9 @@ describe('LBPool', function () {
           router.addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
         ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
 
-        await router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x');
+        await expect(
+          router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
     });
 
