@@ -620,52 +620,19 @@ contract SeedlessLBPTest is WeightedLBPTest {
         assertGt(projectReceived, 0, "Owner should receive remaining project tokens");
     }
 
-    struct SwapTestLocals {
-        address seedlessPool;
-        address seededPool;
-        IERC20 projToken;
-        IERC20 resToken;
-        uint256 projIdx;
-        uint256 resIdx;
-        uint256 virtualBalance;
-        uint256 projectInitAmount;
-    }
-
-    function testSeedlessVsSeededSwaps__Fuzz(uint256 swapAmount, uint256 timeOffset, bool useNon18Decimals) public {
+    function testSeedlessVsSeededSwaps__Fuzz(uint256 swapAmount, uint256 timeOffset) public {
         uint256 saleLength = DEFAULT_END_OFFSET - DEFAULT_START_OFFSET;
         timeOffset = bound(timeOffset, 0, saleLength - 1);
 
-        SwapTestLocals memory locals;
+        // Bound swap amount to reasonable range for 18-decimal token
+        swapAmount = bound(swapAmount, 1e15, reserveTokenVirtualBalance / 10);
 
-        if (useNon18Decimals) {
-            locals.projToken = projectTokenNon18;
-            locals.resToken = reserveTokenNon18;
-            locals.projIdx = projectIdxNon18;
-            locals.resIdx = reserveIdxNon18;
-            locals.virtualBalance = reserveTokenVirtualBalanceNon18;
-            locals.projectInitAmount = poolInitAmountsNon18[locals.projIdx];
-
-            // Bound swap amount to reasonable range for 6-decimal token
-            swapAmount = bound(swapAmount, 1e4, locals.virtualBalance / 10); // 0.01 to 10% of virtual
-        } else {
-            locals.projToken = projectToken;
-            locals.resToken = reserveToken;
-            locals.projIdx = projectIdx;
-            locals.resIdx = reserveIdx;
-            locals.virtualBalance = reserveTokenVirtualBalance;
-            locals.projectInitAmount = poolInitAmount;
-
-            // Bound swap amount to reasonable range for 18-decimal token
-            swapAmount = bound(swapAmount, 1e15, locals.virtualBalance / 10);
-        }
-
-        function(address, uint32, uint32, bool) returns (address, bytes memory) _createLBP = useNon18Decimals
-            ? _createLBPoolNon18
-            : _createLBPool;
+        address seedlessPool;
+        address seededPool;
 
         // Create seedless pool (virtual reserves, no real reserves)
         {
-            (locals.seedlessPool, ) = _createLBP(
+            (seedlessPool, ) = _createLBPool(
                 address(0),
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
                 uint32(block.timestamp + DEFAULT_END_OFFSET),
@@ -673,25 +640,20 @@ contract SeedlessLBPTest is WeightedLBPTest {
             );
 
             uint256[] memory seedlessInitAmounts = new uint256[](2);
-            seedlessInitAmounts[locals.projIdx] = locals.projectInitAmount;
-            seedlessInitAmounts[locals.resIdx] = 0; // No real reserves
+            seedlessInitAmounts[projectIdx] = poolInitAmount;
 
             vm.startPrank(bob);
-            _initPool(locals.seedlessPool, seedlessInitAmounts, 0);
+            _initPool(seedlessPool, seedlessInitAmounts, 0);
             vm.stopPrank();
         }
 
         // Create seeded pool (real reserves, no virtual)
         {
             // Temporarily set virtual balance to 0 for seeded pool creation
-            uint256 savedVirtual = useNon18Decimals ? reserveTokenVirtualBalanceNon18 : reserveTokenVirtualBalance;
-            if (useNon18Decimals) {
-                reserveTokenVirtualBalanceNon18 = 0;
-            } else {
-                reserveTokenVirtualBalance = 0;
-            }
+            uint256 savedVirtual = reserveTokenVirtualBalance;
+            reserveTokenVirtualBalance = 0;
 
-            (locals.seededPool, ) = _createLBP(
+            (seededPool, ) = _createLBPool(
                 address(0),
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
                 uint32(block.timestamp + DEFAULT_END_OFFSET),
@@ -699,45 +661,41 @@ contract SeedlessLBPTest is WeightedLBPTest {
             );
 
             uint256[] memory seededInitAmounts = new uint256[](2);
-            seededInitAmounts[locals.projIdx] = locals.projectInitAmount;
-            seededInitAmounts[locals.resIdx] = locals.virtualBalance; // Real reserves equal to virtual
+            seededInitAmounts[projectIdx] = poolInitAmount;
+            seededInitAmounts[reserveIdx] = poolInitAmount; // Real reserves equal to virtual
 
             vm.startPrank(bob);
-            _initPool(locals.seededPool, seededInitAmounts, 0);
+            _initPool(seededPool, seededInitAmounts, 0);
             vm.stopPrank();
 
             // Restore virtual balance setting
-            if (useNon18Decimals) {
-                reserveTokenVirtualBalanceNon18 = savedVirtual;
-            } else {
-                reserveTokenVirtualBalance = savedVirtual;
-            }
+            reserveTokenVirtualBalance = savedVirtual;
         }
 
         // Set identical swap fees (zero for exact comparison)
-        vault.manualUnsafeSetStaticSwapFeePercentage(locals.seedlessPool, 0);
-        vault.manualUnsafeSetStaticSwapFeePercentage(locals.seededPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(seedlessPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(seededPool, 0);
 
         // Warp to sale period
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + timeOffset);
 
         // Verify both pools have same effective reserve balance
         {
-            uint256[] memory seedlessBalances = IPoolInfo(locals.seedlessPool).getCurrentLiveBalances();
-            uint256[] memory seededBalances = IPoolInfo(locals.seededPool).getCurrentLiveBalances();
+            uint256[] memory seedlessBalances = IPoolInfo(seedlessPool).getCurrentLiveBalances();
+            uint256[] memory seededBalances = IPoolInfo(seededPool).getCurrentLiveBalances();
 
-            assertEq(seedlessBalances[locals.projIdx], seededBalances[locals.projIdx], "Project balances should match");
+            assertEq(seedlessBalances[projectIdx], seededBalances[projectIdx], "Project balances should match");
             assertEq(
-                seedlessBalances[locals.resIdx],
-                seededBalances[locals.resIdx],
+                seedlessBalances[reserveIdx],
+                seededBalances[reserveIdx],
                 "Effective reserve balances should match"
             );
         }
 
         // Test ExactIn: Buy project tokens with reserve tokens
         {
-            uint256 seedlessOut = _swapExactIn(locals.seedlessPool, locals.resToken, locals.projToken, swapAmount);
-            uint256 seededOut = _swapExactIn(locals.seededPool, locals.resToken, locals.projToken, swapAmount);
+            uint256 seedlessOut = _swapExactIn(seedlessPool, reserveToken, projectToken, swapAmount);
+            uint256 seededOut = _swapExactIn(seededPool, reserveToken, projectToken, swapAmount);
 
             assertEq(seedlessOut, seededOut, "ExactIn buy: outputs should be identical");
         }
@@ -745,10 +703,171 @@ contract SeedlessLBPTest is WeightedLBPTest {
         // Test ExactOut: Buy specific amount of project tokens
         uint256 exactOutAmount = swapAmount / 3; // Use smaller amount to avoid exceeding balance
         {
-            uint256 seedlessIn = _swapExactOut(locals.seedlessPool, locals.resToken, locals.projToken, exactOutAmount);
-            uint256 seededIn = _swapExactOut(locals.seededPool, locals.resToken, locals.projToken, exactOutAmount);
+            uint256 seedlessIn = _swapExactOut(seedlessPool, reserveToken, projectToken, exactOutAmount);
+            uint256 seededIn = _swapExactOut(seededPool, reserveToken, projectToken, exactOutAmount);
 
             assertEq(seedlessIn, seededIn, "ExactOut buy: inputs should be identical");
+        }
+
+        // Test computing invariant for both
+        {
+            uint256[] memory seedlessLiveBalancesScaled18 = vault.getCurrentLiveBalances(seedlessPool);
+            uint256[] memory seededLiveBalancesScaled18 = vault.getCurrentLiveBalances(seededPool);
+
+            uint256 seedlessInvariant = IBasePool(seedlessPool).computeInvariant(
+                seedlessLiveBalancesScaled18,
+                Rounding.ROUND_DOWN
+            );
+            uint256 seededInvariant = IBasePool(seededPool).computeInvariant(
+                seededLiveBalancesScaled18,
+                Rounding.ROUND_DOWN
+            );
+
+            assertEq(seedlessInvariant, seededInvariant, "computeInvariant (round down): values should be identical");
+        }
+
+        {
+            uint256[] memory seedlessLiveBalancesScaled18 = vault.getCurrentLiveBalances(seedlessPool);
+            uint256[] memory seededLiveBalancesScaled18 = vault.getCurrentLiveBalances(seededPool);
+
+            uint256 seedlessInvariant = IBasePool(seedlessPool).computeInvariant(
+                seedlessLiveBalancesScaled18,
+                Rounding.ROUND_UP
+            );
+            uint256 seededInvariant = IBasePool(seededPool).computeInvariant(
+                seededLiveBalancesScaled18,
+                Rounding.ROUND_UP
+            );
+
+            assertEq(seedlessInvariant, seededInvariant, "computeInvariant (round up): values should be identical");
+        }
+    }
+
+    function testSeedlessVsSeededSwapsNon18__Fuzz(uint256 swapAmount, uint256 timeOffset) public {
+        uint256 saleLength = DEFAULT_END_OFFSET - DEFAULT_START_OFFSET;
+        timeOffset = bound(timeOffset, 0, saleLength - 1);
+
+        // Bound swap amount to reasonable range for 6-decimal token
+        swapAmount = bound(swapAmount, 1e4, reserveTokenVirtualBalanceNon18 / 10); // 0.01 to 10% of virtual
+
+        address seedlessPool;
+        address seededPool;
+
+        // Create seedless pool (virtual reserves, no real reserves)
+        {
+            (seedlessPool, ) = _createLBPoolNon18(
+                address(0),
+                uint32(block.timestamp + DEFAULT_START_OFFSET),
+                uint32(block.timestamp + DEFAULT_END_OFFSET),
+                DEFAULT_PROJECT_TOKENS_SWAP_IN
+            );
+
+            uint256[] memory seedlessInitAmounts = new uint256[](2);
+            seedlessInitAmounts[projectIdxNon18] = poolInitAmountsNon18[projectIdxNon18];
+
+            vm.startPrank(bob);
+            _initPool(seedlessPool, seedlessInitAmounts, 0);
+            vm.stopPrank();
+        }
+
+        // Create seeded pool (real reserves, no virtual)
+        {
+            // Temporarily set virtual balance to 0 for seeded pool creation
+            uint256 savedVirtual = reserveTokenVirtualBalanceNon18;
+            reserveTokenVirtualBalanceNon18 = 0;
+
+            (seededPool, ) = _createLBPoolNon18(
+                address(0),
+                uint32(block.timestamp + DEFAULT_START_OFFSET),
+                uint32(block.timestamp + DEFAULT_END_OFFSET),
+                DEFAULT_PROJECT_TOKENS_SWAP_IN
+            );
+
+            uint256[] memory seededInitAmounts = new uint256[](2);
+            seededInitAmounts[projectIdxNon18] = poolInitAmountsNon18[projectIdxNon18];
+            // Real reserves equal to virtual
+            seededInitAmounts[reserveIdxNon18] = poolInitAmountsNon18[reserveIdxNon18];
+
+            vm.startPrank(bob);
+            _initPool(seededPool, seededInitAmounts, 0);
+            vm.stopPrank();
+
+            // Restore virtual balance setting
+            reserveTokenVirtualBalanceNon18 = savedVirtual;
+        }
+
+        // Set identical swap fees (zero for exact comparison)
+        vault.manualUnsafeSetStaticSwapFeePercentage(seedlessPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(seededPool, 0);
+
+        // Warp to sale period
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + timeOffset);
+
+        // Verify both pools have same effective reserve balance
+        {
+            uint256[] memory seedlessBalances = IPoolInfo(seedlessPool).getCurrentLiveBalances();
+            uint256[] memory seededBalances = IPoolInfo(seededPool).getCurrentLiveBalances();
+
+            assertEq(
+                seedlessBalances[projectIdxNon18],
+                seededBalances[projectIdxNon18],
+                "Project balances should match"
+            );
+            assertEq(
+                seedlessBalances[reserveIdxNon18],
+                seededBalances[reserveIdxNon18],
+                "Effective reserve balances should match"
+            );
+        }
+
+        // Test ExactIn: Buy project tokens with reserve tokens
+        {
+            uint256 seedlessOut = _swapExactIn(seedlessPool, reserveTokenNon18, projectTokenNon18, swapAmount);
+            uint256 seededOut = _swapExactIn(seededPool, reserveTokenNon18, projectTokenNon18, swapAmount);
+
+            assertEq(seedlessOut, seededOut, "ExactIn buy: outputs should be identical");
+        }
+
+        // Test ExactOut: Buy specific amount of project tokens
+        uint256 exactOutAmount = swapAmount / 3; // Use smaller amount to avoid exceeding balance
+        {
+            uint256 seedlessIn = _swapExactOut(seedlessPool, reserveTokenNon18, projectTokenNon18, exactOutAmount);
+            uint256 seededIn = _swapExactOut(seededPool, reserveTokenNon18, projectTokenNon18, exactOutAmount);
+
+            assertEq(seedlessIn, seededIn, "ExactOut buy: inputs should be identical");
+        }
+
+        // Test computing invariant for both
+        {
+            uint256[] memory seedlessLiveBalancesScaled18 = vault.getCurrentLiveBalances(seedlessPool);
+            uint256[] memory seededLiveBalancesScaled18 = vault.getCurrentLiveBalances(seededPool);
+
+            uint256 seedlessInvariant = IBasePool(seedlessPool).computeInvariant(
+                seedlessLiveBalancesScaled18,
+                Rounding.ROUND_DOWN
+            );
+            uint256 seededInvariant = IBasePool(seededPool).computeInvariant(
+                seededLiveBalancesScaled18,
+                Rounding.ROUND_DOWN
+            );
+
+            assertEq(seedlessInvariant, seededInvariant, "computeInvariant (round down): values should be identical");
+        }
+
+        {
+            uint256[] memory seedlessLiveBalancesScaled18 = vault.getCurrentLiveBalances(seedlessPool);
+            uint256[] memory seededLiveBalancesScaled18 = vault.getCurrentLiveBalances(seededPool);
+
+            uint256 seedlessInvariant = IBasePool(seedlessPool).computeInvariant(
+                seedlessLiveBalancesScaled18,
+                Rounding.ROUND_UP
+            );
+            uint256 seededInvariant = IBasePool(seededPool).computeInvariant(
+                seededLiveBalancesScaled18,
+                Rounding.ROUND_UP
+            );
+
+            assertEq(seedlessInvariant, seededInvariant, "computeInvariant (round up): values should be identical");
         }
     }
 
