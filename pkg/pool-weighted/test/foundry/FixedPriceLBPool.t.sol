@@ -721,7 +721,9 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         );
     }
 
-    function testOnBeforeRemoveLiquidityBeforeEndTime() public {
+    function testOnBeforeRemoveLiquidityDuringSale() public {
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
         // Try to remove liquidity before end time.
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.RemovingLiquidityNotAllowed.selector);
@@ -734,6 +736,24 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             new uint256[](0),
             bytes("")
         );
+    }
+
+    function testOnBeforeRemoveLiquidityBeforeStartTime() public {
+        // Warp to just before start time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        vm.prank(address(vault));
+        bool success = IHooks(pool).onBeforeRemoveLiquidity(
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
     function testOnBeforeRemoveLiquidityAfterEndTime() public {
