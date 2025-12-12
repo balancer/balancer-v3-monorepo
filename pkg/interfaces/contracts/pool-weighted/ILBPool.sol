@@ -138,7 +138,11 @@ interface ILBPool is ILBPCommon {
      * @dev This is the "offset" applied to set the initial price for a seedless LBP, without requiring any reserve
      * tokens on initialization. This will be zero if the LBP is not seedless.
      *
-     * @return reserveTokenVirtualBalance The virtual balance of reserve tokens
+     * @return reserveTokenVirtualBalance The virtual balance of reserve tokens (in native decimals)
+     * @return reserveTokenVirtualBalanceScaled18 The same virtual balance, scaled to 18 decimals
      */
-    function getReserveTokenVirtualBalance() external view returns (uint256 reserveTokenVirtualBalance);
+    function getReserveTokenVirtualBalance()
+        external
+        view
+        returns (uint256 reserveTokenVirtualBalance, uint256 reserveTokenVirtualBalanceScaled18);
 }

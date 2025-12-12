@@ -189,8 +189,11 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
     }
 
     /// @inheritdoc ILBPool
-    function getReserveTokenVirtualBalance() external view returns (uint256) {
-        return _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
+    function getReserveTokenVirtualBalance() external view returns (uint256, uint256) {
+        return (
+            _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor),
+            _reserveTokenVirtualBalanceScaled18
+        );
     }
 
     /*******************************************************************************
