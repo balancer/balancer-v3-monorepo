@@ -3,18 +3,31 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { WrappingDirection } from "../vault/VaultTypes.sol";
+
+import { SwapPathStep } from "../vault/BatchRouterTypes.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IBalancerFeeBurner is IProtocolFeeBurner {
     /**
-     * @notice Steps for the burn path.
-     * @param pool The pool for the swap
-     * @param tokenOut The `tokenOut` of the swap operation
+     * @notice Buffer not initialized for the wrapped token.
+     * @param wrappedToken The wrapped token address.
      */
-    struct SwapPathStep {
-        address pool;
-        IERC20 tokenOut;
-    }
+    error BufferNotInitialized(address wrappedToken);
+
+    /**
+     * @notice Invalid token out for buffer step.
+     * @param tokenOut The invalid token.
+     * @param step The step index.
+     */
+    error InvalidBufferTokenOut(IERC20 tokenOut, uint256 step);
+
+    /**
+     * @notice Token does not exist in pool.
+     * @param token The invalid token.
+     * @param step The step index.
+     */
+    error TokenDoesNotExistInPool(IERC20 token, uint256 step);
 
     /**
      * @notice Data for the burn hook.
