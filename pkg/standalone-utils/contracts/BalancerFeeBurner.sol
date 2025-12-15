@@ -55,6 +55,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
                     revert InvalidBufferTokenOut(step.tokenOut, i);
                 }
             } else {
+                // Reverts if pool is not registered.
                 IERC20[] memory poolTokens = _vault.getPoolTokens(step.pool);
                 if (_tokenExists(stepTokenIn, poolTokens) == false) {
                     revert TokenDoesNotExistInPool(stepTokenIn, i);
