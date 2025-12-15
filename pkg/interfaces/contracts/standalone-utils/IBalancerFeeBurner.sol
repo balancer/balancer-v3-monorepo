@@ -10,6 +10,12 @@ import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IBalancerFeeBurner is IProtocolFeeBurner {
     /**
+     * @notice Buffer not initialized for the wrapped token.
+     * @param wrappedToken The wrapped token address.
+     */
+    error BufferNotInitialized(address wrappedToken);
+
+    /**
      * @notice Invalid token out for buffer step.
      * @param tokenOut The invalid token.
      * @param step The step index.

@@ -44,7 +44,10 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
             if (step.isBuffer) {
                 bool isUnwrap = step.pool == address(stepTokenIn);
                 IERC4626 wrappedToken = IERC4626(step.pool);
-                address underlyingToken = wrappedToken.asset();
+                address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
+                if (underlyingToken == address(0)) {
+                    revert BufferNotInitialized(step.pool);
+                }
 
                 if (isUnwrap && step.tokenOut != IERC20(underlyingToken)) {
                     revert InvalidBufferTokenOut(step.tokenOut, i);

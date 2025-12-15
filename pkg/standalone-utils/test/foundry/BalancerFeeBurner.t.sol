@@ -509,6 +509,15 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeBurner.setBurnPath(dai, steps);
     }
 
+    function testSetBurnPathRevertIfInvalidBufferNotInitialized() external {
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(0x1234), tokenOut: dai, isBuffer: true });
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IBalancerFeeBurner.BufferNotInitialized.selector, address(0x1234)));
+        feeBurner.setBurnPath(dai, steps);
+    }
+
     function testSetBurnPathRevertIfInvalidTokenIn() external {
         SwapPathStep[] memory steps = new SwapPathStep[](1);
         steps[0] = SwapPathStep({ pool: daiUsdcPool, tokenOut: usdc, isBuffer: false });
