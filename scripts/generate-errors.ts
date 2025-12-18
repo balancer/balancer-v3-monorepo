@@ -3,15 +3,15 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-// Prefer ethers if present (common in solidity repos). Fall back to @noble/hashes/sha3 if you want.
+// Requires ethers.
 type Keccak256Fn = (utf8: Uint8Array) => string;
 
 async function getKeccak256(): Promise<{ keccak256Hex: Keccak256Fn; toUtf8: (s: string) => Uint8Array }> {
   try {
-    // ethers v6
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ethers = require("ethers");
     if (ethers?.keccak256 && ethers?.toUtf8Bytes) {
+      // ethers v6
       return {
         keccak256Hex: (utf8) => ethers.keccak256(utf8),
         toUtf8: (s) => ethers.toUtf8Bytes(s),
@@ -26,23 +26,6 @@ async function getKeccak256(): Promise<{ keccak256Hex: Keccak256Fn; toUtf8: (s: 
     }
   } catch {
     // ignore
-  }
-
-  // Optional fallback: @noble/hashes/sha3 (keccak_256)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { keccak_256 } = require("@noble/hashes/sha3");
-    return {
-      keccak256Hex: (utf8) => {
-        const digest: Uint8Array = keccak_256(utf8);
-        return "0x" + Buffer.from(digest).toString("hex");
-      },
-      toUtf8: (s) => new TextEncoder().encode(s),
-    };
-  } catch {
-    throw new Error(
-      `Could not load keccak256 implementation. Install "ethers" or "@noble/hashes".`
-    );
   }
 }
 
@@ -72,22 +55,21 @@ async function walkDir(rootAbs: string): Promise<string[]> {
 
 type ParsedError = {
   name: string;
-  types: string[];            // canonical types only
-  canonicalSig: string;       // ErrorName(type1,type2)
-  selector4: string;          // 0x12345678
-  notice: string;             // extracted @notice or @dev
-  fileBase: string;           // e.g. ILPOracleBase
-  pkgName: string;            // e.g. interfaces
+  types: string[]; // canonical types only
+  paramNames: string[]; // may be "" if unnamed
+  paramsPretty: string; // e.g. "pool: IBasePool, feeds: AggregatorV3Interface[]"
+  canonicalSig: string; // ErrorName(type1,type2)
+  selector4: string; // 0x12345678
+  notice: string; // extracted @notice or @dev
+  fileBase: string; // e.g. ILPOracleBase
+  pkgName: string; // e.g. interfaces
   dirRelFromContracts: string; // posix path, "" for root
 };
 
 function normalizeType(t: string): string {
-  // Remove excess whitespace but preserve meaningful tokens like [] and nested tuples
-  // Also normalize spaces around commas and parentheses.
   let s = t.trim();
 
-  // Common Solidity qualifiers that should not appear in error params, but if present, strip safely.
-  // (keeps this robust if someone wrote them anyway).
+  // Strip occasional qualifiers if present
   s = s.replace(/\b(memory|calldata|storage|payable)\b/g, "").trim();
 
   // Collapse whitespace
@@ -124,23 +106,36 @@ function splitTopLevelCommaList(s: string): string[] {
 }
 
 function extractTypeFromParam(param: string): string {
-  // Goal: turn "IBasePool pool" => "IBasePool"
-  //       "AggregatorV3Interface[] feeds" => "AggregatorV3Interface[]"
-  //       "(uint256,address) foo" => "(uint256,address)" (tuple type)
-  // If there is no clear name, keep as-is.
+  // "IBasePool pool" => "IBasePool"
+  // "AggregatorV3Interface[] feeds" => "AggregatorV3Interface[]"
+  // "(uint256,address) foo" => "(uint256,address)"
   const p = param.trim();
   if (!p) return "";
 
-  // If it looks like "... <identifier>" at the end, treat that as the name and remove it.
-  // This handles most "type name" forms, including complex types with spaces.
   const m = p.match(/^(.+?)\s+([A-Za-z_]\w*)$/);
   if (m) return normalizeType(m[1]);
 
   return normalizeType(p);
 }
 
+function extractNameFromParam(param: string): string {
+  const p = param.trim();
+  const m = p.match(/^(.+?)\s+([A-Za-z_]\w*)$/);
+  return m ? m[2] : "";
+}
+
+function prettyParams(types: string[], names: string[]): string {
+  if (!types.length) return "";
+  const parts: string[] = [];
+  for (let i = 0; i < types.length; i++) {
+    const n = (names[i] ?? "").trim();
+    const t = (types[i] ?? "").trim();
+    parts.push(n ? `${n}: ${t}` : t);
+  }
+  return parts.join(", ");
+}
+
 function parseNatSpecNotice(natspecLines: string[]): string {
-  // Extract @notice (preferred) or @dev, including continuation lines until next @tag.
   function extractTag(tag: "notice" | "dev"): string | null {
     const re = new RegExp(String.raw`@${tag}\b`, "i");
     let start = -1;
@@ -172,11 +167,10 @@ function parseNatSpecNotice(natspecLines: string[]): string {
   if (notice) return notice;
   const dev = extractTag("dev");
   if (dev) return dev;
-  return ""; // if missing, still emit (but empty) to make gaps obvious
+  return "";
 }
 
 function cleanNatSpecLine(line: string): string {
-  // Strip leading /// or leading * in block comment lines
   let s = line.trim();
   if (s.startsWith("///")) s = s.slice(3).trim();
   if (s.startsWith("*")) s = s.slice(1).trim();
@@ -193,8 +187,19 @@ function heading(level: number, text: string): string {
 }
 
 function mdEscapeCell(s: string): string {
-  // Minimal escaping for markdown tables
   return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
+}
+
+function slugifyHeading(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
+function linkToErrorsMdAnchor(anchorText: string): string {
+  return `errors.md#${slugifyHeading(anchorText)}`;
 }
 
 async function parseSolFile(
@@ -221,7 +226,6 @@ async function parseSolFile(
 
     // Capture NatSpec blocks immediately above an item
     if (line.trim().startsWith("///")) {
-      // consecutive /// lines
       const buf: string[] = [];
       while (i < lines.length && lines[i].trim().startsWith("///")) {
         buf.push(cleanNatSpecLine(lines[i]));
@@ -233,7 +237,6 @@ async function parseSolFile(
 
     if (line.trim().startsWith("/**")) {
       const buf: string[] = [];
-      // read until */
       buf.push(cleanNatSpecLine(line.replace("/**", "")));
       i++;
       while (i < lines.length && !lines[i].includes("*/")) {
@@ -246,24 +249,21 @@ async function parseSolFile(
         if (before.trim().length) buf.push(cleanNatSpecLine(before));
         i++;
       }
-      // Only treat as NatSpec if it contains @notice or @dev; otherwise discard.
+
       const joined = buf.join("\n");
       if (/@notice\b/i.test(joined) || /@dev\b/i.test(joined)) pendingNatSpec = buf;
       else pendingNatSpec = [];
       continue;
     }
 
-    // If blank line, keep pendingNatSpec (NatSpec often separated by blank lines in practice)
     if (line.trim().length === 0) {
       i++;
       continue;
     }
 
-    // Try to detect an error declaration start on this line
-    // We accept possible leading whitespace and optional "error" not preceded by identifier char.
+    // Detect error declaration
     const errIdx = line.search(/\berror\b/);
     if (errIdx !== -1) {
-      // accumulate until semicolon
       let decl = line.slice(errIdx);
       let j = i + 1;
       while (!decl.includes(";") && j < lines.length) {
@@ -271,37 +271,41 @@ async function parseSolFile(
         j++;
       }
 
-      // Chop after first semicolon
       const semi = decl.indexOf(";");
       if (semi !== -1) decl = decl.slice(0, semi + 1);
-
-      // Remove "error" keyword prefix whitespace
       decl = decl.trim();
 
-      // Match: error Name(...);
       const m = decl.match(/^error\s+([A-Za-z_]\w*)\s*(\(([\s\S]*?)\))?\s*;/);
       if (m) {
         const name = m[1];
         const rawParams = (m[3] ?? "").trim();
 
         const types: string[] = [];
+        const paramNames: string[] = [];
+
         if (rawParams.length) {
           const params = splitTopLevelCommaList(rawParams);
           for (const p of params) {
             const t = extractTypeFromParam(p);
-            if (t) types.push(t);
+            if (t) {
+              types.push(t);
+              paramNames.push(extractNameFromParam(p));
+            }
           }
         }
 
         const canonicalSig = `${name}(${types.join(",")})`;
         const fullHash = keccak256Hex(toUtf8(canonicalSig));
-        const selector4 = fullHash.slice(0, 10); // 0x + 8 hex chars
+        const selector4 = fullHash.slice(0, 10);
 
         const notice = parseNatSpecNotice(pendingNatSpec);
+        const paramsPretty = prettyParams(types, paramNames);
 
         errors.push({
           name,
           types,
+          paramNames,
+          paramsPretty,
           canonicalSig,
           selector4,
           notice,
@@ -311,13 +315,11 @@ async function parseSolFile(
         });
       }
 
-      // After consuming a declaration, advance i to j and clear NatSpec buffer
       i = j;
       pendingNatSpec = [];
       continue;
     }
 
-    // Any other non-empty, non-comment line breaks the NatSpec association
     pendingNatSpec = [];
     i++;
   }
@@ -326,29 +328,15 @@ async function parseSolFile(
 }
 
 function sortKeyForDir(pkgName: string, dirRel: string): string {
-  // Stable ordering: root first, then lexicographic
   const d = dirRel || "";
   return `${pkgName}/${d}`;
-}
-
-function slugifyHeading(s: string): string {
-  // GitHub-style anchor slug (approx): lowercase, remove punctuation, spaces -> hyphens.
-  // Good enough for typical Solidity filenames/paths.
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-");
-}
-
-function linkToErrorsMdAnchor(anchorText: string): string {
-  return `errors.md#${slugifyHeading(anchorText)}`;
 }
 
 async function main() {
   const repoRoot = process.cwd();
   const pkgRoot = path.join(repoRoot, "pkg");
-  const outPath = path.join(repoRoot, "docs", "errors.md");
+  const errorsOutPath = path.join(repoRoot, "docs", "errors.md");
+  const indexOutPath = path.join(repoRoot, "docs", "error-index.md");
 
   const { keccak256Hex, toUtf8 } = await getKeccak256();
 
@@ -357,7 +345,7 @@ async function main() {
   try {
     const entries = await fs.readdir(pkgRoot, { withFileTypes: true });
     pkgEntries = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-  } catch (e) {
+  } catch {
     throw new Error(`Could not read ${pkgRoot}. Are you running from repo root?`);
   }
 
@@ -398,7 +386,7 @@ async function main() {
     byFile.get(e.fileBase)!.push(e);
   }
 
-  // Sort each file's errors by canonicalSig (stable / supports overloads)
+  // Sort each file's errors by canonicalSig (supports overload-ish clarity)
   for (const [, byDir] of byPkg) {
     for (const [, byFile] of byDir) {
       for (const [, errs] of byFile) {
@@ -407,7 +395,7 @@ async function main() {
     }
   }
 
-  // Build markdown
+  // --- Build docs/errors.md ---
   let md = "";
   md += `<!-- AUTO-GENERATED. DO NOT EDIT MANUALLY. -->\n`;
   md += `<!-- Generated from /pkg/*/contracts/**/*.sol (excluding /test/). -->\n\n`;
@@ -419,11 +407,10 @@ async function main() {
 
     const byDir = byPkg.get(pkgName)!;
     const dirKeys = Array.from(byDir.keys()).sort((a, b) => {
-      const ak = sortKeyForDir(pkgName, a);
-      const bk = sortKeyForDir(pkgName, b);
-      // Root first
       if (a === "" && b !== "") return -1;
       if (b === "" && a !== "") return 1;
+      const ak = sortKeyForDir(pkgName, a);
+      const bk = sortKeyForDir(pkgName, b);
       return ak.localeCompare(bk);
     });
 
@@ -433,10 +420,9 @@ async function main() {
       // Directory heading (skip for contracts root)
       let dirHeadingLevel = 1;
       if (dirRel !== "") {
-        const depth = dirRel.split("/").filter(Boolean).length; // 1 => immediate subdir
-        dirHeadingLevel = 2 + (depth - 1); // depth1=>2, depth2=>3, ...
-        const title = `${pkgName}/${dirRel}`;
-        md += heading(dirHeadingLevel, title);
+        const depth = dirRel.split("/").filter(Boolean).length;
+        dirHeadingLevel = 2 + (depth - 1);
+        md += heading(dirHeadingLevel, `${pkgName}/${dirRel}`);
       }
 
       const files = Array.from(byFile.keys()).sort((a, b) => a.localeCompare(b));
@@ -444,34 +430,30 @@ async function main() {
         const errs = byFile.get(fileBase)!;
         if (errs.length === 0) continue;
 
-        const fileHeadingLevel = Math.min(6, (dirRel === "" ? 2 : dirHeadingLevel + 1));
+        const fileHeadingLevel = Math.min(6, dirRel === "" ? 2 : dirHeadingLevel + 1);
         md += heading(fileHeadingLevel, fileBase);
 
-        md += `| Error | Comment | Signature |\n`;
-        md += `| --- | --- | --- |\n`;
+        md += `| Error | Arguments | Comment | Signature |\n`;
+        md += `| --- | --- | --- | --- |\n`;
 
         for (const e of errs) {
           const errorCell = e.types.length ? e.canonicalSig : e.name;
-          const commentCell = e.notice || "";
-          md += `| ${mdEscapeCell(errorCell)} | ${mdEscapeCell(commentCell)} | \`${e.selector4}\` |\n`;
+          md += `| ${mdEscapeCell(errorCell)} | ${mdEscapeCell(e.paramsPretty)} | ${mdEscapeCell(
+            e.notice || ""
+          )} | \`${e.selector4}\` |\n`;
         }
-
         md += `\n`;
       }
     }
   }
 
-  // Ensure /docs exists
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, md, "utf8");
+  await fs.mkdir(path.dirname(errorsOutPath), { recursive: true });
+  await fs.writeFile(errorsOutPath, md, "utf8");
 
   // eslint-disable-next-line no-console
-  console.log(`Wrote ${path.relative(repoRoot, outPath)} with ${allErrors.length} errors.`);
+  console.log(`Wrote ${path.relative(repoRoot, errorsOutPath)} with ${allErrors.length} errors.`);
 
-  // --- error-index.md ---
-  const indexPath = path.join(repoRoot, "docs", "error-index.md");
-
-  // Build index rows (one row per error), sorted by selector then canonicalSig.
+  // --- Build docs/error-index.md ---
   const indexRows = [...allErrors].sort((a, b) => {
     const s = a.selector4.localeCompare(b.selector4);
     if (s !== 0) return s;
@@ -483,22 +465,23 @@ async function main() {
   idx += `<!-- Generated from /pkg/*/contracts/**/*.sol (excluding /test/). -->\n\n`;
   idx += `# Error selector index\n\n`;
   idx += `Sorted by selector (4-byte).\n\n`;
-  idx += `| Selector | Error | Location |\n`;
-  idx += `| --- | --- | --- |\n`;
+  idx += `| Selector | Error | Arguments | Location |\n`;
+  idx += `| --- | --- | --- | --- |\n`;
 
   for (const e of indexRows) {
-    const errorCell = e.canonicalSig; // always include canonical in index
-    // Link target: file heading in errors.md (stable and avoids needing per-error anchors)
+    // Link to the file heading in errors.md
     const anchorText = e.fileBase;
     const relLocation = `${e.pkgName}${e.dirRelFromContracts ? "/" + e.dirRelFromContracts : ""}/${e.fileBase}.sol`;
-
     const locLink = `[${mdEscapeCell(relLocation)}](${linkToErrorsMdAnchor(anchorText)})`;
-    idx += `| \`${e.selector4}\` | ${mdEscapeCell(errorCell)} | ${locLink} |\n`;
+
+    idx += `| \`${e.selector4}\` | ${mdEscapeCell(e.canonicalSig)} | ${mdEscapeCell(e.paramsPretty)} | ${locLink} |\n`;
   }
 
-  await fs.mkdir(path.dirname(indexPath), { recursive: true });
-  await fs.writeFile(indexPath, idx, "utf8");
-  console.log(`Wrote ${path.relative(repoRoot, indexPath)} with ${indexRows.length} entries.`);
+  await fs.mkdir(path.dirname(indexOutPath), { recursive: true });
+  await fs.writeFile(indexOutPath, idx, "utf8");
+
+  // eslint-disable-next-line no-console
+  console.log(`Wrote ${path.relative(repoRoot, indexOutPath)} with ${indexRows.length} entries.`);
 }
 
 main().catch((err) => {
@@ -506,4 +489,3 @@ main().catch((err) => {
   console.error(err?.stack || String(err));
   process.exit(1);
 });
-
