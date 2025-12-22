@@ -5,17 +5,17 @@ pragma solidity ^0.8.24;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPool, LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -529,7 +529,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         uint256[] memory lbpBalancesBeforeScaled18 = vault.getCurrentLiveBalances(pool);
         uint256 realReserveScaled18 = lbpBalancesBeforeScaled18[reserveIdx];
 
-        uint256 spotPrice = ILBPool(pool).computeSpotPrice(reserveIdx);
+        uint256 spotPrice = IPoolInfo(pool).computeSpotPrice(reserveIdx);
 
         vm.startPrank(bob);
         IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
@@ -572,7 +572,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         );
 
         // Verify spot price is preserved in weighted pool
-        uint256 weightedPoolPrice = weightedPool.computeSpotPrice(reserveIdx);
+        uint256 weightedPoolPrice = IPoolInfo(address(weightedPool)).computeSpotPrice(reserveIdx);
 
         assertApproxEqRel(weightedPoolPrice, spotPrice, DELTA_REL, "Spot price should be preserved after migration");
     }
@@ -617,11 +617,10 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
 
         // Get balances before migration
         uint256[] memory lbpBalancesBeforeScaled18 = vault.getCurrentLiveBalances(pool);
-        (, uint256 virtualBalanceScaled18) = ILBPool(pool).getReserveTokenVirtualBalance();
         uint256 realReserveScaled18 = lbpBalancesBeforeScaled18[reserveIdx];
 
         // Spot price using effective reserve
-        uint256 spotPrice = ILBPool(pool).computeSpotPrice(reserveIdx);
+        uint256 spotPrice = IPoolInfo(pool).computeSpotPrice(reserveIdx);
 
         vm.startPrank(bob);
         IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
@@ -664,7 +663,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         );
 
         // Verify spot price is preserved in weighted pool
-        uint256 weightedPoolPrice = weightedPool.computeSpotPrice(reserveIdx);
+        uint256 weightedPoolPrice = IPoolInfo(address(weightedPool)).computeSpotPrice(reserveIdx);
 
         assertApproxEqRel(weightedPoolPrice, spotPrice, DELTA_REL, "Spot price should be preserved after migration");
 
