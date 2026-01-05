@@ -27,6 +27,8 @@ async function getKeccak256(): Promise<{ keccak256Hex: Keccak256Fn; toUtf8: (s: 
   } catch {
     // ignore
   }
+
+  throw new Error(`Could not load keccak256 implementation. Install "ethers" or "@noble/hashes".`);
 }
 
 function isTestDirSegment(seg: string): boolean {
