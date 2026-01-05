@@ -2,6 +2,24 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
+
+function getRunMetadata(): { generatedAt: string; gitCommit: string } {
+  const generatedAt = new Date().toISOString();
+
+  let gitCommit = "unknown";
+  try {
+    gitCommit = execSync("git rev-parse HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    // Not a git repo, detached environment, or git unavailable
+  }
+
+  return { generatedAt, gitCommit };
+}
 
 // Requires ethers.
 type Keccak256Fn = (utf8: Uint8Array) => string;
@@ -340,6 +358,8 @@ async function main() {
   const errorsOutPath = path.join(repoRoot, "docs", "errors.md");
   const indexOutPath = path.join(repoRoot, "docs", "error-index.md");
 
+  const { generatedAt, gitCommit } = getRunMetadata();
+
   const { keccak256Hex, toUtf8 } = await getKeccak256();
 
   // Discover packages under /pkg
@@ -400,8 +420,9 @@ async function main() {
   // --- Build docs/errors.md ---
   let md = "";
   md += `<!-- AUTO-GENERATED. DO NOT EDIT MANUALLY. -->\n`;
-  md += `<!-- Generated from /pkg/*/contracts/**/*.sol (excluding /test/). -->\n\n`;
-  md += `# Errors\n\n`;
+  md += `<!-- Generated: ${generatedAt} -->\n`;
+  md += `<!-- Git commit: ${gitCommit} -->\n`;
+  md += `<!-- Source: /pkg/*/contracts/**/*.sol (excluding /test/) -->\n\n`;
 
   const pkgs = Array.from(byPkg.keys()).sort((a, b) => a.localeCompare(b));
   for (const pkgName of pkgs) {
@@ -464,7 +485,9 @@ async function main() {
 
   let idx = "";
   idx += `<!-- AUTO-GENERATED. DO NOT EDIT MANUALLY. -->\n`;
-  idx += `<!-- Generated from /pkg/*/contracts/**/*.sol (excluding /test/). -->\n\n`;
+  idx += `<!-- Generated: ${generatedAt} -->\n`;
+  idx += `<!-- Git commit: ${gitCommit} -->\n`;
+  idx += `<!-- Source: /pkg/*/contracts/**/*.sol (excluding /test/) -->\n\n`;
   idx += `# Error selector index\n\n`;
   idx += `Sorted by selector (4-byte).\n\n`;
   idx += `| Selector | Error | Arguments | Location |\n`;
