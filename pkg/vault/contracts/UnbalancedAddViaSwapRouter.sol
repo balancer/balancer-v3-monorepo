@@ -195,14 +195,16 @@ contract UnbalancedAddViaSwapRouter is RouterHooks, IUnbalancedAddViaSwapRouter 
             amountsIn[adjustableTokenIndex] -= swapAmountOut;
         }
 
-        if (amountsIn[exactTokenIndex] != hookParams.operationParams.exactAmount) {
-            // This should never happen, given the swap logic.
-            revert AmountInDoesNotMatchExact(amountsIn[exactTokenIndex], hookParams.operationParams.exactAmount);
-        } else if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
+        if (amountsIn[adjustableTokenIndex] > hookParams.operationParams.maxAdjustableAmount) {
             revert AmountInAboveMaxAdjustableAmount(
                 amountsIn[adjustableTokenIndex],
                 hookParams.operationParams.maxAdjustableAmount
             );
+        }
+
+        if (amountsIn[exactTokenIndex] != hookParams.operationParams.exactAmount) {
+            // This should never happen, given the swap logic.
+            revert AmountInDoesNotMatchExact(amountsIn[exactTokenIndex], hookParams.operationParams.exactAmount);
         }
     }
 }
