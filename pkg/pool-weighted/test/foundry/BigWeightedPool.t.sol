@@ -12,9 +12,9 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -80,6 +80,11 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         );
         vm.label(newPool, "Big weighted pool");
 
+        uint256[] memory minTokenBalances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(address(bigPoolTokens[i]));
+        }
+
         // poolArgs is used to check pool deployment address with create2.
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
@@ -87,7 +92,8 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
                 symbol: symbol,
                 numTokens: bigPoolTokens.length,
                 normalizedWeights: weights,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

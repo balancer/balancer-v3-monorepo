@@ -12,11 +12,13 @@ import { IBasePool } from "../vault/IBasePool.sol";
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
  * @param normalizedWeights The token weights, sorted in token registration order
+ * @param minTokenBalances The minimum token balances, sorted in token registration order
  */
 struct WeightedPoolImmutableData {
     IERC20[] tokens;
     uint256[] decimalScalingFactors;
     uint256[] normalizedWeights;
+    uint256[] minTokenBalances;
 }
 
 /**
@@ -68,4 +70,11 @@ interface IWeightedPool is IBasePool {
      * @return data A struct containing all immutable weighted pool parameters
      */
     function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data);
+
+    /**
+     * @notice Get the minimum token balances, if defined for this pool type.
+     * @dev The default implementation returns an empty array; override this for pools that enforce minimum balances.
+     * @return minTokenBalances An array of minimum token balances, sorted in token registration order
+     */
+    function getMinTokenBalances() external view returns (uint256[] memory);
 }

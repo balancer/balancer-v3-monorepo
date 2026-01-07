@@ -8,6 +8,7 @@ import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-ut
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
@@ -125,13 +126,20 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
         weights[highWeightTokenIdx] = _EIGHTY;
         weights[lowWeightTokenIdx] = _TWENTY;
 
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[highWeightTokenIdx].token = highWeightToken;
+        tokens[lowWeightTokenIdx].token = lowWeightToken;
+
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokens);
+
         constructorArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
                 symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
                 numTokens: 2,
                 normalizedWeights: weights,
-                version: _poolVersion
+                version: _poolVersion,
+                minTokenBalances: minTokenBalances
             }),
             getVault()
         );

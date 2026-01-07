@@ -85,13 +85,19 @@ contract E2eSwapRateProviderWeightedTest is
         // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
         vault.manualSetPoolCreator(newPool, lp);
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: "50/50 Weighted Pool",
                 symbol: "50_50WP",
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: "Pool v1"
+                version: "Pool v1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

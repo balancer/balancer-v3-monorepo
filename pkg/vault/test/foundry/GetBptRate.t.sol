@@ -5,15 +5,15 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
@@ -62,10 +62,12 @@ contract GetBptRateTest is BaseVaultTest {
         rateProviders[0] = IRateProvider(rateProviderDai);
         rateProviders[1] = IRateProvider(rateProviderUsdc);
 
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20(), rateProviders);
+
         newPool = WeightedPoolFactory(poolFactory).create(
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            tokenConfig,
             weights,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
@@ -76,13 +78,16 @@ contract GetBptRateTest is BaseVaultTest {
         );
         vm.label(newPool, label);
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: "ERC20 Pool",
                 symbol: "ERC20POOL",
                 numTokens: tokens.length,
                 normalizedWeights: weights,
-                version: "Weighted Pool v1"
+                version: "Weighted Pool v1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

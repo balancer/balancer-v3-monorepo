@@ -53,6 +53,11 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         newPool = address(
             deployWeightedPoolMock(
                 WeightedPool.NewPoolParams({
@@ -60,7 +65,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
                     symbol: symbol,
                     numTokens: 2,
                     normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                    version: poolVersion
+                    version: poolVersion,
+                    minTokenBalances: minTokenBalances
                 }),
                 vault
             )
@@ -84,7 +90,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
                 symbol: symbol,
                 numTokens: 2,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
+                version: poolVersion,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );
