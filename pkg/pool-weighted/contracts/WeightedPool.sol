@@ -145,7 +145,8 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) public view virtual returns (uint256) {
-        uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
+        // Round `balanceTokenIn` up on both ExactIn and ExactOut swaps.
+        uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn] + 1;
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         if (request.kind == SwapKind.EXACT_IN) {
