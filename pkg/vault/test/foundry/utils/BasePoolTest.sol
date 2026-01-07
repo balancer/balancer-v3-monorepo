@@ -39,9 +39,15 @@ abstract contract BasePoolTest is BaseVaultTest {
     uint256 internal poolMinSwapFeePercentage;
     uint256 internal poolMaxSwapFeePercentage;
 
+    uint256[] internal defaultMinTokenBalances;
+
     InputHelpersMock public immutable inputHelpersMock = new InputHelpersMock();
 
     function setUp() public virtual override {
+        defaultMinTokenBalances = new uint256[](2);
+        defaultMinTokenBalances[0] = POOL_MINIMUM_TOTAL_SUPPLY;
+        defaultMinTokenBalances[1] = POOL_MINIMUM_TOTAL_SUPPLY;
+
         BaseVaultTest.setUp();
 
         require(poolTokens.length >= 2, "Minimum 2 tokens required (poolTokens)");

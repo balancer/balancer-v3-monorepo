@@ -6,13 +6,14 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowPoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -90,19 +91,22 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(tokens.asIERC20());
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(sortedTokens);
 
         PoolRoleAccounts memory roleAccounts;
 
         newPool = CowPoolFactory(poolFactory).create(
             name,
             symbol,
-            vault.buildTokenConfig(sortedTokens),
+            tokenConfig,
             weights,
             roleAccounts,
             DEFAULT_SWAP_FEE,
             ZERO_BYTES32
         );
         vm.label(newPool, label);
+
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
 
         // poolArgs is used to check pool deployment address with create2.
         poolArgs = abi.encode(
@@ -111,7 +115,8 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
                 symbol: symbol,
                 numTokens: sortedTokens.length,
                 normalizedWeights: weights,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: minTokenBalances
             }),
             vault,
             poolFactory,

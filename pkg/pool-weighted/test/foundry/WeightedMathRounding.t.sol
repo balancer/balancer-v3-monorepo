@@ -249,11 +249,7 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         weight0 = bound(weight0, MIN_TEST_WEIGHT, MAX_TEST_WEIGHT);
         uint256 weight1 = FixedPoint.ONE - weight0;
         uint256[] memory weights = [weight0, weight1].toMemoryArray();
-        amountIn0Scaled18 = bound(
-            amountIn0Scaled18,
-            MIN_SWAP_AMOUNT,
-            balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO)
-        );
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
 
         _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
     }
@@ -270,11 +266,7 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         uint256[] memory weights = [uint256(80e16), uint256(20e16)].toMemoryArray();
-        amountIn0Scaled18 = bound(
-            amountIn0Scaled18,
-            MIN_SWAP_AMOUNT,
-            balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO)
-        );
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
 
         _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
     }
@@ -291,11 +283,7 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         uint256[] memory weights = [uint256(20e16), uint256(80e16)].toMemoryArray();
-        amountIn0Scaled18 = bound(
-            amountIn0Scaled18,
-            MIN_SWAP_AMOUNT,
-            balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO)
-        );
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
 
         _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
     }
@@ -312,11 +300,7 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
-        amountIn0Scaled18 = bound(
-            amountIn0Scaled18,
-            MIN_SWAP_AMOUNT,
-            balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO)
-        );
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
 
         _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
     }
@@ -382,7 +366,11 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
-        balanceRaw1 = bound(balanceRaw1, (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
         weight0 = bound(weight0, MIN_TEST_WEIGHT, MAX_TEST_WEIGHT);
         uint256 weight1 = FixedPoint.ONE - weight0;
         uint256[] memory weights = [weight0, weight1].toMemoryArray();
@@ -408,7 +396,11 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
-        balanceRaw1 = bound(balanceRaw1, (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
         uint256[] memory weights = [uint256(80e16), uint256(20e16)].toMemoryArray();
         // Can't get more than the balance of the output token
         amountOut1Scaled18 = bound(
@@ -431,7 +423,11 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
-        balanceRaw1 = bound(balanceRaw1, (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
         uint256[] memory weights = [uint256(20e16), uint256(80e16)].toMemoryArray();
         // Can't get more than the balance of the output token
         amountOut1Scaled18 = bound(
@@ -454,7 +450,11 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
         rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
         // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
-        balanceRaw1 = bound(balanceRaw1, (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
         // Can't get more than the balance of the output token
         amountOut1Scaled18 = bound(

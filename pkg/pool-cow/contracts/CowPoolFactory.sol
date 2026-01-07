@@ -11,6 +11,7 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
@@ -57,6 +58,8 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
         // CoW AMM Pool needs to deny unbalanced liquidity so no one can bypass the swap logic and fees.
         liquidityManagement.disableUnbalancedLiquidity = true;
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokens);
+
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
@@ -64,7 +67,8 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
                     symbol: symbol,
                     numTokens: tokens.length,
                     normalizedWeights: normalizedWeights,
-                    version: _poolVersion
+                    version: _poolVersion,
+                    minTokenBalances: minTokenBalances
                 }),
                 getVault(),
                 _trustedCowRouter
