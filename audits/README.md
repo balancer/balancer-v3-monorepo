@@ -20,6 +20,8 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | MEV Capture Hook                  | Certora       | [`2025-02-07`](./certora/2025-02-07.pdf)             |
 | Liquidity Bootstrapping Pool      | Certora       | [`2025-02-17`](./certora/2025-02-17.pdf)             |
 | LP Oracles                        | Certora       | [`2025-08-19`](./certora/2025-08-19.pdf)             |
+| Nested Pool Router                | Certora       | [`2025-09-08`](./certora/2025-09-08.pdf)             |
+| ECLP Oracles                      | Certora       | [`2025-09-10`](./certora/2025-09-10.pdf)             |
 
 ## Addenda
   
