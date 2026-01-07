@@ -21,7 +21,7 @@ library SpotPriceHelper {
         uint256 projectTokenIndex = reserveTokenIndex == 0 ? 1 : 0;
 
         // Get effective balances considering virtual balance for LB Pools via the pool (not the vault, which
-        // would return real balances only.
+        // would return real balances only).
         uint256[] memory effectiveBalancesScaled18 = IPoolInfo(address(pool)).getCurrentLiveBalances();
         uint256[] memory weights = IWeightedPool(address(pool)).getNormalizedWeights();
 
