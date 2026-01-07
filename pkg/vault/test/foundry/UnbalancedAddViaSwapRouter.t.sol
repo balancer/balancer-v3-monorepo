@@ -226,4 +226,52 @@ contract UnbalancedAddViaSwapRouterTest is BaseVaultTest {
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         unbalancedAddViaSwapRouter.addLiquidityUnbalanced(pool, 0, false, params);
     }
+
+    function testTriggerExactInPath() public {
+        uint256 totalSupply = IERC20(pool).totalSupply();
+        uint256[] memory balances = vault.getCurrentLiveBalances(pool);
+
+        uint256 requestedBpt = totalSupply / 100;
+        uint256 exactAmount = balances[wethIdx] / 99;
+
+        // Calculate what proportional amounts would be
+        uint256[] memory proportionalAmounts = new uint256[](2);
+        proportionalAmounts[0] = (balances[0] * requestedBpt) / totalSupply;
+        proportionalAmounts[1] = (balances[1] * requestedBpt) / totalSupply;
+
+        // Set maxAdjustableAmount just below the proportional add amount
+        // If we took the EXACT_OUT path, it would add to this and exceed the limit
+        // Th EXACT_IN path subtracts from it, so should not revert
+        uint256 maxAdjustableAmount = proportionalAmounts[daiIdx] - 1;
+
+        // With these parameters, amountsIn[exactTokenIndex] will be 1000 / 100 = 10;
+        // and hookParams.operationParams.exactAmount will be 1000 / 99 = 10.10101.
+        // Since 10 < 10.10101..., we take the EXACT_IN path.
+        IUnbalancedAddViaSwapRouter.AddLiquidityAndSwapParams memory params = IUnbalancedAddViaSwapRouter
+            .AddLiquidityAndSwapParams({
+                exactBptAmountOut: requestedBpt,
+                exactToken: weth,
+                exactAmount: exactAmount,
+                maxAdjustableAmount: maxAdjustableAmount,
+                addLiquidityUserData: bytes(""),
+                swapUserData: bytes("")
+            });
+
+        vm.prank(alice);
+        uint256[] memory amountsIn = unbalancedAddViaSwapRouter.addLiquidityUnbalanced(
+            pool,
+            MAX_UINT256,
+            false,
+            params
+        );
+
+        assertEq(amountsIn[wethIdx], exactAmount, "Wrong exact amount in");
+        assertLt(
+            amountsIn[daiIdx],
+            proportionalAmounts[daiIdx],
+            "Adjustable token amount should be less than the proportional amount"
+        );
+        // Kind of redundant, as it would revert otherwise
+        assertLe(amountsIn[daiIdx], maxAdjustableAmount, "Adjustable token exceeds the limit");
+    }
 }
