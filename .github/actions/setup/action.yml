@@ -6,7 +6,7 @@ runs:
     - name: Install Node
       uses: actions/setup-node@v4
       with:
-        node-version: 18.15
+        node-version: 24.12
     - name: Cache
       uses: actions/cache@v4
       id: cache
