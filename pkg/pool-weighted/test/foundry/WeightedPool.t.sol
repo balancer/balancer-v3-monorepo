@@ -20,15 +20,16 @@ import {
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
-import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
+import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
-import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
@@ -100,7 +101,8 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
                 symbol: symbol,
                 numTokens: sortedTokens.length,
                 normalizedWeights: weights,
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: defaultMinTokenBalances
             }),
             vault
         );
@@ -153,11 +155,18 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         WeightedPoolImmutableData memory data = IWeightedPool(pool).getWeightedPoolImmutableData();
         (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool);
         IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+        uint256 numTokens = tokens.length;
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        uint256[] memory minTokenBalances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(address(tokens[i]));
+        }
+
+        for (uint256 i = 0; i < numTokens; ++i) {
             assertEq(address(data.tokens[i]), address(tokens[i]), "Token mismatch");
             assertEq(data.decimalScalingFactors[i], scalingFactors[i], "Decimal scaling factors mismatch");
             assertEq(data.normalizedWeights[i], uint256(50e16), "Weight mismatch");
+            assertEq(data.minTokenBalances[i], minTokenBalances[i], "Minimum token balance mismatch");
         }
     }
 
@@ -177,6 +186,20 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
+    }
+
+    function testDirectDeploymentWithLowMinimums() public {
+        WeightedPool.NewPoolParams memory params = WeightedPool.NewPoolParams({
+            name: "Direct Deploy",
+            symbol: "DD",
+            numTokens: 2,
+            normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+            version: "V1",
+            minTokenBalances: [uint256(1e12), uint256(1e5)].toMemoryArray()
+        });
+
+        vm.expectRevert(MinTokenBalanceLib.InvalidMinTokenBalance.selector);
+        new WeightedPool(params, vault);
     }
 
     function testPoolCreator() public view {

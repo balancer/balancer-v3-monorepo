@@ -10,6 +10,7 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
@@ -67,6 +68,8 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         // disableUnbalancedLiquidity must be set to true if a hook has the flag enableHookAdjustedAmounts = true.
         liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokens);
+
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
@@ -74,7 +77,8 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
                     symbol: symbol,
                     numTokens: tokens.length,
                     normalizedWeights: normalizedWeights,
-                    version: _poolVersion
+                    version: _poolVersion,
+                    minTokenBalances: minTokenBalances
                 }),
                 getVault()
             ),
