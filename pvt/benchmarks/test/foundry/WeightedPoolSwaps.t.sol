@@ -13,6 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
@@ -82,10 +83,14 @@ contract WeightedPoolSwaps is BaseVaultTest {
             )
         );
 
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
+
         newPool = factory.create(
             name,
             symbol,
-            vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
+            tokenConfig,
             weights,
             poolRoleAccounts,
             swapFee,
@@ -95,13 +100,16 @@ contract WeightedPoolSwaps is BaseVaultTest {
             bytes32(uint256(1))
         );
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 numTokens: 2,
                 normalizedWeights: weights,
-                version: "Pool Version 1"
+                version: "Pool Version 1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );
