@@ -182,6 +182,11 @@ contract StableMathMock {
         return _mockComputeBalance(amplificationParameter, balances, invariant, tokenIndex, roundingPermutation);
     }
 
+    function ensureBalancesWithinMaxImbalanceRange(uint256[] memory balancesLiveScaled18) external pure {
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(balancesLiveScaled18);
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
+    }
+
     function _mockComputeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,

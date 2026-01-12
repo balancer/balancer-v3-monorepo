@@ -143,6 +143,9 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     ) external view returns (uint256 invariant) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(balancesLiveScaled18);
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
+
         invariant = _computeInvariant(balancesLiveScaled18, currentAmp, rounding);
     }
 
@@ -165,20 +168,40 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256 invariant = _computeInvariant(balancesLiveScaled18, currentAmp, Rounding.ROUND_UP);
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(balancesLiveScaled18);
 
-        return
-            StableMath.computeBalance(currentAmp, balancesLiveScaled18, invariant.mulUp(invariantRatio), tokenInIndex);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        newBalance = StableMath.computeBalance(
+            currentAmp,
+            balancesLiveScaled18,
+            _computeInvariant(balancesLiveScaled18, currentAmp, Rounding.ROUND_UP).mulUp(invariantRatio),
+            tokenInIndex
+        );
+
+        if (newBalance < minBalance) {
+            minBalance = newBalance;
+        } else if (newBalance > maxBalance) {
+            maxBalance = newBalance;
+        }
+
+        // It’s enough for us to check the imbalance once,
+        // because the previous calculations either keep the imbalance the same or increase it.
+        // So only the worst imbalance, before or after the operation, will be checked.
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256 amountCalculatedScaled18) {
+    function onSwap(PoolSwapParams memory request) external view virtual returns (uint256 amountCalculatedScaled18) {
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(request.balancesScaled18);
+
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = _computeInvariant(request.balancesScaled18, currentAmp, Rounding.ROUND_DOWN);
 
+        uint256 amountOutScaled18;
+        uint256 amountInScaled18;
         if (request.kind == SwapKind.EXACT_IN) {
-            amountCalculatedScaled18 = StableMath.computeOutGivenExactIn(
+            amountInScaled18 = request.amountGivenScaled18;
+            amountOutScaled18 = StableMath.computeOutGivenExactIn(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -186,8 +209,9 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 request.amountGivenScaled18,
                 invariant
             );
+            amountCalculatedScaled18 = amountOutScaled18;
         } else {
-            amountCalculatedScaled18 = StableMath.computeInGivenExactOut(
+            amountInScaled18 = StableMath.computeInGivenExactOut(
                 currentAmp,
                 request.balancesScaled18,
                 request.indexIn,
@@ -195,7 +219,29 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 request.amountGivenScaled18,
                 invariant
             );
+            amountOutScaled18 = request.amountGivenScaled18;
+            amountCalculatedScaled18 = amountInScaled18;
         }
+
+        uint256 newBalanceIn = request.balancesScaled18[request.indexIn] + amountInScaled18;
+        uint256 newBalanceOut = request.balancesScaled18[request.indexOut] - amountOutScaled18;
+
+        // newBalanceIn >= request.balancesScaled18[request.indexIn] >= minBalance
+        // so we only check whether it goes above the original maximum balance.
+        if (newBalanceIn > maxBalance) {
+            maxBalance = newBalanceIn;
+        }
+
+        // newBalanceOut <= request.balancesScaled18[request.indexOut] <= maxBalance,
+        // so we only check whether it goes below the original minimum balance.
+        if (newBalanceOut < minBalance) {
+            minBalance = newBalanceOut;
+        }
+
+        // It’s enough for us to check the imbalance once,
+        // because the previous calculations either keep the imbalance the same or increase it.
+        // So only the worst imbalance, before or after the operation, will be checked.
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
     }
 
     /// @inheritdoc IStablePool
