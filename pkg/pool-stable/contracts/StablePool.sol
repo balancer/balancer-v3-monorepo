@@ -184,9 +184,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             maxBalance = newBalance;
         }
 
-        // It’s enough for us to check the imbalance once,
-        // because the previous calculations either keep the imbalance the same or increase it.
-        // So only the worst imbalance, before or after the operation, will be checked.
+        // It’s enough for us to check the imbalance once, because `computeBalance` will update
+        // balancesLiveScaled18[tokenInIndex]. By updating the min or max balance accordingly before the check, we are
+        // effectively checking the worst case scenario (which might happen either before or after the result of
+        // `computeBalance` is applied to pool balances).
         StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
     }
 
@@ -238,9 +239,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             minBalance = newBalanceOut;
         }
 
-        // It’s enough for us to check the imbalance once,
-        // because the previous calculations either keep the imbalance the same or increase it.
-        // So only the worst imbalance, before or after the operation, will be checked.
+        // It’s enough for us to check the imbalance once, because `onSwap` will update
+        // balancesLiveScaled18[indexIn] (which will increase) and balancesLiveScaled18[indexOut] (which will decrease).
+        // By updating the min and / or max balance accordingly before the check, we are effectively checking the worst
+        // case scenario (which might happen either before or after the result of `onSwap` is applied to pool balances).
         StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
     }
 
