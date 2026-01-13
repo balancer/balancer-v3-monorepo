@@ -39,7 +39,6 @@ contract PrepaidRouterTest is BaseVaultTest {
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
     string constant version = "Mock Router v1";
 
-    RouterMock internal prepaidRouter;
     SimpleEIP7702Contract internal delegatedContractCode;
 
     // Track the indices for the standard weth/usdc pool.
