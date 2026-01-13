@@ -4,8 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { E2eErc4626SwapsTest } from "@balancer-labs/v3-vault/test/foundry/E2eErc4626Swaps.t.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
@@ -15,6 +21,9 @@ import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
 contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDeployer {
+    using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
+
     string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -61,5 +70,36 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDe
             }),
             vault
         );
+    }
+
+    /// @dev Override to set tighter bounds on initial balances to prevent reverts (max imbalance exceeded).
+    function _setPoolBalances(uint256 liquidityWaDai, uint256 liquidityWaWeth) internal virtual override {
+        // 1% to 65x of erc4626 initial pool liquidity.
+        liquidityWaDai = bound(
+            liquidityWaDai,
+            erc4626PoolInitialAmount.mulDown(1e16),
+            erc4626PoolInitialAmount.mulDown(65e18)
+        );
+        liquidityWaDai = _vaultPreviewDeposit(waDAI, liquidityWaDai);
+        // 1% to 65x of erc4626 initial pool liquidity.
+        liquidityWaWeth = bound(
+            liquidityWaWeth,
+            erc4626PoolInitialAmount.mulDown(1e16),
+            erc4626PoolInitialAmount.mulDown(65e18)
+        );
+        liquidityWaWeth = _vaultPreviewDeposit(waWETH, liquidityWaWeth);
+
+        uint256[] memory newPoolBalance = new uint256[](2);
+        newPoolBalance[waDaiIdx] = liquidityWaDai;
+        newPoolBalance[waWethIdx] = liquidityWaWeth;
+
+        uint256[] memory newPoolBalanceLiveScaled18 = new uint256[](2);
+        newPoolBalanceLiveScaled18[waDaiIdx] = liquidityWaDai.toScaled18ApplyRateRoundUp(1, waDAI.getRate());
+        newPoolBalanceLiveScaled18[waWethIdx] = liquidityWaWeth.toScaled18ApplyRateRoundUp(1, waWETH.getRate());
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
+        // Updates pool data with latest token rates.
+        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
     }
 }
