@@ -112,6 +112,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
     // Override from BaseLPOracleTest
     function createOracle(uint256) public override returns (IBasePool) {
         IGyroECLPPool pool = createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = 
         (oracle, feeds) = deployOracle(pool);
 
         return pool;

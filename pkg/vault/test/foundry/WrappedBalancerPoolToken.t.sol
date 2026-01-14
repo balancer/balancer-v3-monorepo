@@ -10,14 +10,15 @@ import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contract
 
 import { WrappedBalancerPoolToken } from "../../contracts/WrappedBalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { WrappedBalancerPoolTokenContractsDeployer } from "./utils/WrappedBalancerPoolTokenDeployer.sol";
 
-contract WrappedBalancerPoolTokenTest is BaseVaultTest {
+contract WrappedBalancerPoolTokenTest is WrappedBalancerPoolTokenContractsDeployer, BaseVaultTest {
     WrappedBalancerPoolToken public wBPT;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        wBPT = new WrappedBalancerPoolToken(vault, IERC20(pool), "Wrapped BPT", "wBPT");
+        wBPT = deployWrappedBalancerPoolToken(vault, IERC20(pool), "Wrapped BPT", "wBPT");
     }
 
     function testConstructor() public view {

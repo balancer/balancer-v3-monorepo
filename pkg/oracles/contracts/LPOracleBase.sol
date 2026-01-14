@@ -29,7 +29,8 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
     int256 internal constant _SEQUENCER_STATUS_DOWN = 1;
 
-    IBasePool public immutable pool;
+    IWrappedBalancerPoolToken public immutable wrappedPool;
+    address public immutable pool;
 
     // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
     // accurately reflect the state. These values are stored in and passed down from the associated factory.
@@ -63,7 +64,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
     constructor(
         IVault vault,
-        IBasePool pool_,
+        IWrappedBalancerPoolToken wrappedPool_,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -72,18 +73,19 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     ) {
         _version = version_;
         _vault = vault;
-        pool = pool_;
+        wrappedPool = wrappedPool_;
+        pool = IBasePool(wrappedPool.balancerPoolToken());
         _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
 
         // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
         _uptimeResyncWindow = uptimeResyncWindow;
 
-        IERC20[] memory tokens = vault.getPoolTokens(address(pool_));
+        IERC20[] memory tokens = vault.getPoolTokens(pool);
         uint totalTokens = tokens.length;
 
         _totalTokens = totalTokens;
-        _description = string.concat(IERC20Metadata(address(pool)).symbol(), "/USD");
+        _description = string.concat(IERC20Metadata(pool).symbol(), "/USD");
 
         InputHelpers.ensureInputLengthMatch(totalTokens, feeds.length);
 
@@ -178,7 +180,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         (int256[] memory prices, uint256[] memory updatedAt) = getFeedData();
 
         uint256 tvl = _computeTVL(prices);
-        uint256 totalSupply = _vault.totalSupply(address(pool));
+        uint256 totalSupply = _vault.totalSupply(pool);
 
         uint256 lpPrice = tvl.divUp(totalSupply);
         uint256 minUpdatedAt;
@@ -244,7 +246,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
     /// @inheritdoc ILPOracleBase
     function getPoolTokens() external view returns (IERC20[] memory) {
-        return _vault.getPoolTokens(address(pool));
+        return _vault.getPoolTokens(pool);
     }
 
     /// @inheritdoc ISequencerUptimeFeed
