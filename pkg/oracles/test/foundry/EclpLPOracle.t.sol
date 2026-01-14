@@ -18,6 +18,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -47,7 +48,10 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
 
     function deployOracle(
         IGyroECLPPool pool
-    ) internal returns (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
+    )
+        internal
+        returns (EclpLPOracleMock oracle, WrappedBalancerPoolToken wrappedPool, AggregatorV3Interface[] memory feeds)
+    {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -56,9 +60,10 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
+        wrappedPool = new WrappedBalancerPoolToken(vault, IERC20(address(pool)), "Wrapped BPT", "wBPT");
         oracle = new EclpLPOracleMock(
-            IVault(address(vault)),
-            pool,
+            vault,
+            wrappedPool,
             feeds,
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
@@ -110,17 +115,18 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
     }
 
     // Override from BaseLPOracleTest
-    function createOracle(uint256) public override returns (IBasePool) {
+    function createOracle(uint256) public override returns (IBasePool, WrappedBalancerPoolToken) {
         IGyroECLPPool pool = createAndInitPool();
-        WrappedBalancerPoolToken wrappedPool = 
-        (oracle, feeds) = deployOracle(pool);
 
-        return pool;
+        WrappedBalancerPoolToken wrappedPool;
+        (oracle, wrappedPool, feeds) = deployOracle(pool);
+
+        return (IBasePool(address(pool)), wrappedPool);
     }
 
     function testDescription() public {
         IGyroECLPPool pool = createAndInitPool();
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
 
         assertEq(oracle.description(), "ECLP-Test/USD", "Description does not match");
     }
@@ -128,7 +134,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
     function testGetFeeds() public {
         IGyroECLPPool pool = createAndInitPool();
 
-        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
@@ -142,7 +148,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
     function testGetFeedTokenDecimalScalingFactors() public {
         IGyroECLPPool pool = createAndInitPool();
 
-        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         uint256[] memory returnedScalingFactors = oracle.getFeedTokenDecimalScalingFactors();
 
@@ -157,7 +163,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
 
     function testCalculateFeedTokenDecimalScalingFactor() public {
         IGyroECLPPool pool = createAndInitPool();
-        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
@@ -170,10 +176,11 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
 
     function testGetPoolTokens() public {
         IGyroECLPPool pool = createAndInitPool();
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+
+        (EclpLPOracleMock oracle, WrappedBalancerPoolToken wrappedPool, ) = deployOracle(pool);
 
         IERC20[] memory returnedTokens = oracle.getPoolTokens();
-        IERC20[] memory registeredTokens = vault.getPoolTokens(address(pool));
+        IERC20[] memory registeredTokens = vault.getPoolTokens(wrappedPool.getBalancerPoolToken());
 
         assertEq(returnedTokens.length, registeredTokens.length, "Tokens length does not match");
         for (uint256 i = 0; i < returnedTokens.length; i++) {
@@ -193,7 +200,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         }
 
         IGyroECLPPool pool = createAndInitPool();
-        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < NUM_TOKENS; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
@@ -234,7 +241,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         prices[0] = int256(pricesRaw[0]);
 
         IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
 
         uint256 tvl = oracle.computeTVL(prices);
         uint256 expectedTVL = _computeExpectedTVLBinarySearch(GyroECLPPool(address(pool)), pricesRaw.toMemoryArray());
@@ -280,7 +287,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
             [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
         );
 
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
         int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
 
         uint256 tvlBefore = oracle.computeTVL(prices);
@@ -340,7 +347,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
             [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
         );
 
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
         int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
 
         uint256 tvlOracle = oracle.computeTVL(prices);
@@ -409,7 +416,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
             [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
         );
 
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
         int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
 
         uint256 tvlOracle = oracle.computeTVL(prices);
@@ -453,7 +460,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         );
         uint256 poolValue = 2 * poolInitAmount;
 
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
         uint256 tvlBefore = oracle.computeTVL(prices);
@@ -481,7 +488,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
 
         IGyroECLPPool pool = createAndInitPool(tokens, rateProviders, [poolInitAmount, poolInitAmount].toMemoryArray());
 
-        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
         uint256 tvlBefore = oracle.computeTVL(prices);
@@ -529,7 +536,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         answers[1] = 1e18;
 
         IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
-        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (EclpLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < NUM_TOKENS; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);

@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
@@ -52,35 +53,37 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
 
     /// @inheritdoc ILPOracleFactoryBase
     function create(
-        IBasePool pool,
+        IWrappedBalancerPoolToken wrappedPool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) external returns (ILPOracleBase oracle) {
         _ensureEnabled();
 
-        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        bytes32 oracleId = _computeOracleId(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         if (address(_oracles[oracleId]) != address(0)) {
-            revert OracleAlreadyExists(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds, _oracles[oracleId]);
+            revert OracleAlreadyExists(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds, _oracles[oracleId]);
         }
 
         IVault vault = getVault();
-        IERC20[] memory tokens = vault.getPoolTokens(address(pool));
+        IERC20[] memory tokens = vault.getPoolTokens(wrappedPool.getBalancerPoolToken());
 
         InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
 
-        oracle = _create(vault, pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        oracle = _create(vault, wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        emit LPOracleCreated(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+
         _oracles[oracleId] = oracle;
         _isOracleFromFactory[oracle] = true;
     }
 
     /// @inheritdoc ILPOracleFactoryBase
     function getOracle(
-        IBasePool pool,
+        IWrappedBalancerPoolToken wrappedPool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) external view returns (ILPOracleBase oracle) {
-        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        bytes32 oracleId = _computeOracleId(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         oracle = ILPOracleBase(address(_oracles[oracleId]));
     }
 
@@ -108,12 +111,12 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     }
 
     function _computeOracleId(
-        IBasePool pool,
+        IWrappedBalancerPoolToken wrappedPool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) internal pure returns (bytes32) {
         address[] memory feedAddresses = _asAddress(feeds);
-        return keccak256(abi.encode(pool, shouldUseBlockTimeForOldestFeedUpdate, feedAddresses));
+        return keccak256(abi.encode(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feedAddresses));
     }
 
     function _ensureEnabled() internal view {
@@ -132,7 +135,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     /// @dev Implementations of this function should also emit a specific event according to the oracle type.
     function _create(
         IVault vault,
-        IBasePool pool,
+        IWrappedBalancerPoolToken wrappedPool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
     ) internal virtual returns (ILPOracleBase oracle);

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleFactoryBase.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -11,9 +12,10 @@ import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
@@ -37,23 +39,25 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
 
     function testCreateEmitsEvent() external {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
 
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         vm.revertToState(snapshot);
 
         vm.expectEmit();
-        emit StableLPOracleFactory.StableLPOracleCreated(
-            IStablePool(address(pool)),
-            shouldUseBlockTimeForOldestFeedUpdate,
-            feeds,
-            oracle
-        );
-        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        emit ILPOracleFactoryBase.LPOracleCreated(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+        _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {

@@ -5,9 +5,10 @@ pragma solidity ^0.8.24;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/oracles/IWeightedLPOracle.sol";
-import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -33,7 +34,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
 
     constructor(
         IVault vault_,
-        IWeightedPool pool_,
+        IWrappedBalancerPoolToken wrappedPool,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -42,7 +43,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
     )
         LPOracleBase(
             vault_,
-            IBasePool(address(pool_)),
+            wrappedPool,
             feeds,
             sequencerUptimeFeed,
             uptimeResyncWindow,
@@ -50,7 +51,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
             version_
         )
     {
-        uint256[] memory weights = pool_.getNormalizedWeights();
+        uint256[] memory weights = IWeightedPool(pool).getNormalizedWeights();
 
         // prettier-ignore
         {
@@ -135,7 +136,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
             tvl = tvl.mulDown(prices[i].toUint256().divDown(weights[i]).powDown(weights[i]));
         }
 
-        uint256 k = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
+        uint256 k = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
 
         tvl = tvl.mulDown(k);
     }

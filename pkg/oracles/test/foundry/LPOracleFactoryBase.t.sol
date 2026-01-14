@@ -13,6 +13,7 @@ import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
@@ -52,15 +53,22 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testCreateOracle() external {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
 
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
+            address(_factory.getOracle(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
@@ -68,33 +76,42 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testGetNonExistentOracle() external view {
         assertEq(
-            address(_factory.getOracle(IBasePool(address(0x123)), false, new AggregatorV3Interface[](0))),
+            address(
+                _factory.getOracle(WrappedBalancerPoolToken(address(0x123)), false, new AggregatorV3Interface[](0))
+            ),
             address(0)
         );
     }
 
     function testCreateOracleDifferentFeeds() external {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = false;
 
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
+            address(_factory.getOracle(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
 
         AggregatorV3Interface[] memory feeds2 = _createFeeds(pool);
 
-        ILPOracleBase oracle2 = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds2);
+        ILPOracleBase oracle2 = _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds2);
 
         assertEq(
             address(oracle2),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds2)),
+            address(_factory.getOracle(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds2)),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle2 should be from factory");
@@ -102,19 +119,26 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testCreateOracleRevertsWhenOracleAlreadyExists() external {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         // Set updatedAt flag to true initially.
-        ILPOracleBase oracle = _factory.create(pool, true, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, true, feeds);
 
         // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
         vm.expectRevert(
-            abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, true, feeds, oracle)
+            abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, wrappedPool, true, feeds, oracle)
         );
-        _factory.create(pool, true, feeds);
+        _factory.create(wrappedPool, true, feeds);
 
         // Can create an otherwise identical oracle with a different flag setting.
-        _factory.create(pool, false, feeds);
+        _factory.create(wrappedPool, false, feeds);
     }
 
     function testDisable() public {
@@ -122,7 +146,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         _factory.disable();
 
         vm.expectRevert(ILPOracleFactoryBase.OracleFactoryIsDisabled.selector);
-        _factory.create(IBasePool(address(123)), false, new AggregatorV3Interface[](0));
+        _factory.create(WrappedBalancerPoolToken(address(123)), false, new AggregatorV3Interface[](0));
 
         // Revert the second time
         vm.prank(admin);
@@ -137,9 +161,16 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testGetRoundData() public {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, false, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, false, feeds);
 
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = LPOracleBase(
             address(oracle)

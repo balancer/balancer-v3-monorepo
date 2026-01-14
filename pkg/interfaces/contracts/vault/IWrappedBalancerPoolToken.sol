@@ -25,4 +25,10 @@ interface IWrappedBalancerPoolToken {
      * @param value The amount of wrapped BPTs to burn in order to unlock locked BPTs
      */
     function burnFrom(address account, uint256 value) external;
+
+    /**
+     * @notice Returns the address of the underlying Balancer Pool Token
+     * @return The address of the underlying Balancer Pool Token
+     */
+    function getBalancerPoolToken() external view returns (address);
 }

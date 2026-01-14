@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -31,7 +32,7 @@ contract EclpLPOracle is LPOracleBase {
 
     constructor(
         IVault vault_,
-        IGyroECLPPool pool_,
+        IWrappedBalancerPoolToken wrappedPool,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -40,7 +41,7 @@ contract EclpLPOracle is LPOracleBase {
     )
         LPOracleBase(
             vault_,
-            IBasePool(address(pool_)),
+            wrappedPool,
             feeds,
             sequencerUptimeFeed,
             uptimeResyncWindow,
@@ -61,7 +62,7 @@ contract EclpLPOracle is LPOracleBase {
             address(pool)
         ).getECLPParams();
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
-        uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        uint256 invariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         return _computeEclpTvl(params, derivedParams, invariant, prices);
     }

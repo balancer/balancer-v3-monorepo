@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -14,7 +15,7 @@ import { StableLPOracle } from "../StableLPOracle.sol";
 contract StableLPOracleMock is StableLPOracle {
     constructor(
         IVault vault_,
-        IStablePool pool_,
+        IWrappedBalancerPoolToken wrappedPool,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -23,7 +24,7 @@ contract StableLPOracleMock is StableLPOracle {
     )
         StableLPOracle(
             vault_,
-            pool_,
+            wrappedPool,
             feeds,
             sequencerUptimeFeed,
             uptimeResyncWindow,

@@ -14,6 +14,7 @@ import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/IL
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -39,23 +40,25 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
 
     function testCreateEmitsEvent() external {
         IBasePool pool = _createAndInitPool();
+        WrappedBalancerPoolToken wrappedPool = new WrappedBalancerPoolToken(
+            vault,
+            IERC20(address(pool)),
+            "Wrapped BPT",
+            "wBPT"
+        );
+
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
 
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
         vm.revertToState(snapshot);
 
         vm.expectEmit();
-        emit WeightedLPOracleFactory.WeightedLPOracleCreated(
-            IWeightedPool(address(pool)),
-            shouldUseBlockTimeForOldestFeedUpdate,
-            feeds,
-            IWeightedLPOracle(address(oracle))
-        );
-        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        emit ILPOracleFactoryBase.LPOracleCreated(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+        _factory.create(wrappedPool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {

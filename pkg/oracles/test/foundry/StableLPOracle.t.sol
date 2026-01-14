@@ -8,6 +8,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
 import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
@@ -15,6 +16,7 @@ import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
@@ -81,16 +83,21 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
     }
 
     // Override from BaseLPOracleTest
-    function createOracle(uint256 numTokens) public override returns (IBasePool) {
+    function createOracle(uint256 numTokens) public override returns (IBasePool, WrappedBalancerPoolToken) {
         IStablePool pool = createAndInitPool(numTokens, 100);
-        (oracle, feeds) = deployOracle(pool);
 
-        return pool;
+        WrappedBalancerPoolToken wrappedPool;
+        (oracle, wrappedPool, feeds) = deployOracle(pool);
+
+        return (pool, wrappedPool);
     }
 
     function deployOracle(
         IStablePool pool
-    ) internal returns (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
+    )
+        internal
+        returns (StableLPOracleMock oracle, WrappedBalancerPoolToken wrappedPool, AggregatorV3Interface[] memory feeds)
+    {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -99,9 +106,10 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
+        wrappedPool = new WrappedBalancerPoolToken(vault, IERC20(address(pool)), "Wrapped BPT", "wBPT");
         oracle = new StableLPOracleMock(
-            IVault(address(vault)),
-            pool,
+            vault,
+            wrappedPool,
             feeds,
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
@@ -172,7 +180,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
 
     function testDescription() public {
         IStablePool pool = createAndInitPool();
-        (StableLPOracleMock oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, , ) = deployOracle(pool);
 
         assertEq(oracle.description(), "STABLE-TEST/USD", "Description does not match");
     }
@@ -217,7 +225,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             }
 
             pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
-            (oracle, ) = deployOracle(pool);
+            (oracle, , ) = deployOracle(pool);
         }
 
         uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
@@ -310,7 +318,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
-        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, , AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(prices[i], updateTimestamps[i]);
@@ -355,7 +363,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
-        (StableLPOracleMock oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, , ) = deployOracle(pool);
 
         int256[] memory pricesInt = new int256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
@@ -377,7 +385,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         address[] memory _tokens = [address(sortedTokens[0]), address(sortedTokens[1])].toMemoryArray();
 
         pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
-        (oracle, ) = deployOracle(pool);
+        (oracle, , ) = deployOracle(pool);
 
         // Prices found empirically, by running a forge fuzz test that had K convergence error.
         int256[] memory pricesInt = new int256[](2);

@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/oracles/ISequencerUptimeFeed.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -26,10 +27,8 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     using SafeCast for *;
 
     uint256 internal constant _WAD_DECIMALS = 18;
-
     int256 internal constant _SEQUENCER_STATUS_DOWN = 1;
 
-    IWrappedBalancerPoolToken public immutable wrappedPool;
     address public immutable pool;
 
     // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
@@ -64,7 +63,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
     constructor(
         IVault vault,
-        IWrappedBalancerPoolToken wrappedPool_,
+        IWrappedBalancerPoolToken wrappedPool,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -73,8 +72,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     ) {
         _version = version_;
         _vault = vault;
-        wrappedPool = wrappedPool_;
-        pool = IBasePool(wrappedPool.balancerPoolToken());
+        pool = wrappedPool.getBalancerPoolToken();
         _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
 
         // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
