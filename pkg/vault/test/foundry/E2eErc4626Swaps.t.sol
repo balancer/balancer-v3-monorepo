@@ -439,7 +439,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         });
     }
 
-    function _setPoolBalances(uint256 liquidityWaDai, uint256 liquidityWaWeth) private {
+    /// @dev Some pool specializations might override this functions to set different bounds on initial pool balances.
+    function _setPoolBalances(uint256 liquidityWaDai, uint256 liquidityWaWeth) internal virtual {
         // 1% to 10000% of erc4626 initial pool liquidity.
         liquidityWaDai = bound(
             liquidityWaDai,

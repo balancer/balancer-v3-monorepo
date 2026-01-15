@@ -104,6 +104,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultExtension internal vaultExtension;
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
+    RouterMock internal prepaidRouter;
     BatchRouterMock internal batchRouter;
     BatchRouterMock internal prepaidBatchRouter;
     BufferRouterMock internal bufferRouter;
@@ -189,6 +190,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
+        prepaidRouter = deployRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
+        vm.label(address(prepaidRouter), "prepaid router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         prepaidBatchRouter = deployBatchRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
