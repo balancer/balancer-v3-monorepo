@@ -23,7 +23,7 @@ contract WrappedBalancerPoolTokenTest is WrappedBalancerPoolTokenContractsDeploy
 
     function testConstructor() public view {
         assertEq(address(wBPT.vault()), address(vault), "Invalid vault address");
-        assertEq(address(wBPT.balancerPoolToken()), pool, "Invalid pool address");
+        assertEq(address(wBPT.getBalancerPoolToken()), pool, "Invalid pool address");
     }
 
     function testMint() public {
