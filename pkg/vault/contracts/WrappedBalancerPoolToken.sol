@@ -20,8 +20,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Permit {
     using SafeERC20 for *;
 
-    IERC20 public immutable balancerPoolToken;
     IVault public immutable vault;
+
+    IERC20 internal immutable _balancerPoolToken;
 
     constructor(
         IVault vault_,
@@ -30,7 +31,7 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
         string memory symbol_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
         vault = vault_;
-        balancerPoolToken = balancerPoolToken_;
+        _balancerPoolToken = balancerPoolToken_;
     }
 
     modifier onlyIfVaultLocked() {
@@ -42,7 +43,7 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
 
     /// @inheritdoc IWrappedBalancerPoolToken
     function mint(uint256 amount) public onlyIfVaultLocked {
-        balancerPoolToken.safeTransferFrom(msg.sender, address(this), amount);
+        _balancerPoolToken.safeTransferFrom(msg.sender, address(this), amount);
 
         _mint(msg.sender, amount);
     }
@@ -59,9 +60,14 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
         _burnAndTransfer(account, value);
     }
 
+    /// @inheritdoc IWrappedBalancerPoolToken
+    function getBalancerPoolToken() external view returns (address) {
+        return address(_balancerPoolToken);
+    }
+
     function _burnAndTransfer(address account, uint256 value) internal {
         _burn(account, value);
 
-        balancerPoolToken.transfer(account, value);
+        _balancerPoolToken.transfer(account, value);
     }
 }

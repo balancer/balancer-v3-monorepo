@@ -10,6 +10,7 @@ import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/ora
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -58,9 +59,9 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     function getMaxTokens() public view virtual returns (uint256);
 
     // Deploy and initialize pool, then create the oracle and set the `oracle` and `feeds` variables.
-    function createOracle(uint256 numTokens) public virtual returns (IBasePool);
+    function createOracle(uint256 numTokens) public virtual returns (IBasePool, WrappedBalancerPoolToken);
 
-    function createOracle() internal returns (IBasePool) {
+    function createOracle() internal returns (IBasePool, WrappedBalancerPoolToken) {
         return createOracle(2);
     }
 
@@ -247,10 +248,10 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
      */
     function testGetPoolTokens(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, getMaxTokens());
-        IBasePool pool = createOracle(totalTokens);
+        (, WrappedBalancerPoolToken wrappedPool) = createOracle(totalTokens);
 
         IERC20[] memory returnedTokens = oracle.getPoolTokens();
-        IERC20[] memory registeredTokens = vault.getPoolTokens(address(pool));
+        IERC20[] memory registeredTokens = vault.getPoolTokens(wrappedPool.getBalancerPoolToken());
 
         assertEq(returnedTokens.length, registeredTokens.length, "Tokens length does not match");
         for (uint256 i = 0; i < returnedTokens.length; i++) {
