@@ -11,6 +11,7 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-types';
+import { WrappedBalancerPoolToken } from '@balancer-labs/v3-vault/typechain-types';
 
 // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.
 const PARAMS_ALPHA = 998502246630054917n;
@@ -79,7 +80,7 @@ class EclpLPOracleBenchmark extends LPOracleBenchmark {
   override async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo> {
     const wrappedPool = (await deploy('v3-vault/WrappedBalancerPoolToken', {
       args: [this.vault.getAddress(), poolAddress, 'WBPT', 'WBPT'],
-    })) as BaseContract;
+    })) as WrappedBalancerPoolToken;
 
     const oracle = (await deploy('v3-oracles/EclpLPOracleMock', {
       args: [await this.vault.getAddress(), await wrappedPool.getAddress(), feeds, ZERO_ADDRESS, 0, true, 1],

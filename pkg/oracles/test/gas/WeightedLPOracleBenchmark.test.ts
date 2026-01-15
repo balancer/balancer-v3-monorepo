@@ -11,6 +11,7 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-types';
+import { WrappedBalancerPoolToken } from '@balancer-labs/v3-vault/typechain-types';
 
 class WeightedLPOracleBenchmark extends LPOracleBenchmark {
   constructor(dirname: string) {
@@ -63,12 +64,12 @@ class WeightedLPOracleBenchmark extends LPOracleBenchmark {
   }
 
   override async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo> {
-    const wrappedPool = (await deploy('v3-vault/Router', {
-      args: [this.vault, poolAddress, 'WBPT', 'WBPT'],
-    })) as BaseContract;
+    const wrappedPool = (await deploy('v3-vault/WrappedBalancerPoolToken', {
+      args: [this.vault.getAddress(), poolAddress, 'WBPT', 'WBPT'],
+    })) as WrappedBalancerPoolToken;
 
     const oracle = (await deploy('v3-oracles/WeightedLPOracleMock', {
-      args: [await this.vault.getAddress(), wrappedPool.getAddress(), feeds, ZERO_ADDRESS, 0, false, 1],
+      args: [await this.vault.getAddress(), await wrappedPool.getAddress(), feeds, ZERO_ADDRESS, 0, false, 1],
     })) as unknown as AggregatorV3Interface;
     return {
       oracle: oracle,
