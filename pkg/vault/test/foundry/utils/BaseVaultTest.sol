@@ -4,8 +4,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -23,6 +25,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
+import { MinTokenBalanceLib } from "../../../contracts/lib/MinTokenBalanceLib.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
@@ -101,6 +104,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultExtension internal vaultExtension;
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
+    RouterMock internal prepaidRouter;
     BatchRouterMock internal batchRouter;
     BatchRouterMock internal prepaidBatchRouter;
     BufferRouterMock internal bufferRouter;
@@ -186,6 +190,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
+        prepaidRouter = deployRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
+        vm.label(address(prepaidRouter), "prepaid router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         prepaidBatchRouter = deployBatchRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
@@ -453,5 +459,14 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     function _prankStaticCall() internal {
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall).
         vm.prank(address(0), address(0));
+    }
+
+    function _getMinTokenBalance(address token) internal view returns (uint256) {
+        uint256 absoluteMin = MinTokenBalanceLib.ABSOLUTE_MIN_TOKEN_BALANCE;
+
+        uint256 tokenDecimals = IERC20Metadata(token).decimals();
+        uint256 atomicUnitFloor = 10 ** (18 - tokenDecimals);
+
+        return Math.max(absoluteMin, atomicUnitFloor);
     }
 }

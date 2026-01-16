@@ -4,14 +4,18 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     uint256 constant MIN_ABS_WEIGHT = 1e16; // 1%
 
@@ -28,6 +32,15 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 80e16; // 80%
     uint256 constant DELTA = 1e8;
+
+    uint256 constant MIN_SWAP_AMOUNT = 1e6;
+    uint256 constant MIN_BALANCE_ROUNDING_TEST = 1e5;
+    uint256 constant MAX_BALANCE_ROUNDING_TEST = 1e30;
+
+    uint256 constant MIN_TEST_RATE = 1e18;
+    uint256 constant MAX_TEST_RATE = 10e18;
+    uint256 constant MIN_TEST_WEIGHT = 3e16;
+    uint256 constant MAX_TEST_WEIGHT = 97e16;
 
     WeightedMathMock mock;
 
@@ -221,11 +234,286 @@ contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
         return currentBalance.mulUp(balanceRatio);
     }
 
-    struct AddLiquidityVars {
-        uint256[] balances;
-        uint256[] weights;
-        uint256[] amountsIn;
-        uint256 totalSupply;
-        uint256 swapFee;
+    function testRoundingBalancesExactIn__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 weight0,
+        uint256 amountIn0Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_SWAP_AMOUNT.divUp(MAX_IN_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        weight0 = bound(weight0, MIN_TEST_WEIGHT, MAX_TEST_WEIGHT);
+        uint256 weight1 = FixedPoint.ONE - weight0;
+        uint256[] memory weights = [weight0, weight1].toMemoryArray();
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
+
+        _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
+    }
+
+    function testRoundingBalancesExactIn8020__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountIn0Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_SWAP_AMOUNT.divUp(MAX_IN_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        uint256[] memory weights = [uint256(80e16), uint256(20e16)].toMemoryArray();
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
+
+        _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
+    }
+
+    function testRoundingBalancesExactIn2080__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountIn0Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_SWAP_AMOUNT.divUp(MAX_IN_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        uint256[] memory weights = [uint256(20e16), uint256(80e16)].toMemoryArray();
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
+
+        _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
+    }
+
+    function testRoundingBalancesExactIn5050__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountIn0Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_SWAP_AMOUNT.divUp(MAX_IN_RATIO), MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        balanceRaw1 = bound(balanceRaw1, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+        amountIn0Scaled18 = bound(amountIn0Scaled18, MIN_SWAP_AMOUNT, balanceRaw0.mulDown(rate0).mulDown(MAX_IN_RATIO));
+
+        _testExactIn(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountIn0Scaled18);
+    }
+
+    function _testExactIn(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256[] memory weights,
+        uint256 amountIn0Scaled18
+    ) internal pure {
+        (uint256 tokenIndexIn, uint256 tokenIndexOut) = (0, 1);
+        uint256[] memory balancesScaled18RoundDown = new uint256[](2);
+        balancesScaled18RoundDown[0] = balanceRaw0.mulDown(rate0);
+        balancesScaled18RoundDown[1] = balanceRaw1.mulDown(rate1);
+
+        uint256 amountOutScaled18BalancesRoundDown = WeightedMath.computeOutGivenExactIn(
+            balancesScaled18RoundDown[tokenIndexIn],
+            weights[tokenIndexIn],
+            balancesScaled18RoundDown[tokenIndexOut],
+            weights[tokenIndexOut],
+            amountIn0Scaled18
+        );
+
+        vm.assume(amountOutScaled18BalancesRoundDown >= MIN_SWAP_AMOUNT);
+
+        uint256[] memory balancesScaled18RoundAlt = new uint256[](2);
+        balancesScaled18RoundAlt[0] = balanceRaw0.mulUp(rate0);
+        balancesScaled18RoundAlt[1] = balanceRaw1.mulDown(rate1);
+
+        uint256 amountOutScaled18BalancesRoundAlt = WeightedMath.computeOutGivenExactIn(
+            balancesScaled18RoundAlt[tokenIndexIn],
+            weights[tokenIndexIn],
+            balancesScaled18RoundAlt[tokenIndexOut],
+            weights[tokenIndexOut],
+            amountIn0Scaled18
+        );
+
+        // Amount out scaled with alt rounding should not be higher (worse for the vault) than regular rounding.
+        assertLe(
+            amountOutScaled18BalancesRoundAlt,
+            amountOutScaled18BalancesRoundDown,
+            "Alt rounding returned higher amounts out"
+        );
+        assertApproxEqRel(
+            amountOutScaled18BalancesRoundAlt,
+            amountOutScaled18BalancesRoundDown,
+            0.001e16,
+            "Alt rounding returned significantly different calculated amounts out"
+        );
+    }
+
+    function testRoundingBalancesExactOut__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 weight0,
+        uint256 amountOut1Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
+        weight0 = bound(weight0, MIN_TEST_WEIGHT, MAX_TEST_WEIGHT);
+        uint256 weight1 = FixedPoint.ONE - weight0;
+        uint256[] memory weights = [weight0, weight1].toMemoryArray();
+
+        // Can't get more than the balance of the output token
+        amountOut1Scaled18 = bound(
+            amountOut1Scaled18,
+            MIN_SWAP_AMOUNT,
+            balanceRaw1.mulDown(rate1).mulDown(MAX_OUT_RATIO)
+        );
+
+        _testExactOut(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountOut1Scaled18);
+    }
+
+    function testRoundingBalancesExactOut8020__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountOut1Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
+        uint256[] memory weights = [uint256(80e16), uint256(20e16)].toMemoryArray();
+        // Can't get more than the balance of the output token
+        amountOut1Scaled18 = bound(
+            amountOut1Scaled18,
+            MIN_SWAP_AMOUNT,
+            balanceRaw1.mulDown(rate1).mulDown(MAX_OUT_RATIO)
+        );
+
+        _testExactOut(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountOut1Scaled18);
+    }
+
+    function testRoundingBalancesExactOut2080__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountOut1Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
+        uint256[] memory weights = [uint256(20e16), uint256(80e16)].toMemoryArray();
+        // Can't get more than the balance of the output token
+        amountOut1Scaled18 = bound(
+            amountOut1Scaled18,
+            MIN_SWAP_AMOUNT,
+            balanceRaw1.mulDown(rate1).mulDown(MAX_OUT_RATIO)
+        );
+
+        _testExactOut(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountOut1Scaled18);
+    }
+
+    function testRoundingBalancesExactOut5050__Fuzz(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256 amountOut1Scaled18
+    ) public pure {
+        balanceRaw0 = bound(balanceRaw0, MIN_BALANCE_ROUNDING_TEST, MAX_BALANCE_ROUNDING_TEST);
+        rate0 = bound(rate0, MIN_TEST_RATE, MAX_TEST_RATE);
+        rate1 = bound(rate1, MIN_TEST_RATE, MAX_TEST_RATE);
+        // Need small buffer here, otherwise the max amountOut1Scaled18 will be < MIN_SWAP_AMOUNT below.
+        balanceRaw1 = bound(
+            balanceRaw1,
+            (MIN_SWAP_AMOUNT + 1).divUp(rate1).divUp(MAX_OUT_RATIO),
+            MAX_BALANCE_ROUNDING_TEST
+        );
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+        // Can't get more than the balance of the output token
+        amountOut1Scaled18 = bound(
+            amountOut1Scaled18,
+            MIN_SWAP_AMOUNT,
+            balanceRaw1.mulDown(rate1).mulDown(MAX_OUT_RATIO)
+        );
+
+        _testExactOut(balanceRaw0, rate0, balanceRaw1, rate1, weights, amountOut1Scaled18);
+    }
+
+    function _testExactOut(
+        uint256 balanceRaw0,
+        uint256 rate0,
+        uint256 balanceRaw1,
+        uint256 rate1,
+        uint256[] memory weights,
+        uint256 amountOut1Scaled18
+    ) internal pure {
+        (uint256 tokenIndexIn, uint256 tokenIndexOut) = (0, 1);
+
+        uint256[] memory balancesScaled18RoundDown = new uint256[](2);
+        balancesScaled18RoundDown[0] = balanceRaw0.mulDown(rate0);
+        balancesScaled18RoundDown[1] = balanceRaw1.mulDown(rate1);
+
+        uint256 amountInScaled18BalancesRoundDown = WeightedMath.computeInGivenExactOut(
+            balancesScaled18RoundDown[tokenIndexIn],
+            weights[tokenIndexIn],
+            balancesScaled18RoundDown[tokenIndexOut],
+            weights[tokenIndexOut],
+            amountOut1Scaled18
+        );
+
+        vm.assume(amountInScaled18BalancesRoundDown >= MIN_SWAP_AMOUNT);
+
+        uint256[] memory balancesScaled18RoundAlt = new uint256[](2);
+        balancesScaled18RoundAlt[0] = balanceRaw0.mulUp(rate0);
+        balancesScaled18RoundAlt[1] = balanceRaw1.mulDown(rate1);
+
+        uint256 amountInScaled18BalancesRoundAlt = WeightedMath.computeInGivenExactOut(
+            balancesScaled18RoundAlt[tokenIndexIn],
+            weights[tokenIndexIn],
+            balancesScaled18RoundAlt[tokenIndexOut],
+            weights[tokenIndexOut],
+            amountOut1Scaled18
+        );
+
+        // Amount in scaled with alt rounding not be lower (worse for the vault) than regular rounding.
+        assertGe(
+            amountInScaled18BalancesRoundAlt,
+            amountInScaled18BalancesRoundDown,
+            "Alt rounding returned lower amounts in"
+        );
+
+        assertApproxEqRel(
+            amountInScaled18BalancesRoundAlt,
+            amountInScaled18BalancesRoundDown,
+            0.01e16,
+            "Alt rounding returned significantly different calculated amounts in"
+        );
     }
 }

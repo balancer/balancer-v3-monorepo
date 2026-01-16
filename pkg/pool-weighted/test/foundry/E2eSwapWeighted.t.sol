@@ -206,6 +206,11 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         newPool = address(
             deployWeightedPoolMock(
                 WeightedPool.NewPoolParams({
@@ -213,7 +218,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
                     symbol: symbol,
                     numTokens: tokens.length,
                     normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                    version: POOL_VERSION
+                    version: POOL_VERSION,
+                    minTokenBalances: minTokenBalances
                 }),
                 vault
             )
@@ -237,7 +243,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

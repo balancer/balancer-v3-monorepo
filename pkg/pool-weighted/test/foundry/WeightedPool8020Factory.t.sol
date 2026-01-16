@@ -4,26 +4,28 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Errors } from "@openzeppelin/contracts/utils/Errors.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BaseSplitCodeFactory } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
-
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
-import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultContractsDeployer {
     uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
@@ -64,6 +66,10 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         address expectedPoolAddress = factory.getPool(tokenA, tokenB);
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
+        uint256[] memory minTokenBalances = new uint256[](2);
+        (uint256 aIdx, uint256 bIdx) = tokenA < tokenB ? (0, 1) : (1, 0);
+        minTokenBalances[aIdx] = _getMinTokenBalance(address(tokenA));
+        minTokenBalances[bIdx] = _getMinTokenBalance(address(tokenB));
 
         bytes memory poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
@@ -71,7 +77,8 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
                 symbol: "B-80TKNA-20TKNB",
                 numTokens: 2,
                 normalizedWeights: poolWeights,
-                version: "8020Pool v1"
+                version: "8020Pool v1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );
@@ -143,5 +150,15 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
 
         // Same salt parameters, should still be different because of the chainId.
         assertNotEq(address(poolL2), address(poolMainnet), "L2 and mainnet pool addresses are equal");
+    }
+
+    // Duplicated from BaseVaultTest, since this only inherits from Test.
+    function _getMinTokenBalance(address token) internal view returns (uint256) {
+        uint256 absoluteMin = MinTokenBalanceLib.ABSOLUTE_MIN_TOKEN_BALANCE;
+
+        uint256 tokenDecimals = IERC20Metadata(token).decimals();
+        uint256 atomicUnitFloor = 10 ** (18 - tokenDecimals);
+
+        return Math.max(absoluteMin, atomicUnitFloor);
     }
 }

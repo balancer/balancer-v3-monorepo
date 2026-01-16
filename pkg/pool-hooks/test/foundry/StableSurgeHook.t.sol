@@ -122,7 +122,7 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         // Unbalance the pool first.
         uint256[] memory initialBalances = new uint256[](2);
         initialBalances[daiIdx] = 10e18;
-        initialBalances[usdcIdx] = 100_000e18;
+        initialBalances[usdcIdx] = 90_000e18;
         vault.manualSetPoolBalances(pool, initialBalances, initialBalances);
 
         uint256[] memory amountsIn = new uint256[](2);

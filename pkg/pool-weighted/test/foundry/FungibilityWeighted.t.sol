@@ -56,13 +56,19 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
         );
         vm.label(newPool, label);
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(80e16), uint256(20e16)].toMemoryArray(),
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );
