@@ -13,8 +13,6 @@ import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/pool-cow
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { CowPoolFactory } from "../../contracts/CowPoolFactory.sol";
 import { CowRouter } from "../../contracts/CowRouter.sol";
@@ -79,8 +77,7 @@ contract CowPoolFactoryTest is BaseCowTest {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
-        // Balancer factories do not allow poolCreator.
-        vm.expectRevert(BasePoolFactory.StandardPoolWithCreator.selector);
+        // Should not revert
         cowFactory.create("test", "test", tokenConfig, weights, roleAccounts, DEFAULT_SWAP_FEE_PERCENTAGE, bytes32(""));
     }
 
