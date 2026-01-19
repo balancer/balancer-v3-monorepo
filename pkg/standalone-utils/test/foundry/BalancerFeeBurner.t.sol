@@ -239,9 +239,9 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         uint256 amountOut = _vaultPreviewDeposit(waDAI, TEST_BURN_AMOUNT);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
@@ -278,9 +278,9 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         feeBurner.setBurnPath(waDAI, steps);
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         uint256 amountOut = _vaultPreviewRedeem(waDAI, TEST_BURN_AMOUNT);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
@@ -373,10 +373,10 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(alice);
         feeBurner.setBurnPath(waDAI, steps);
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         uint256 daiAmountOut = _vaultPreviewRedeem(waDAI, TEST_BURN_AMOUNT);
         uint256 amountOut = _vaultPreviewDeposit(waUSDC, daiAmountOut);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
