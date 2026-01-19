@@ -76,10 +76,6 @@ contract ECLPSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
         bool disableUnbalancedLiquidity,
         bytes32 salt
     ) external returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
         // As the ECLP Pool deployment does not know about the tokens, and the registration doesn't know about the
         // pool type, we enforce the token limit at the factory level.
         if (tokens.length > _NUM_TOKENS) {

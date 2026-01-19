@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
+import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { Gyro2CLPPool } from "./Gyro2CLPPool.sol";
 
@@ -66,10 +67,6 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
     ) external returns (address pool) {
         if (tokens.length != 2) {
             revert SupportsOnlyTwoTokens();
-        }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
         }
 
         pool = _create(
