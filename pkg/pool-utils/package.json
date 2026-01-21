@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v3-pool-utils",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Balancer V3 Pool Utils",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v3-monorepo/tree/master/pkg/pool-utils#readme",
