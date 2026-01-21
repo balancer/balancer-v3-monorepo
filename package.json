@@ -61,5 +61,8 @@
   "workspaces": [
     "pkg/*",
     "pvt/*"
-  ]
+  ],
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8"
+  }
 }
