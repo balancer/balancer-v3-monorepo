@@ -2,15 +2,13 @@
 
 pragma solidity ^0.8.27;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { GyroECLPPool } from "./GyroECLPPool.sol";
 
@@ -68,7 +66,6 @@ contract GyroECLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
         bytes32 salt
     ) external returns (address pool) {
         require(tokens.length == 2, SupportsOnlyTwoTokens());
-        require(roleAccounts.poolCreator == address(0), StandardPoolWithCreator());
 
         pool = _create(
             abi.encode(
