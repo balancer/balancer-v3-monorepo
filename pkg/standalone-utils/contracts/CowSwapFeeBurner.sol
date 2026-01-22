@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
-import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
 import {
     ICowConditionalOrderGenerator
@@ -21,10 +21,10 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 
@@ -170,7 +170,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
         uint256 deadline,
         bool pullFeeToken
     ) internal {
-        if (targetToken == feeToken) {
+        if (address(targetToken) == address(feeToken)) {
             revert InvalidOrderParameters("Fee token and target token are the same");
         } else if (feeTokenAmount == 0) {
             revert InvalidOrderParameters("Fee token amount is zero");
@@ -198,7 +198,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
             tokenOut: targetToken,
             receiver: recipient,
             minAmountOut: minTargetTokenAmountOut,
-            deadline: uint32(deadline)
+            deadline: deadline.toUint32()
         });
 
         emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);
