@@ -10,11 +10,13 @@ contract ClaimSignatureRegistry {
 
     error InvalidSignature();
 
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 public immutable TERMS_DIGEST;
 
     mapping(address => bytes) public signatures;
 
     constructor() {
+        // solhint-disable max-line-length
         string memory terms = "I confirm and agree to the following:\n"
         "- I accept the terms and conditions applicable to this claim, including all provisions of the Balancer Terms of Use and all relevant Balancer governance resolutions.\n"
         "- I acknowledge and agree that my acceptance constitutes a full and final settlement and release of any and all past, present, and future claims, liabilities, demands, actions, causes of action, damages, or losses of any kind-whether known or unknown-arising out of or related to the Balancer V2 exploit.\n"
