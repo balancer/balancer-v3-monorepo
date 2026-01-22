@@ -27,6 +27,17 @@ contract ClaimSignatureRegistryTest is BaseTest {
         assertEq(keccak256(registry.signatures(alice)), keccak256(signature), "Signatures do not match");
     }
 
+    function testRecordSignatureFail() public {
+        vm.startPrank(alice);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, registry.TERMS_DIGEST());
+        bytes memory signature = abi.encodePacked(r, s, v);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(ClaimSignatureRegistry.InvalidSignature.selector);
+        registry.recordSignature(signature);
+    }
+
     function testRecordSignatureFor() public {
         vm.startPrank(alice);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, registry.TERMS_DIGEST());
@@ -36,5 +47,15 @@ contract ClaimSignatureRegistryTest is BaseTest {
         registry.recordSignatureFor(signature, alice);
 
         assertEq(keccak256(registry.signatures(alice)), keccak256(signature), "Signatures do not match");
+    }
+
+    function testRecordSignatureForFail() public {
+        vm.startPrank(alice);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, registry.TERMS_DIGEST());
+        bytes memory signature = abi.encodePacked(r, s, v);
+        vm.stopPrank();
+
+        vm.expectRevert(ClaimSignatureRegistry.InvalidSignature.selector);
+        registry.recordSignatureFor(signature, bob);
     }
 }
