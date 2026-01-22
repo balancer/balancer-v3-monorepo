@@ -88,7 +88,10 @@ library GyroECLPMath {
             _ONE - _ROTATION_VECTOR_NORM_ACCURACY <= scnorm2 && scnorm2 <= _ONE + _ROTATION_VECTOR_NORM_ACCURACY,
             RotationVectorNotNormalized()
         );
-        require(0 <= params.lambda && params.lambda <= _MAX_STRETCH_FACTOR, StretchingFactorWrong());
+        require(
+            FixedPoint.ONE.toInt256() <= params.lambda && params.lambda <= _MAX_STRETCH_FACTOR,
+            StretchingFactorWrong()
+        );
     }
 
     /**

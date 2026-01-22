@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
@@ -37,6 +38,7 @@ import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
  */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     struct ShortOrder {
         IERC20 tokenOut;
@@ -95,7 +97,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, Reentra
         _checkDeadline(deadline);
 
         _orders[tokenIn].minAmountOut = minAmountOut;
-        _orders[tokenIn].deadline = uint32(deadline);
+        _orders[tokenIn].deadline = deadline.toUint32();
 
         // Refresh approval with current balance just in case.
         if (tokenIn.allowance(address(this), vaultRelayer) < amount) {
