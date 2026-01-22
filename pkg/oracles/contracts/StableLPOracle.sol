@@ -6,6 +6,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -46,7 +47,7 @@ contract StableLPOracle is LPOracleBase {
 
     constructor(
         IVault vault_,
-        IStablePool pool_,
+        IWrappedBalancerPoolToken wrappedPool,
         AggregatorV3Interface[] memory feeds,
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
@@ -55,7 +56,7 @@ contract StableLPOracle is LPOracleBase {
     )
         LPOracleBase(
             vault_,
-            IBasePool(address(pool_)),
+            wrappedPool,
             feeds,
             sequencerUptimeFeed,
             uptimeResyncWindow,
@@ -80,7 +81,7 @@ contract StableLPOracle is LPOracleBase {
         // the invariant and the price vector.
 
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
-        uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        uint256 invariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, normalizedPrices);
 

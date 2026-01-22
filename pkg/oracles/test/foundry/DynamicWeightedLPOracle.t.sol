@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 
+import { WrappedBalancerPoolToken } from "@balancer-labs/v3-vault/contracts/WrappedBalancerPoolToken.sol";
 import { WeightedPoolMock } from "@balancer-labs/v3-pool-weighted/contracts/test/WeightedPoolMock.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -51,7 +52,11 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
 
     function deployOracle(
         IWeightedPool pool
-    ) internal override returns (LPOracleBase oracle, AggregatorV3Interface[] memory feeds) {
+    )
+        internal
+        override
+        returns (LPOracleBase oracle, WrappedBalancerPoolToken wrappedPool, AggregatorV3Interface[] memory feeds)
+    {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -60,9 +65,10 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
+        wrappedPool = new WrappedBalancerPoolToken(vault, IERC20(address(pool)), "Wrapped BPT", "wBPT");
         oracle = new DynamicWeightedLPOracleMock(
             vault,
-            pool,
+            wrappedPool,
             feeds,
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
@@ -78,7 +84,7 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
 
     function testGetDynamicWeights() public {
         (WeightedPoolMock pool, uint256[] memory expectedWeights) = _createAndInitPool();
-        (LPOracleBase _oracle, ) = deployOracle(pool);
+        (LPOracleBase _oracle, , ) = deployOracle(pool);
         DynamicWeightedLPOracle oracle = DynamicWeightedLPOracle(address(_oracle));
 
         uint256[] memory oracleWeights = oracle.getWeights();
@@ -99,7 +105,7 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
     function testGetDynamicWeights__Fuzz(uint256 weight0) public {
         weight0 = bound(weight0, MIN_WEIGHT, FixedPoint.ONE - MIN_WEIGHT);
         (WeightedPoolMock pool, uint256[] memory weights) = _createAndInitPool();
-        (LPOracleBase _oracle, ) = deployOracle(pool);
+        (LPOracleBase _oracle, , ) = deployOracle(pool);
         DynamicWeightedLPOracle oracle = DynamicWeightedLPOracle(address(_oracle));
 
         uint256[] memory oracleWeights = oracle.getWeights();

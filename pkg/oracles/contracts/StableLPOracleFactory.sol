@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -14,20 +15,6 @@ import { StableLPOracle } from "./StableLPOracle.sol";
 
 /// @notice Factory for deploying and managing Stable Pool oracles.
 contract StableLPOracleFactory is LPOracleFactoryBase {
-    /**
-     * @notice A new Stable Pool oracle was created.
-     * @param pool The address of the Stable Pool
-     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
-     * @param feeds The array of price feeds for the tokens in the pool
-     * @param oracle The address of the deployed oracle
-     */
-    event StableLPOracleCreated(
-        IStablePool indexed pool,
-        bool shouldUseBlockTimeForOldestFeedUpdate,
-        AggregatorV3Interface[] feeds,
-        ILPOracleBase oracle
-    );
-
     constructor(
         IVault vault,
         AggregatorV3Interface sequencerUptimeFeed,
@@ -40,19 +27,21 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
 
     function _create(
         IVault vault,
-        IBasePool pool,
+        IWrappedBalancerPoolToken wrappedPool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
         AggregatorV3Interface[] memory feeds
-    ) internal override returns (ILPOracleBase oracle) {
-        oracle = new StableLPOracle(
-            vault,
-            IStablePool(address(pool)),
-            feeds,
-            _sequencerUptimeFeed,
-            _uptimeResyncWindow,
-            shouldUseBlockTimeForOldestFeedUpdate,
-            _oracleVersion
-        );
-        emit StableLPOracleCreated(IStablePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+    ) internal override returns (ILPOracleBase) {
+        return
+            ILPOracleBase(
+                new StableLPOracle(
+                    vault,
+                    wrappedPool,
+                    feeds,
+                    _sequencerUptimeFeed,
+                    _uptimeResyncWindow,
+                    shouldUseBlockTimeForOldestFeedUpdate,
+                    _oracleVersion
+                )
+            );
     }
 }
