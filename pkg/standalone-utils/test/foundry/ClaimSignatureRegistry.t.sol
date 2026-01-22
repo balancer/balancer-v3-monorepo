@@ -8,7 +8,6 @@ import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/Ba
 import { ClaimSignatureRegistry } from "../../contracts/ClaimSignatureRegistry.sol";
 
 contract ClaimSignatureRegistryTest is BaseTest {
-
     ClaimSignatureRegistry private registry;
 
     function setUp() public override {
