@@ -12,6 +12,9 @@ import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/Mes
 contract ClaimSignatureRegistry {
     using MessageHashUtils for bytes;
 
+    /// @notice Emitted when a signature is recorded for a signer
+    event SignatureRecorded(address indexed signer);
+
     /// @notice Signer cannot be address(0)
     error InvalidSigner();
 
@@ -55,6 +58,7 @@ contract ClaimSignatureRegistry {
         require(signatures[signer].length == 0, SignatureAlreadyRecorded(signer));
         require(SignatureChecker.isValidSignatureNow(signer, TERMS_DIGEST, signature), InvalidSignature(signer));
 
+        emit SignatureRecorded(signer);
         signatures[signer] = signature;
     }
 }

@@ -20,6 +20,9 @@ contract ClaimSignatureRegistryTest is BaseTest {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, registry.TERMS_DIGEST());
         bytes memory signature = abi.encodePacked(r, s, v);
 
+        vm.expectEmit();
+        emit ClaimSignatureRegistry.SignatureRecorded(alice);
+
         registry.recordSignature(signature);
         vm.stopPrank();
 
@@ -46,6 +49,8 @@ contract ClaimSignatureRegistryTest is BaseTest {
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.stopPrank();
 
+        vm.expectEmit();
+        emit ClaimSignatureRegistry.SignatureRecorded(alice);
         registry.recordSignatureFor(signature, alice);
 
         assertEq(keccak256(registry.signatures(alice)), keccak256(signature), "Signatures do not match");
