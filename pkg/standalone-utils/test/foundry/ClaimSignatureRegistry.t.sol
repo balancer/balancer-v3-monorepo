@@ -24,6 +24,9 @@ contract ClaimSignatureRegistryTest is BaseTest {
         vm.stopPrank();
 
         assertEq(keccak256(registry.signatures(alice)), keccak256(signature), "Signatures do not match");
+
+        vm.expectRevert(abi.encodeWithSelector(ClaimSignatureRegistry.SignatureAlreadyRecorded.selector, alice));
+        registry.recordSignatureFor(signature, alice);
     }
 
     function testRecordSignatureFail() public {
@@ -33,7 +36,7 @@ contract ClaimSignatureRegistryTest is BaseTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        vm.expectRevert(ClaimSignatureRegistry.InvalidSignature.selector);
+        vm.expectRevert(abi.encodeWithSelector(ClaimSignatureRegistry.InvalidSignature.selector, bob));
         registry.recordSignature(signature);
     }
 
@@ -46,6 +49,9 @@ contract ClaimSignatureRegistryTest is BaseTest {
         registry.recordSignatureFor(signature, alice);
 
         assertEq(keccak256(registry.signatures(alice)), keccak256(signature), "Signatures do not match");
+
+        vm.expectRevert(abi.encodeWithSelector(ClaimSignatureRegistry.SignatureAlreadyRecorded.selector, alice));
+        registry.recordSignatureFor(signature, alice);
     }
 
     function testRecordSignatureForFail() public {
@@ -54,7 +60,10 @@ contract ClaimSignatureRegistryTest is BaseTest {
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.stopPrank();
 
-        vm.expectRevert(ClaimSignatureRegistry.InvalidSignature.selector);
+        vm.expectRevert(abi.encodeWithSelector(ClaimSignatureRegistry.InvalidSignature.selector, bob));
         registry.recordSignatureFor(signature, bob);
+
+        vm.expectRevert(ClaimSignatureRegistry.InvalidSigner.selector);
+        registry.recordSignatureFor(signature, address(0));
     }
 }
