@@ -12,16 +12,16 @@ import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/Mes
 contract ClaimSignatureRegistry {
     using MessageHashUtils for bytes;
 
-    /// @notice Emitted when a signature is recorded for a signer
+    /// @notice Emitted when a signature is recorded for a signer.
     event SignatureRecorded(address indexed signer);
 
-    /// @notice Signer cannot be address(0)
+    /// @notice Signer cannot be address(0).
     error InvalidSigner();
 
-    /// @notice There is already a valid signature recorded for the given signer
+    /// @notice There is already a valid signature recorded for the given signer.
     error SignatureAlreadyRecorded(address signer);
 
-    /// @notice Signature is invalid for the given signer
+    /// @notice Signature is invalid for the given signer.
     error InvalidSignature(address signer);
 
     // solhint-disable-next-line var-name-mixedcase
