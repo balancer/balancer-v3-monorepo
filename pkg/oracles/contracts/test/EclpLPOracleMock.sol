@@ -18,6 +18,7 @@ contract EclpLPOracleMock is EclpLPOracle {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool useBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         EclpLPOracle(
@@ -27,6 +28,7 @@ contract EclpLPOracleMock is EclpLPOracle {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             useBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {

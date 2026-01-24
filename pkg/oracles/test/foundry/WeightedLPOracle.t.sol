@@ -80,6 +80,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             VERSION
         );
     }
@@ -315,5 +316,25 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
         assertEq(startedAt, 0, "Started at does not match");
         assertEq(returnedUpdateTimestamp, updateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
+    }
+
+    function _createValidOracle() internal virtual override returns (LPOracleBase) {
+        uint256 numTokens = 2;
+
+        uint256[] memory answers = new uint256[](numTokens);
+        uint256[] memory updateTimestamps = new uint256[](numTokens);
+        for (uint256 i = 0; i < 2; i++) {
+            answers[i] = 1e18;
+            updateTimestamps[i] = block.timestamp;
+        }
+
+        IWeightedPool pool = createAndInitPool();
+        (LPOracleBase oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        return LPOracleBase(oracle);
     }
 }

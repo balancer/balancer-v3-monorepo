@@ -27,6 +27,7 @@ import {
 
 import { StableLPOracleMock } from "../../contracts/test/StableLPOracleMock.sol";
 import { StableLPOracle } from "../../contracts/StableLPOracle.sol";
+import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 import { BaseLPOracleTest } from "./utils/BaseLPOracleTest.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
@@ -106,6 +107,7 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             VERSION
         );
     }
@@ -441,5 +443,25 @@ contract StableLPOracleTest is BaseLPOracleTest, StablePoolContractsDeployer {
         uint256[] memory balances
     ) external pure returns (uint256 invariant) {
         return StableMath.computeInvariant(amplificationParameter, balances);
+    }
+
+    function _createValidOracle() internal override returns (LPOracleBase) {
+        uint256 numTokens = 2;
+
+        uint256[] memory answers = new uint256[](numTokens);
+        uint256[] memory updateTimestamps = new uint256[](numTokens);
+        for (uint256 i = 0; i < 2; i++) {
+            answers[i] = 1e18;
+            updateTimestamps[i] = block.timestamp;
+        }
+
+        IStablePool pool = createAndInitPool();
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        return LPOracleBase(oracle);
     }
 }
