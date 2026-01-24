@@ -12,6 +12,9 @@ interface ILPOracleBase {
     /// @notice Oracle prices must be greater than zero to prevent zero or negative TVL values.
     error InvalidOraclePrice();
 
+    /// @notice The vault is unlocked for an oracle that requires a locked Vault to guarantee non-manipulable prices.
+    error VaultIsUnlocked();
+
     /**
      * @notice Calculates the TVL based on the current prices.
      * @return tvl TVL (total value locked) calculated from the prices and other pool data
@@ -68,4 +71,18 @@ interface ILPOracleBase {
         external
         view
         returns (bool shouldUseBlockTimeForOldestFeedUpdate);
+
+    /**
+     * @notice Getter for the `revertIfVaultUnlocked` behavior flag.
+     * @dev If set, operations requiring calculation of the TVL will revert if the Vault is unlocked (i.e.,
+     * in the middle of an operation). This guarantees that the BPT balances is "real," and not transient, which would
+     * make the result manipulable in cases where no other protective mechanisms are available (such as using wrapped
+     * BPT, or imposing limits in the lending protocol).
+     *
+     * @return shouldRevertIfVaultUnlocked The feed update flag setting
+     */
+    function getShouldRevertIfVaultUnlocked()
+        external
+        view
+        returns (bool shouldRevertIfVaultUnlocked);
 }
