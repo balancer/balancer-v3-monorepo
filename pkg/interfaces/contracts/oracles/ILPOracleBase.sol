@@ -81,8 +81,5 @@ interface ILPOracleBase {
      *
      * @return shouldRevertIfVaultUnlocked The feed update flag setting
      */
-    function getShouldRevertIfVaultUnlocked()
-        external
-        view
-        returns (bool shouldRevertIfVaultUnlocked);
+    function getShouldRevertIfVaultUnlocked() external view returns (bool shouldRevertIfVaultUnlocked);
 }
