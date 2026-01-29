@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/test/GradualValueChangeMock.sol";
+import { GradualValueChangeMock } from "../../contracts/test/GradualValueChangeMock.sol";
+import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
 
 contract GradualValueChangeTest is Test {
     uint256 private constant FP_ONE = 1e18;
