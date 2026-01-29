@@ -2,14 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BaseHooksTest is BaseVaultTest {

@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AuxiliaryEventTest is BaseVaultTest {

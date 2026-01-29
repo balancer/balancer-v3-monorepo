@@ -10,7 +10,6 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -19,9 +18,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 contract ProtocolFeeControllerTest is BaseVaultTest {
     using FixedPoint for uint256;

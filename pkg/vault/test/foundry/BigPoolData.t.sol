@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -15,9 +13,8 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 contract BigPoolDataTest is BaseVaultTest {
     using FixedPoint for uint256;
