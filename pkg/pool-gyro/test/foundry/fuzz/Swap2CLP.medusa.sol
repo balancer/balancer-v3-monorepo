@@ -105,6 +105,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
      */
     function getTokensAndInitialBalances()
         internal
+        view
         override
         returns (IERC20[] memory tokens, uint256[] memory initialBalances)
     {

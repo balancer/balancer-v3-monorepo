@@ -2,16 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import { SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
-import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
+import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 

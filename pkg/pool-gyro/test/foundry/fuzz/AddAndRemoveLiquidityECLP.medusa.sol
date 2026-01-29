@@ -149,6 +149,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
      */
     function getTokensAndInitialBalances()
         internal
+        view
         override
         returns (IERC20[] memory tokens, uint256[] memory initialBalances)
     {
@@ -174,7 +175,6 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
 
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, uint256[] memory balancesScaled18Before) = vault
             .getPoolTokenInfo(address(pool));
-        bytes32 beforeHash = _poolStateHash(alice, tokens, balancesBefore);
         uint256 alice0Before = tokens[0].balanceOf(alice);
         uint256 alice1Before = tokens[1].balanceOf(alice);
         uint256 invBefore = IBasePool(address(pool)).computeInvariant(balancesScaled18Before, Rounding.ROUND_DOWN);
@@ -250,7 +250,6 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         exactAmountsIn[0] = amountIn0;
         exactAmountsIn[1] = amountIn1;
 
-        bytes32 beforeHash = _poolStateHash(alice, tokens, balancesBefore);
         uint256 alice0Before = tokens[0].balanceOf(alice);
         uint256 alice1Before = tokens[1].balanceOf(alice);
         uint256 invBefore = IBasePool(address(pool)).computeInvariant(balancesScaled18Before, Rounding.ROUND_DOWN);
@@ -306,7 +305,6 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         bptIn = _boundLocal(bptIn, MIN_BPT_OUT, lpBalance / 2);
 
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
-        bytes32 beforeHash = _poolStateHash(lp, tokens, balancesBefore);
         uint256 lp0Before = tokens[0].balanceOf(lp);
         uint256 lp1Before = tokens[1].balanceOf(lp);
 
