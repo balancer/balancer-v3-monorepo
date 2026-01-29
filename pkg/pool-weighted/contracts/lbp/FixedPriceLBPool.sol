@@ -17,7 +17,6 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
-import { LBPValidation } from "./LBPValidation.sol";
 import { LBPCommon } from "./LBPCommon.sol";
 
 /**
