@@ -7,7 +7,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "./PoolMock.sol";
-import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 contract PoolMockFlexibleInvariantRatio is PoolMock {
     // Default min / max invariant ratio.
