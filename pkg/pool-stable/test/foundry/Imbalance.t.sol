@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -10,10 +9,8 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
