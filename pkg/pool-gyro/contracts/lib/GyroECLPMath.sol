@@ -88,7 +88,10 @@ library GyroECLPMath {
             _ONE - _ROTATION_VECTOR_NORM_ACCURACY <= scnorm2 && scnorm2 <= _ONE + _ROTATION_VECTOR_NORM_ACCURACY,
             RotationVectorNotNormalized()
         );
-        require(0 <= params.lambda && params.lambda <= _MAX_STRETCH_FACTOR, StretchingFactorWrong());
+        require(
+            FixedPoint.ONE.toInt256() <= params.lambda && params.lambda <= _MAX_STRETCH_FACTOR,
+            StretchingFactorWrong()
+        );
     }
 
     /**
@@ -659,8 +662,8 @@ library GyroECLPMath {
         //                          --            --   --   --
 
         // Balances in the rotated ellipse centered at (0,0)
-        int256 xl = int256(balancesScaled18[0]) - a;
-        int256 yl = int256(balancesScaled18[1]) - b;
+        int256 xl = balancesScaled18[0].toInt256() - a;
+        int256 yl = balancesScaled18[1].toInt256() - b;
 
         // Balances in the circle centered at (0,0)
         int256 xll = (xl * eclpParams.c - yl * eclpParams.s) / eclpParams.lambda;
