@@ -7,8 +7,10 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+
 import { WeightedPoolMock } from "@balancer-labs/v3-pool-weighted/contracts/test/WeightedPoolMock.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
@@ -19,6 +21,8 @@ import { WeightedLPOracleTest } from "./WeightedLPOracle.t.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
+    using ArrayHelpers for *;
+
     uint256 constant NUM_TOKENS = 2;
 
     FeedMock sequencerUptimeFeed;
@@ -135,7 +139,8 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
             symbol: "TST",
             numTokens: NUM_TOKENS,
             normalizedWeights: poolWeights,
-            version: ""
+            version: "",
+            minTokenBalances: [uint256(1e12), uint256(1e12)].toMemoryArray()
         });
         pool = new WeightedPoolMock(poolParams, vault);
 

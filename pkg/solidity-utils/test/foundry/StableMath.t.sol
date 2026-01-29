@@ -42,6 +42,8 @@ contract StableMathTest is Test {
     uint256 constant MIN_AMOUNT_IN = 0.1e18;
     uint256 constant MAX_AMOUNT_IN = 100_000e18;
 
+    uint256 constant MAX_IMBALANCE_RATIO = 10_000;
+
     StableMathMock stableMathMock;
 
     function setUp() public {
@@ -408,6 +410,64 @@ contract StableMathTest is Test {
             balancesRaw,
             1000
         );
+    }
+
+    function testGetMinAndMaxBalances__Fuzz(
+        uint256 minBalanceIndex,
+        uint256 maxBalanceIndex,
+        uint256[5] memory rawBalances,
+        uint256 balanceLength
+    ) public pure {
+        balanceLength = bound(balanceLength, 2, 5);
+        minBalanceIndex = bound(minBalanceIndex, 0, balanceLength - 1);
+        maxBalanceIndex = bound(maxBalanceIndex, 0, balanceLength - 1);
+        vm.assume(minBalanceIndex != maxBalanceIndex);
+
+        uint256[] memory testBalances = new uint256[](balanceLength);
+        for (uint256 i = 0; i < balanceLength; i++) {
+            testBalances[i] = bound(rawBalances[i], MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        }
+
+        testBalances[minBalanceIndex] = MIN_BALANCE_BOUND - 1;
+        testBalances[maxBalanceIndex] = MAX_BALANCE_BOUND + 1;
+
+        bytes32 hashBefore = keccak256(abi.encodePacked(testBalances));
+
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(testBalances);
+
+        bytes32 hashAfter = keccak256(abi.encodePacked(testBalances));
+
+        assertEq(minBalance, MIN_BALANCE_BOUND - 1, "Incorrect min balance");
+        assertEq(maxBalance, MAX_BALANCE_BOUND + 1, "Incorrect max balance");
+        assertEq(hashBefore, hashAfter, "Balances array was modified");
+    }
+
+    function testEnsureBalancesWithinMaxImbalanceRange__Fuzz(
+        uint256 minBalanceIndex,
+        uint256 maxBalanceIndex,
+        uint256[5] memory rawBalances,
+        uint256 balanceLength
+    ) public {
+        balanceLength = bound(balanceLength, 2, 5);
+        minBalanceIndex = bound(minBalanceIndex, 0, balanceLength - 1);
+        maxBalanceIndex = bound(maxBalanceIndex, 0, balanceLength - 1);
+        vm.assume(minBalanceIndex != maxBalanceIndex);
+
+        uint256[] memory testBalances = new uint256[](balanceLength);
+        for (uint256 i = 0; i < balanceLength; i++) {
+            testBalances[i] = bound(rawBalances[i], MIN_BALANCE_BOUND, MIN_BALANCE_BOUND * MAX_IMBALANCE_RATIO - 1);
+        }
+
+        (uint256 minBalance, uint256 maxBalance) = StableMath.getMinAndMaxBalances(testBalances);
+
+        // Doesn't revert
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, maxBalance);
+
+        vm.expectRevert(StableMath.MaxImbalanceRatioExceeded.selector);
+        StableMath.ensureBalancesWithinMaxImbalanceRange(minBalance, minBalance * MAX_IMBALANCE_RATIO);
+
+        vm.expectRevert(StableMath.MaxImbalanceRatioExceeded.selector);
+        StableMath.ensureBalancesWithinMaxImbalanceRange(maxBalance / MAX_IMBALANCE_RATIO, maxBalance);
     }
 
     function _testComputeInvariantLessThanInvariantWithDelta(

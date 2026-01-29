@@ -216,8 +216,14 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             tokenRates[data.reserveTokenIndex]
         );
 
+        // For seedless LBPs, the spot price is determined by effective balance (real + virtual).
+        // We must add the virtual balance to compute the correct price.
+        (, uint256 virtualBalanceScaled18) = lbp.getReserveTokenVirtualBalance();
+        uint256 effectiveReserveAmountScaled18 = reserveAmountRemovedScaled18 + virtualBalanceScaled18;
+
+        // Compute the spot price using effective reserve balance.
         uint256 priceScaled18 = ((projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex]) /
-            reserveAmountRemovedScaled18).divDown(currentWeights[data.projectTokenIndex]);
+            effectiveReserveAmountScaled18).divDown(currentWeights[data.projectTokenIndex]);
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
         // We start by assuming we can withdraw the entire project token balance. We want to use as much as possible,
@@ -231,6 +237,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
+        // Note: we compare against real reserve removed, not effective - we can only migrate real tokens.
         if (reserveAmountOutScaled18 > reserveAmountRemovedScaled18) {
             reserveAmountOutScaled18 = reserveAmountRemovedScaled18;
             projectAmountOutScaled18 =

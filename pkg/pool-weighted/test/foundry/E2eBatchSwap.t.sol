@@ -86,13 +86,19 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
         // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
         vault.manualSetPoolCreator(newPool, lp);
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: POOL_VERSION
+                version: POOL_VERSION,
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

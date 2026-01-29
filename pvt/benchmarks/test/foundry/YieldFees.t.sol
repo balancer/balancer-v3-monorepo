@@ -7,18 +7,14 @@ import "forge-std/Test.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    FEE_SCALING_FACTOR,
-    PoolData,
-    Rounding,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -72,14 +68,16 @@ contract YieldFeesTest is BaseVaultTest {
 
         PoolRoleAccounts memory poolRoleAccounts;
 
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+            rateProviders,
+            yieldFeeFlags
+        );
+
         newPool = factory.create(
             name,
             symbol,
-            vault.buildTokenConfig(
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                rateProviders,
-                yieldFeeFlags
-            ),
+            tokenConfig,
             weights,
             poolRoleAccounts,
             swapFee,
@@ -91,13 +89,16 @@ contract YieldFeesTest is BaseVaultTest {
 
         vm.label(newPool, "weightedPoolWithRate");
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
                 numTokens: 2,
                 normalizedWeights: weights,
-                version: "Pool Version 1"
+                version: "Pool Version 1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

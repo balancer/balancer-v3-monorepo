@@ -11,6 +11,7 @@ import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
@@ -351,7 +352,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         LBPCommonParams memory lbpCommonParams,
         LBPParams memory lbpParams,
         string memory poolVersion
-    ) private pure returns (NewPoolParams memory) {
+    ) private view returns (NewPoolParams memory) {
         (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpCommonParams.projectToken <
             lbpCommonParams.reserveToken
             ? (0, 1)
@@ -361,6 +362,12 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         normalizedWeights[projectTokenIndex] = lbpParams.projectTokenStartWeight;
         normalizedWeights[reserveTokenIndex] = lbpParams.reserveTokenStartWeight;
 
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[projectTokenIndex].token = lbpCommonParams.projectToken;
+        tokens[reserveTokenIndex].token = lbpCommonParams.reserveToken;
+
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokens);
+
         // The WeightedPool will validate the starting weights (i.e., ensure they respect the minimum and sum to ONE).
         return
             NewPoolParams({
@@ -368,7 +375,8 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
                 symbol: lbpCommonParams.symbol,
                 numTokens: _TWO_TOKENS,
                 normalizedWeights: normalizedWeights,
-                version: poolVersion
+                version: poolVersion,
+                minTokenBalances: minTokenBalances
             });
     }
 }

@@ -18,6 +18,9 @@ import { FixedPoint } from "./FixedPoint.sol";
 library StableMath {
     using FixedPoint for uint256;
 
+    /// @notice The imbalance ratio exceeds the maximum allowed.
+    error MaxImbalanceRatioExceeded();
+
     // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
     // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
@@ -33,6 +36,9 @@ library StableMath {
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 50000;
     uint256 internal constant AMP_PRECISION = 1e3;
+
+    // Maximum allowed ratio between the highest and lowest token balances in the pool.
+    uint256 internal constant MAX_IMBALANCE_RATIO = 10_000;
 
     // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
     uint256 internal constant MIN_INVARIANT_RATIO = 60e16; // 60%
@@ -259,5 +265,42 @@ library StableMath {
         }
 
         revert StableComputeBalanceDidNotConverge();
+    }
+
+    /**
+     * @notice Get the minimum and maximum balances from an array of balances.
+     * @param balancesScaled18 Array of token balances scaled to 18 decimals
+     * @return minBalance The minimum balance found in the array
+     * @return maxBalance The maximum balance found in the array
+     */
+    function getMinAndMaxBalances(
+        uint256[] memory balancesScaled18
+    ) internal pure returns (uint256 minBalance, uint256 maxBalance) {
+        minBalance = balancesScaled18[0];
+        maxBalance = minBalance;
+
+        uint256 length = balancesScaled18.length;
+        for (uint256 i = 1; i < length; i++) {
+            uint256 balance = balancesScaled18[i];
+            if (balance < minBalance) {
+                minBalance = balance;
+            }
+
+            if (balance > maxBalance) {
+                maxBalance = balance;
+            }
+        }
+    }
+
+    /**
+     * @notice Ensure that the balances are within the maximum imbalance ratio.
+     * @param minBalance The minimum balance among the tokens
+     * @param maxBalance The maximum balance among the tokens
+     */
+    function ensureBalancesWithinMaxImbalanceRange(uint256 minBalance, uint256 maxBalance) internal pure {
+        uint256 imbalance = maxBalance / minBalance;
+        if (imbalance >= MAX_IMBALANCE_RATIO) {
+            revert MaxImbalanceRatioExceeded();
+        }
     }
 }

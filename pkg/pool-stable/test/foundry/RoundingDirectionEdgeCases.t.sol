@@ -7,14 +7,17 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
@@ -22,7 +25,6 @@ import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoo
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
-import { RateProviderMock } from "../../../vault/contracts/test/RateProviderMock.sol";
 
 contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
@@ -111,6 +113,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
     /**
      * @dev In this specific scenario, `addLiquidityUnbalanced` mints too much BPT without the changes in
      * https://github.com/balancer/balancer-v3-monorepo/pull/1020.
+     * These edge cases now revert due to the max imbalance ratio check.
      */
     function testMockPoolBalanceWithEdgeCase() public {
         setSwapFeePercentage(0);
@@ -134,10 +137,11 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
 
         uint256[] memory exactAmountsIn = [tokenAmount, uint256(0)].toMemoryArray();
 
+        vm.expectRevert(StableMath.MaxImbalanceRatioExceeded.selector);
         router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
 
-        // This will actually revert as base pool math will attempt to compute an invariant with 0 balances.
-        vm.expectRevert(stdError.divisionError);
+        // This will actually revert as base pool math will attempt to remove more than what's available.
+        vm.expectRevert(stdError.arithmeticError);
         router.removeLiquiditySingleTokenExactOut(pool, 1e50, usdc, tokenAmount, false, "");
     }
 
@@ -155,12 +159,10 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
             [tokenAmount, dustAmount].toMemoryArray()
         );
         rateProviderWstEth.mockRate(1.5e18);
-        uint256 previousTotalSupply = StablePool(pool).totalSupply();
         uint256[] memory exactAmountsIn = [tokenAmount * 2, dustAmount * 2].toMemoryArray();
-        uint256 mintLp;
+
         vm.prank(alice);
-        mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
-        // This is only true when trading fee is 0
-        vm.assertLt(mintLp, previousTotalSupply * 2);
+        vm.expectRevert(StableMath.MaxImbalanceRatioExceeded.selector);
+        router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
     }
 }

@@ -73,19 +73,21 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         address[] memory tokens,
         string memory label
     ) internal virtual override returns (address newPool, bytes memory poolArgs) {
-        string memory name = "Weight Limit Pool";
-        string memory symbol = "WEIGHTY";
-        string memory poolVersion = "Version 1";
-
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
+        uint256[] memory minTokenBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            minTokenBalances[i] = _getMinTokenBalance(tokens[i]);
+        }
+
         WeightedPool.NewPoolParams memory params = WeightedPool.NewPoolParams({
-            name: name,
-            symbol: symbol,
+            name: "Weight Limit Pool",
+            symbol: "WEIGHTY",
             numTokens: 2,
             normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-            version: poolVersion
+            version: "Version 1",
+            minTokenBalances: minTokenBalances
         });
 
         newPool = address(deployWeightedPoolMock(params, vault));

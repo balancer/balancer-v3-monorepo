@@ -5,12 +5,9 @@ pragma solidity ^0.8.24;
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowPoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenConfig,
-    PoolRoleAccounts,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
@@ -47,15 +44,13 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
         uint256 swapFeePercentage,
         bytes32 salt
     ) external override returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         // CoW AMM Pool needs the donation mechanism to receive surpluses from the solvers.
         liquidityManagement.enableDonation = true;
         // CoW AMM Pool needs to deny unbalanced liquidity so no one can bypass the swap logic and fees.
         liquidityManagement.disableUnbalancedLiquidity = true;
+
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokens);
 
         pool = _create(
             abi.encode(
@@ -64,7 +59,8 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
                     symbol: symbol,
                     numTokens: tokens.length,
                     normalizedWeights: normalizedWeights,
-                    version: _poolVersion
+                    version: _poolVersion,
+                    minTokenBalances: minTokenBalances
                 }),
                 getVault(),
                 _trustedCowRouter

@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
@@ -32,10 +32,12 @@ contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         PoolRoleAccounts memory roleAccounts;
 
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
+
         newPool = WeightedPoolFactory(poolFactory).create(
             "50/50 Weighted Pool",
             "50_50WP",
-            vault.buildTokenConfig(tokens.asIERC20()),
+            tokenConfig,
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             0.001e16,
@@ -46,13 +48,16 @@ contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
         );
         vm.label(address(newPool), label);
 
+        uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
+
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: "50/50 Weighted Pool",
                 symbol: "50_50WP",
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: "Weighted Pool v1"
+                version: "Weighted Pool v1",
+                minTokenBalances: minTokenBalances
             }),
             vault
         );

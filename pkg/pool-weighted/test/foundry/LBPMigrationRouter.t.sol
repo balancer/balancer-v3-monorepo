@@ -2,42 +2,34 @@
 
 pragma solidity ^0.8.24;
 
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { ILBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
-import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
-import {
-    PoolConfig,
-    TokenConfig,
-    TokenInfo,
-    TokenType,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { ILBPool, LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
-import { LBPMigrationRouterMock } from "../../contracts/test/LBPMigrationRouterMock.sol";
-
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
-
 import { BPTTimeLocker } from "../../contracts/lbp/BPTTimeLocker.sol";
+import { SpotPriceHelper } from "./utils/SpotPriceHelper.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 
 contract LBPMigrationRouterTest is WeightedLBPTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using SpotPriceHelper for *;
 
     uint256 constant USDC6_SCALING_FACTOR = 1e12;
     uint256 constant WBTC8_SCALING_FACTOR = 1e10;
@@ -48,6 +40,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
     uint256 internal constant DEFAULT_SHARE_TO_MIGRATE = 70e16; // 70% of the pool
     uint256 internal constant DEFAULT_WEIGHT_PROJECT_TOKEN = 30e16; // 30% for project token
     uint256 internal constant DEFAULT_WEIGHT_RESERVE_TOKEN = 70e16; // 70% for reserve token
+
+    uint256 internal constant SEEDLESS_BPT_SHARE_TO_MIGRATE = 80e16;
 
     string constant POOL_NAME = "Weighted Pool";
     string constant POOL_SYMBOL = "WP";
@@ -491,6 +485,260 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             expectedLBPBalancesAfterScaled18,
             _decimalScalingFactors
         );
+    }
+
+    function testMigrateSeedlessLiquidity_ProjectConstrained() external {
+        // This tests the case where we have plenty of project tokens but limited real reserve
+        // The migration uses all project tokens and calculates required reserve from spot price
+
+        (pool, ) = _createSeedlessLBPoolWithMigration(
+            80e16, // 80% project
+            20e16, // 20% reserve
+            poolInitAmount // Virtual reserve balance
+        );
+
+        // Initialize with only project tokens (seedless)
+        uint256[] memory initAmounts = new uint256[](2);
+        initAmounts[projectIdx] = poolInitAmount;
+        initAmounts[reserveIdx] = 0;
+
+        vm.startPrank(bob);
+        _initPool(pool, initAmounts, 0);
+        vm.stopPrank();
+
+        // Do a swap to accumulate some real reserve (25% of virtual balance)
+        uint256 swapAmount = poolInitAmount / 4; // virtual balance = poolInitAmount
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            pool,
+            reserveToken,
+            projectToken,
+            swapAmount,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
+        // Warp to end of sale
+        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
+
+        // Get balances before migration
+        uint256[] memory lbpBalancesBeforeScaled18 = vault.getCurrentLiveBalances(pool);
+        uint256 realReserveScaled18 = lbpBalancesBeforeScaled18[reserveIdx];
+
+        uint256 spotPrice = IPoolInfo(pool).computeSpotPrice(reserveIdx);
+
+        vm.startPrank(bob);
+        IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
+
+        (IWeightedPool weightedPool, uint256[] memory exactAmountsIn, ) = migrationRouter.migrateLiquidity(
+            ILBPool(pool),
+            excessReceiver,
+            ILBPMigrationRouter.WeightedPoolParams({
+                name: POOL_NAME,
+                symbol: POOL_SYMBOL,
+                roleAccounts: PoolRoleAccounts({
+                    pauseManager: ZERO_ADDRESS,
+                    swapFeeManager: ZERO_ADDRESS,
+                    poolCreator: ZERO_ADDRESS
+                }),
+                swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                poolHooksContract: ZERO_ADDRESS,
+                enableDonation: false,
+                disableUnbalancedLiquidity: false,
+                salt: ZERO_BYTES32
+            })
+        );
+        vm.stopPrank();
+
+        uint256[] memory weightedPoolBalances = vault.getCurrentLiveBalances(address(weightedPool));
+
+        // Verify we used all project tokens (scaled by migration percentage)
+        assertApproxEqRel(
+            weightedPoolBalances[projectIdx],
+            lbpBalancesBeforeScaled18[projectIdx].mulDown(SEEDLESS_BPT_SHARE_TO_MIGRATE),
+            DELTA_REL,
+            "Should use all project tokens"
+        );
+
+        // Verify reserve is less than what was available (we're project-constrained)
+        assertLt(
+            exactAmountsIn[reserveIdx],
+            realReserveScaled18.mulDown(SEEDLESS_BPT_SHARE_TO_MIGRATE),
+            "Should not use all reserve (project-constrained)"
+        );
+
+        // Verify spot price is preserved in weighted pool
+        uint256 weightedPoolPrice = IPoolInfo(address(weightedPool)).computeSpotPrice(reserveIdx);
+
+        assertApproxEqRel(weightedPoolPrice, spotPrice, DELTA_REL, "Spot price should be preserved after migration");
+    }
+
+    function testMigrateSeedlessLiquidity_ReserveConstrained() external {
+        // This tests the case where the weighted pool weights require more reserve than available
+        // The migration uses all real reserve and calculates project tokens from spot price
+
+        (pool, ) = _createSeedlessLBPoolWithMigration(
+            20e16, // 20% project (low weight means we need more reserve)
+            80e16, // 80% reserve
+            poolInitAmount // Virtual reserve balance
+        );
+
+        // Initialize with only project tokens (seedless)
+        uint256[] memory initAmounts = new uint256[](2);
+        initAmounts[projectIdx] = poolInitAmount;
+        initAmounts[reserveIdx] = 0;
+
+        vm.startPrank(bob);
+        _initPool(pool, initAmounts, 0);
+        vm.stopPrank();
+
+        // Do a small swap to accumulate limited real reserve
+        uint256 swapAmount = poolInitAmount / 10; // Only 10% of virtual balance (= pool init amount)
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            pool,
+            reserveToken,
+            projectToken,
+            swapAmount,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
+        // Warp to end of sale
+        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
+
+        // Get balances before migration
+        uint256[] memory lbpBalancesBeforeScaled18 = vault.getCurrentLiveBalances(pool);
+        uint256 realReserveScaled18 = lbpBalancesBeforeScaled18[reserveIdx];
+
+        // Spot price using effective reserve
+        uint256 spotPrice = IPoolInfo(pool).computeSpotPrice(reserveIdx);
+
+        vm.startPrank(bob);
+        IERC20(pool).approve(address(migrationRouter), IERC20(pool).balanceOf(bob));
+
+        (IWeightedPool weightedPool, uint256[] memory exactAmountsIn, ) = migrationRouter.migrateLiquidity(
+            ILBPool(pool),
+            excessReceiver,
+            ILBPMigrationRouter.WeightedPoolParams({
+                name: POOL_NAME,
+                symbol: POOL_SYMBOL,
+                roleAccounts: PoolRoleAccounts({
+                    pauseManager: ZERO_ADDRESS,
+                    swapFeeManager: ZERO_ADDRESS,
+                    poolCreator: ZERO_ADDRESS
+                }),
+                swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                poolHooksContract: ZERO_ADDRESS,
+                enableDonation: false,
+                disableUnbalancedLiquidity: false,
+                salt: ZERO_BYTES32
+            })
+        );
+        vm.stopPrank();
+
+        uint256[] memory weightedPoolBalances = vault.getCurrentLiveBalances(address(weightedPool));
+
+        // Verify we used all real reserve (scaled by migration percentage)
+        assertApproxEqRel(
+            weightedPoolBalances[reserveIdx],
+            realReserveScaled18.mulDown(SEEDLESS_BPT_SHARE_TO_MIGRATE),
+            DELTA_REL,
+            "Should use all real reserve"
+        );
+
+        // Verify project tokens is less than what was available (we're reserve-constrained)
+        assertLt(
+            exactAmountsIn[projectIdx],
+            lbpBalancesBeforeScaled18[projectIdx].mulDown(SEEDLESS_BPT_SHARE_TO_MIGRATE),
+            "Should not use all project tokens (reserve-constrained)"
+        );
+
+        // Verify spot price is preserved in weighted pool
+        uint256 weightedPoolPrice = IPoolInfo(address(weightedPool)).computeSpotPrice(reserveIdx);
+
+        assertApproxEqRel(weightedPoolPrice, spotPrice, DELTA_REL, "Spot price should be preserved after migration");
+
+        // Verify excess project tokens went to excessReceiver
+        uint256 excessProject = projectToken.balanceOf(excessReceiver);
+        assertGt(excessProject, 0, "Excess receiver should have project tokens");
+    }
+
+    function _createSeedlessLBPoolWithMigration(
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken,
+        uint256 virtualBalance
+    ) internal returns (address newPool, bytes memory poolArgs) {
+        (
+            LBPCommonParams memory lbpCommonParams,
+            MigrationParams memory migrationParams,
+            LBPParams memory lbpParams,
+            FactoryParams memory factoryParams
+        ) = _createParams(migrationWeightProjectToken, migrationWeightReserveToken, virtualBalance);
+
+        uint256 salt = _saltCounter++;
+        newPool = lbPoolFactory.createWithMigration(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            swapFee,
+            bytes32(salt),
+            address(0) // poolCreator
+        );
+
+        poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
+    }
+
+    function _createParams(
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken,
+        uint256 virtualBalance
+    )
+        internal
+        view
+        returns (
+            LBPCommonParams memory lbpCommonParams,
+            MigrationParams memory migrationParams,
+            LBPParams memory lbpParams,
+            FactoryParams memory factoryParams
+        )
+    {
+        lbpCommonParams = LBPCommonParams({
+            name: "Seedless LBPool",
+            symbol: "SLBP",
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        migrationParams = MigrationParams({
+            migrationRouter: address(migrationRouter),
+            lockDurationAfterMigration: DEFAULT_BPT_LOCK_DURATION,
+            bptPercentageToMigrate: SEEDLESS_BPT_SHARE_TO_MIGRATE,
+            migrationWeightProjectToken: migrationWeightProjectToken,
+            migrationWeightReserveToken: migrationWeightReserveToken
+        });
+
+        lbpParams = LBPParams({
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            reserveTokenVirtualBalance: virtualBalance
+        });
+
+        factoryParams = FactoryParams({ vault: vault, trustedRouter: address(router), poolVersion: poolVersion });
     }
 
     function _migrateLiquidity(
