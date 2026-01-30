@@ -42,20 +42,27 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
+        bool shouldRevertIfVaultUnlocked = true;
 
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
         vm.revertToState(snapshot);
 
         vm.expectEmit();
         emit WeightedLPOracleFactory.WeightedLPOracleCreated(
             IWeightedPool(address(pool)),
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             feeds,
             IWeightedLPOracle(address(oracle))
         );
-        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, shouldRevertIfVaultUnlocked, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {

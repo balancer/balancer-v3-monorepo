@@ -17,6 +17,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         WeightedLPOracle(
@@ -26,6 +27,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {
