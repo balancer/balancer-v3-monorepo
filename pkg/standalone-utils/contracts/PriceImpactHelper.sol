@@ -171,7 +171,7 @@ contract PriceImpactHelper is CallAndRevert {
         }
 
         zerosWithSingleDelta[tokenIndex] = uint256(delta > 0 ? delta : -delta);
-        int256 result = int256(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, sender));
+        int256 result = _queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, sender).toInt256();
 
         return delta > 0 ? result : -result;
     }
