@@ -22,6 +22,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | LP Oracles                        | Certora       | [`2025-08-19`](./certora/2025-08-19.pdf)             |
 | Nested Pool Router                | Certora       | [`2025-09-08`](./certora/2025-09-08.pdf)             |
 | ECLP Oracles                      | Certora       | [`2025-09-10`](./certora/2025-09-10.pdf)             |
+| Comprehensive Security Assessment | Certora       | [`2026-01-26`](./certora/2026-01-26.pdf)             |
 
 ## Addenda
   
