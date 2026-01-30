@@ -330,9 +330,6 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
         vm.expectRevert(ILPOracleBase.VaultIsUnlocked.selector);
         oracle.computeTVL();
 
-        vm.expectRevert(ILPOracleBase.VaultIsUnlocked.selector);
-        oracle.computeTVL();
-
         int256[] memory prices = new int256[](2);
         prices[0] = 1e18;
         prices[1] = 1e18;
