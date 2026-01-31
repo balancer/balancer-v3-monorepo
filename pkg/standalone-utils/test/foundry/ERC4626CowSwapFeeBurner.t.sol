@@ -116,7 +116,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         );
         vm.prank(admin);
         cowSwapFeeBurner.burn(
-            address(0),
             waDAI,
             TEST_BURN_AMOUNT,
             usdc,
@@ -141,11 +140,10 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
 
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(address(0), dai, assetsAmount, usdc, MIN_TARGET_TOKEN_AMOUNT, alice);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(dai, assetsAmount, usdc, MIN_TARGET_TOKEN_AMOUNT, alice);
 
         vm.prank(admin);
         cowSwapFeeBurner.burn(
-            address(0),
             waDAI,
             TEST_BURN_AMOUNT,
             usdc,
@@ -221,15 +219,7 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         // Deadline doesn't matter in this case, as settlement is instant.
         vm.prank(admin);
-        cowSwapFeeBurner.burn(
-            address(0),
-            waDAI,
-            TEST_BURN_AMOUNT,
-            dai,
-            _encodeMinAmountsOut(assetsAmount, 0),
-            alice,
-            0
-        );
+        cowSwapFeeBurner.burn(waDAI, TEST_BURN_AMOUNT, dai, _encodeMinAmountsOut(assetsAmount, 0), alice, 0);
 
         assertEq(
             waDAI.balanceOf(admin),
@@ -275,7 +265,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
         cowSwapFeeBurner.burn(
-            address(0),
             waDAI,
             TEST_BURN_AMOUNT,
             dai,
@@ -299,7 +288,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
         cowSwapFeeBurner.burn(
-            address(0),
             waDAI,
             TEST_BURN_AMOUNT,
             dai,
@@ -332,7 +320,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
         cowSwapFeeBurner.burn(
-            address(0),
             waDAI,
             TEST_BURN_AMOUNT,
             dai,
