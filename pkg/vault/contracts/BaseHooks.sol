@@ -3,23 +3,21 @@
 pragma solidity ^0.8.24;
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import {
-    AddLiquidityKind,
-    HookFlags,
-    LiquidityManagement,
-    RemoveLiquidityKind,
-    TokenConfig,
-    PoolSwapParams,
-    AfterSwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 /**
  * @notice Base for pool hooks contracts.
  * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
- * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which isn't used
- * in this abstract contract, but should be used in real derived hook contracts.
+ * and only override what they need.
  */
 abstract contract BaseHooks is IHooks {
+    // The address authorized to call non-view hook functions.
+    address immutable internal _authorizedCaller;
+
+    constructor (address authorizedCaller) {
+        _authorizedCaller = authorizedCaller;
+    }
+
     /// @inheritdoc IHooks
     function onRegister(
         address,
@@ -118,5 +116,10 @@ abstract contract BaseHooks is IHooks {
         uint256
     ) public view virtual returns (bool, uint256) {
         return (false, 0);
+    }
+
+    /// @inheritdoc IHooks
+    function getAuthorizedCaller() external view returns (address) {
+        return _authorizedCaller;
     }
 }

@@ -244,4 +244,16 @@ interface IHooks {
         address pool,
         uint256 staticSwapFeePercentage
     ) external view returns (bool success, uint256 dynamicSwapFeePercentage);
-}
+
+    /**
+     * @notice Returns the address authorized to call the hooks (e.g., the Vault or pool address).
+     * @dev This is the address authorized to call non-view hook functions. It is typically the Vault (when the hook is
+     * registered to a standard pool that is not it's own hook (e.g., weighted or stable pools), but for pool types
+     * that register themselves with the Vault as the hook (e.g., ReClamm, LBP), and that are using this contract as
+     * a secondary hook: the caller will be the pool itself "forwarding" the call to the secondary hook, after doing
+     * its own processing.
+     *
+     * @return authorizedCaller The address authorized to call the hooks (e.g., the Vault or pool address)
+     */
+    function getAuthorizedCaller() external view returns (address);
+}   
