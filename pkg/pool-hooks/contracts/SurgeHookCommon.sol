@@ -43,7 +43,7 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage,
         string memory version
-    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
+    ) BaseHooks(address(vault)) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
         _ensureValidPercentage(defaultMaxSurgeFeePercentage);
         _ensureValidPercentage(defaultSurgeThresholdPercentage);
 

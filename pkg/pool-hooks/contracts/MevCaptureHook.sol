@@ -48,6 +48,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     mapping(address => uint256) internal _poolMevTaxThresholds;
     mapping(address => uint256) internal _poolMevTaxMultipliers;
 
+    // This absolutely constrains this hook to only be used as a "primary" hook (registered with the Vault),
+    // so for clarity we use the onlyVault modifier in onRegister, instead of the more generic onlyAuthorizedCaller.
     modifier withMevTaxEnabledPool(address pool) {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
@@ -63,7 +65,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         IBalancerContractRegistry registry,
         uint256 defaultMevTaxMultiplier,
         uint256 defaultMevTaxThreshold
-    ) SingletonAuthentication(vault) VaultGuard(vault) {
+    ) BaseHooks(address(vault)) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
         // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.

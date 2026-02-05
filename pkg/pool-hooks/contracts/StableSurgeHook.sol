@@ -44,7 +44,7 @@ contract StableSurgeHook is SurgeHookCommon {
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
-    ) public override onlyVault returns (bool success) {
+    ) public override onlyAuthorizedCaller returns (bool success) {
         success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         emit StableSurgeHookRegistered(pool, factory);

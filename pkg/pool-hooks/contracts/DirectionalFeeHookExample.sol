@@ -5,12 +5,7 @@ pragma solidity ^0.8.24;
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
@@ -49,7 +44,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address indexed pool
     );
 
-    constructor(IVault vault, address allowedStablePoolFactory) VaultGuard(vault) {
+    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(address(vault)) VaultGuard(vault) {
         // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
@@ -60,7 +55,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
+    ) public override onlyAuthorizedCaller returns (bool) {
         emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
 
         // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
@@ -77,7 +72,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override onlyAuthorizedCaller returns (bool, uint256) {
         // Get pool balances
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(pool);
 

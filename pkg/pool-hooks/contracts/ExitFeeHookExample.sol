@@ -7,14 +7,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    AddLiquidityKind,
-    AddLiquidityParams,
-    LiquidityManagement,
-    RemoveLiquidityKind,
-    TokenConfig,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
@@ -84,7 +77,7 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
      */
     error PoolDoesNotSupportDonation();
 
-    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(IVault vault) BaseHooks(address(vault)) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -94,7 +87,7 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public override onlyVault returns (bool) {
+    ) public override onlyAuthorizedCaller returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
@@ -130,7 +123,7 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) public override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public override onlyAuthorizedCaller returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.

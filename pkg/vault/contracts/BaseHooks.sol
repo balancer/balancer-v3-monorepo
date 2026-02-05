@@ -14,6 +14,18 @@ abstract contract BaseHooks is IHooks {
     // The address authorized to call non-view hook functions.
     address immutable internal _authorizedCaller;
 
+    /**
+     * @notice The caller is not authorized to invoke the hook.
+     * @dev We could use the generic IAuthentication.SenderNotAllowed, but this makes it clearer.
+     * @param sender The unauthorized caller address
+     */
+    error HookCallerNotAuthorized(address sender);
+
+    modifier onlyAuthorizedCaller() {
+        _ensureOnlyAuthorizedCaller();
+        _;
+    }
+
     constructor (address authorizedCaller) {
         _authorizedCaller = authorizedCaller;
     }
@@ -121,5 +133,9 @@ abstract contract BaseHooks is IHooks {
     /// @inheritdoc IHooks
     function getAuthorizedCaller() external view returns (address) {
         return _authorizedCaller;
+    }
+
+    function _ensureOnlyAuthorizedCaller() internal view {
+        require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender));
     }
 }
