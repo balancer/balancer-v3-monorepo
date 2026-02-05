@@ -87,7 +87,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         MigrationParams memory migrationParams,
         address trustedRouter,
         address migrationRouter
-    ) Ownable(lbpCommonParams.owner) {
+    ) BaseHooks(address(this)) Ownable(lbpCommonParams.owner) {
         lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
 
         // wake-disable-next-line unchecked-return-value
