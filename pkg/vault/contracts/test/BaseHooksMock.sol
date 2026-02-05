@@ -8,6 +8,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BaseHooks } from "../BaseHooks.sol";
 
 contract BaseHooksMock is BaseHooks {
+    constructor(address authorizedCaller) BaseHooks(authorizedCaller) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     /// @inheritdoc IHooks
     function onRegister(
         address factory,

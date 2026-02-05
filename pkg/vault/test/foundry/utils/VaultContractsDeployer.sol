@@ -101,11 +101,11 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployBaseHookMock() internal returns (BaseHooksMock) {
+    function deployBaseHookMock(address authorizedCaller) internal returns (BaseHooksMock) {
         if (reusingArtifacts) {
-            return BaseHooksMock(deployCode(_computeVaultTestPath(type(BaseHooksMock).name)));
+            return BaseHooksMock(deployCode(_computeVaultTestPath(type(BaseHooksMock).name), abi.encode(authorizedCaller)));
         } else {
-            return new BaseHooksMock();
+            return new BaseHooksMock(authorizedCaller);
         }
     }
 
