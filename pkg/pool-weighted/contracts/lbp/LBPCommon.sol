@@ -214,8 +214,12 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
             revert IVaultErrors.InvalidTokenConfiguration();
         }
 
+        address vault = address(IRouterCommon(_trustedRouter).getVault());
+
+        _setAuthorizedCaller(pool, vault);
+
         // This is the pool itself, so the Vault should be calling this, with itself as the pool argument.
-        success = pool == address(this) && msg.sender == address(IRouterCommon(_trustedRouter).getVault());
+        success = pool == address(this) && msg.sender == vault;
 
         if (success && _SECONDARY_HOOK_CONTRACT != address(0)) {
             // Note that the caller of `onRegister` here will be the Pool, not the Vault, so the secondary hook
@@ -347,19 +351,17 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
 
         success = _migrationRouter == address(0) || router == _migrationRouter;
 
-        // Forward to the secondary hook, if it's present and implements onBeforeInitialize.
-        return
-            _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeRemoveLiquidity(
-                    router,
-                    pool,
-                    kind,
-                    maxBptAmountIn,
-                    minAmountsOutScaled18,
-                    balancesScaled18,
-                    userData
-                )
-                : true;
+        if (success && _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY) {
+            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeRemoveLiquidity(
+                router,
+                pool,
+                kind,
+                maxBptAmountIn,
+                minAmountsOutScaled18,
+                balancesScaled18,
+                userData
+            );
+        }
     }
 
     /// @inheritdoc IHooks
