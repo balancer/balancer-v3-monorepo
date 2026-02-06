@@ -65,7 +65,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         IBalancerContractRegistry registry,
         uint256 defaultMevTaxMultiplier,
         uint256 defaultMevTaxThreshold
-    ) BaseHooks(address(vault)) SingletonAuthentication(vault) VaultGuard(vault) {
+    ) BaseHooks(false) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
         // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.
@@ -95,6 +95,9 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
+        // This hook is hard-coded to be primary, so the `_authorizedCaller` is always the Vault.
+        _authorizedCaller = address(_vault);
+
         _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
         _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
 

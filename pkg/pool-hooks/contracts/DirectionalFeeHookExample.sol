@@ -44,7 +44,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address indexed pool
     );
 
-    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(address(vault)) VaultGuard(vault) {
+    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(false) VaultGuard(vault) {
         // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
@@ -57,6 +57,8 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         LiquidityManagement calldata
     ) public override onlyAuthorizedCaller returns (bool) {
         emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
+
+        _setAuthorizedCaller(pool, address(_vault));
 
         // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
         return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);

@@ -115,9 +115,10 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory hookVersion
+        string memory hookVersion,
+        bool isSecondaryHook
     )
-        BaseHooks(address(vault))
+        BaseHooks(isSecondaryHook)
         MinimalRouter(vault, weth, permit2, hookVersion)
         ERC721("BalancerLiquidityProvider", "BAL_LP")
     {
@@ -204,7 +205,9 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public override onlyVault returns (bool) {
+    ) public override returns (bool) {
+        _setAuthorizedCaller(pool, address(_vault));
+
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
@@ -239,7 +242,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) public view override onlyVault onlySelfRouter(router) returns (bool) {
+    ) public view override onlyAuthorizedCaller onlySelfRouter(router) returns (bool) {
         // We only allow addLiquidity via the Router/Hook itself (as it must custody BPT).
         return true;
     }
@@ -254,7 +257,13 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory userData
-    ) public override onlyVault onlySelfRouter(router) returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    )
+        public
+        override
+        onlyAuthorizedCaller
+        onlySelfRouter(router)
+        returns (bool, uint256[] memory hookAdjustedAmountsOutRaw)
+    {
         // We only allow removeLiquidity via the Router/Hook itself so that fee is applied correctly.
         uint256 tokenId = abi.decode(userData, (uint256));
         hookAdjustedAmountsOutRaw = amountsOutRaw;

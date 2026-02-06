@@ -90,7 +90,11 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 amountWon
     );
 
-    constructor(IVault vault, address router) BaseHooks(address(vault)) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(
+        IVault vault,
+        address router,
+        bool isSecondaryHook
+    ) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(msg.sender) {
         _trustedRouter = router;
     }
 
@@ -100,10 +104,12 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyAuthorizedCaller returns (bool) {
+    ) public override returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
+
+        _setAuthorizedCaller(pool, address(_vault));
 
         emit LotteryHookExampleRegistered(address(this), pool);
 

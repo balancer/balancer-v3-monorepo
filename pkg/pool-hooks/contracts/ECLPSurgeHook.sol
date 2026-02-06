@@ -61,7 +61,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
-    ) public override onlyVault returns (bool success) {
+    ) public override returns (bool success) {
         (IGyroECLPPool.EclpParams memory eclpParams, ) = IGyroECLPPool(pool).getECLPParams();
 
         // The surge hook only works for pools with a rotation angle between 30 and 60 degrees. Outside of this range,
@@ -72,6 +72,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
             revert InvalidRotationAngle();
         }
 
+        // Enforces that the caller is the Vault.
         success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         _setImbalanceSlopeBelowPeak(pool, _DEFAULT_IMBALANCE_SLOPE);

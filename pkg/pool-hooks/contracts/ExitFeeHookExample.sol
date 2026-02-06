@@ -77,7 +77,7 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
      */
     error PoolDoesNotSupportDonation();
 
-    constructor(IVault vault) BaseHooks(address(vault)) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(IVault vault, bool isSecondaryHook) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -87,10 +87,12 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public override onlyAuthorizedCaller returns (bool) {
+    ) public override returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
+
+        _setAuthorizedCaller(pool, address(_vault));
 
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
