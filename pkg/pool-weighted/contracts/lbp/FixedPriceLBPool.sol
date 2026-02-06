@@ -55,13 +55,15 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
     constructor(
         LBPCommonParams memory lbpCommonParams,
         FactoryParams memory factoryParams,
-        uint256 projectTokenRate
+        uint256 projectTokenRate,
+        address secondaryHookContract
     )
         LBPCommon(
             lbpCommonParams,
             _getEmptyMigrationParams(),
             factoryParams.trustedRouter,
-            address(0) // no migration router
+            address(0), // no migration router
+            secondaryHookContract
         )
         BalancerPoolToken(factoryParams.vault, lbpCommonParams.name, lbpCommonParams.symbol)
         PoolInfo(factoryParams.vault)

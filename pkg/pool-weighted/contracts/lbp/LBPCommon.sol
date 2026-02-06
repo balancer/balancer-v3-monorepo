@@ -7,18 +7,21 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
-
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { SecondaryHookPool } from "@balancer-labs/v3-pool-hooks/contracts/utils/SecondaryHookPool.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { LBPValidation } from "./LBPValidation.sol";
 
-abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
+abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHookPool {
     using FixedPoint for uint256;
 
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
@@ -82,12 +85,15 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         _;
     }
 
+    // The BaseHooks bool parameter is false here, as the pool itself is a primary hook (expecting to be called by the
+    // Vault. The `secondaryPoolContract`, if provided, would initialize it true (if derived from BaseHooks).
     constructor(
         LBPCommonParams memory lbpCommonParams,
         MigrationParams memory migrationParams,
         address trustedRouter,
-        address migrationRouter
-    ) BaseHooks(address(this)) Ownable(lbpCommonParams.owner) {
+        address migrationRouter,
+        address secondaryHookContract
+    ) BaseHooks(false) SecondaryHookPool(secondaryHookContract) Ownable(lbpCommonParams.owner) {
         lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
 
         // wake-disable-next-line unchecked-return-value
@@ -105,7 +111,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
         _blockProjectTokenSwapsIn = lbpCommonParams.blockProjectTokenSwapsIn;
 
-        (_projectTokenIndex, _reserveTokenIndex) = lbpCommonParams.projectToken < lbpCommonParams.reserveToken
+        (_projectTokenIndex, _reserveTokenIndex) = address(lbpCommonParams.projectToken) <
+            address(lbpCommonParams.reserveToken)
             ? (0, 1)
             : (1, 0);
 
@@ -167,6 +174,25 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     *******************************************************************************/
 
     /**
+     * @notice Return the HookFlags struct, which indicates which hooks this contract supports.
+     * @dev For each flag set to true, the Vault will call the corresponding hook.
+     * @return hookFlags Flags indicating which hooks are supported for LBPs
+     */
+    function getHookFlags() public view virtual override returns (HookFlags memory hookFlags) {
+        if (_SECONDARY_HOOK_CONTRACT != address(0)) {
+            // The hook contract may include hooks the native LBP does not.
+            hookFlags = IHooks(_SECONDARY_HOOK_CONTRACT).getHookFlags();
+        }
+
+        // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
+        hookFlags.shouldCallBeforeInitialize = true;
+        hookFlags.shouldCallBeforeAddLiquidity = true;
+
+        // Required to enforce the liquidity can only be withdrawn after the end of the sale.
+        hookFlags.shouldCallBeforeRemoveLiquidity = true;
+    }
+
+    /**
      * @notice Hook to be executed when the pool is registered.
      * @dev Returns true if registration was successful; false will revert with `HookRegistrationFailed`.
      * @param pool Address of the pool (must be this contract for LBPs: the pool is also the hook)
@@ -174,11 +200,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
      * @return success True if the hook allowed the registration, false otherwise
      */
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory tokenConfig,
-        LiquidityManagement calldata
-    ) public view virtual override returns (bool) {
+        LiquidityManagement calldata liquidityManagement
+    ) public virtual override returns (bool success) {
         // These preconditions are guaranteed by the standard LBPoolFactory, but check anyway.
         InputHelpers.ensureInputLengthMatch(_TWO_TOKENS, tokenConfig.length);
 
@@ -188,21 +214,14 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
 
-        return pool == address(this);
-    }
+        // This is the pool itself, so the Vault should be calling this, with itself as the pool argument.
+        success = pool == address(this) && msg.sender == address(IRouterCommon(_trustedRouter).getVault());
 
-    /**
-     * @notice Return the HookFlags struct, which indicates which hooks this contract supports.
-     * @dev For each flag set to true, the Vault will call the corresponding hook.
-     * @return hookFlags Flags indicating which hooks are supported for LBPs
-     */
-    function getHookFlags() public pure virtual override returns (HookFlags memory hookFlags) {
-        // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
-        hookFlags.shouldCallBeforeInitialize = true;
-        hookFlags.shouldCallBeforeAddLiquidity = true;
-
-        // Required to enforce the liquidity can only be withdrawn after the end of the sale.
-        hookFlags.shouldCallBeforeRemoveLiquidity = true;
+        if (success && _SECONDARY_HOOK_CONTRACT != address(0)) {
+            // Note that the caller of `onRegister` here will be the Pool, not the Vault, so the secondary hook
+            // contract must have been deployed with the `isSecondaryHook` flag set to true.
+            success = IHooks(_SECONDARY_HOOK_CONTRACT).onRegister(factory, pool, tokenConfig, liquidityManagement);
+        }
     }
 
     /**
@@ -216,48 +235,195 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
      * @return success Always true: allow the initialization to proceed if the time condition has been met
      */
     function onBeforeInitialize(
-        uint256[] memory,
-        bytes memory
-    ) public view virtual override onlyBeforeSale returns (bool) {
-        return ISenderGuard(_trustedRouter).getSender() == owner();
+        uint256[] memory exactAmountsIn,
+        bytes memory userData
+    ) public virtual override onlyBeforeSale returns (bool success) {
+        success = ISenderGuard(_trustedRouter).getSender() == owner();
+
+        if (success && _SECONDARY_HOOK_HAS_BEFORE_INITIALIZE) {
+            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeInitialize(exactAmountsIn, userData);
+        }
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterInitialize(
+        uint256[] memory exactAmountsIn,
+        uint256 bptAmountOut,
+        bytes memory userData
+    ) public virtual override onlyAuthorizedCaller returns (bool success) {
+        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+        return
+            _SECONDARY_HOOK_HAS_AFTER_INITIALIZE
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterInitialize(exactAmountsIn, bptAmountOut, userData)
+                : true;
     }
 
     /**
      * @notice Allow the owner to add liquidity before the start of the sale.
      * @param router The router used for the operation
+     * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
+     * @param maxAmountsInScaled18 Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
+     * @param userData Optional, arbitrary data sent with the encoded request
      * @return success True (allowing the operation to proceed) if the owner is calling through the trusted router
      */
     function onBeforeAddLiquidity(
         address router,
-        address,
-        AddLiquidityKind,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) public view virtual override onlyBeforeSale returns (bool) {
-        return router == _trustedRouter && ISenderGuard(router).getSender() == owner();
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory maxAmountsInScaled18,
+        uint256 minBptAmountOut,
+        uint256[] memory balancesScaled18,
+        bytes memory userData
+    ) public virtual override onlyBeforeSale returns (bool success) {
+        success = router == _trustedRouter && ISenderGuard(router).getSender() == owner();
+
+        if (success && _SECONDARY_HOOK_HAS_BEFORE_ADD_LIQUIDITY) {
+            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeAddLiquidity(
+                router,
+                pool,
+                kind,
+                maxAmountsInScaled18,
+                minBptAmountOut,
+                balancesScaled18,
+                userData
+            );
+        }
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterAddLiquidity(
+        address router,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256 bptAmountOut,
+        uint256[] memory balancesScaled18,
+        bytes memory userData
+    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
+        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+        return
+            _SECONDARY_HOOK_HAS_AFTER_ADD_LIQUIDITY
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterAddLiquidity(
+                    router,
+                    pool,
+                    kind,
+                    amountsInScaled18,
+                    amountsInRaw,
+                    bptAmountOut,
+                    balancesScaled18,
+                    userData
+                )
+                : (true, amountsInRaw);
     }
 
     /**
      * @notice Only remove liquidity before the sale (to correct mistakes) or after the sale (withdrawal of proceeds).
+     * @param router The address (usually a router contract) that initiated a remove liquidity operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
+     * @param kind The type of remove liquidity operation (e.g., proportional, custom)
+     * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOutScaled18 Minimum output amounts, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
+     * @param userData Optional, arbitrary data sent with the encoded request
      * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
      */
     function onBeforeRemoveLiquidity(
         address router,
-        address,
-        RemoveLiquidityKind,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) public view virtual override returns (bool) {
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOutScaled18,
+        uint256[] memory balancesScaled18,
+        bytes memory userData
+    ) public virtual override onlyAuthorizedCaller returns (bool success) {
         // Do not allow removing liquidity during the sale.
         if (block.timestamp >= _startTime && block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 
-        return _migrationRouter == address(0) || router == _migrationRouter;
+        success = _migrationRouter == address(0) || router == _migrationRouter;
+
+        // Forward to the secondary hook, if it's present and implements onBeforeInitialize.
+        return
+            _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeRemoveLiquidity(
+                    router,
+                    pool,
+                    kind,
+                    maxBptAmountIn,
+                    minAmountsOutScaled18,
+                    balancesScaled18,
+                    userData
+                )
+                : true;
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterRemoveLiquidity(
+        address router,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256 bptAmountIn,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256[] memory balancesScaled18,
+        bytes memory userData
+    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
+        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+        return
+            _SECONDARY_HOOK_HAS_AFTER_REMOVE_LIQUIDITY
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterRemoveLiquidity(
+                    router,
+                    pool,
+                    kind,
+                    bptAmountIn,
+                    amountsOutScaled18,
+                    amountsOutRaw,
+                    balancesScaled18,
+                    userData
+                )
+                : (true, amountsOutRaw);
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeSwap(
+        PoolSwapParams calldata params,
+        address pool
+    ) public virtual override onlyAuthorizedCaller returns (bool success) {
+        // Forward to the secondary hook, if it's present and implements onBeforeInitialize.
+        return _SECONDARY_HOOK_HAS_BEFORE_SWAP ? IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeSwap(params, pool) : true;
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterSwap(
+        AfterSwapParams calldata params
+    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+        return
+            _SECONDARY_HOOK_HAS_AFTER_SWAP
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterSwap(params)
+                : (true, params.amountCalculatedRaw);
+    }
+
+    /// @inheritdoc IHooks
+    function onComputeDynamicSwapFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) public view virtual override onlyAuthorizedCaller returns (bool success, uint256 dynamicSwapFeePercentage) {
+        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+        return
+            _SECONDARY_HOOK_HAS_DYNAMIC_SWAP_FEE
+                ? IHooks(_SECONDARY_HOOK_CONTRACT).onComputeDynamicSwapFeePercentage(
+                    params,
+                    pool,
+                    staticSwapFeePercentage
+                )
+                : (true, staticSwapFeePercentage);
     }
 
     /*******************************************************************************
