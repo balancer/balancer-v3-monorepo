@@ -40,8 +40,9 @@ abstract contract BaseHooks is IHooks {
      * @notice The caller is not authorized to invoke the hook.
      * @dev We could use the generic IAuthentication.SenderNotAllowed, but this makes it clearer.
      * @param sender The unauthorized caller address
+     * @param authorizedCaller The address that is allowed to call it
      */
-    error HookCallerNotAuthorized(address sender);
+    error HookCallerNotAuthorized(address sender, address authorizedCaller);
 
     /// @notice `_setAuthorizedCaller` has been called more than once. Should never happen.
     error AuthorizedCallerAlreadySet();
@@ -161,13 +162,13 @@ abstract contract BaseHooks is IHooks {
     }
 
     function _ensureOnlyAuthorizedCaller() internal view {
-        require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender));
+        require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender, _authorizedCaller));
     }
 
     function _setAuthorizedCaller(address pool, address vault) internal {
         address authorizedCaller = _isSecondaryHook ? pool : vault;
 
-        require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender));
+        require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender, authorizedCaller));
         require(_authorizedCaller == address(0), AuthorizedCallerAlreadySet());
 
         _authorizedCaller = authorizedCaller;

@@ -145,13 +145,11 @@ contract LBPoolFactory is BaseLBPFactory {
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            poolVersion: _poolVersion
+            poolVersion: _poolVersion,
+            secondaryHookContract: secondaryHookContract
         });
 
-        pool = _create(
-            abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams, secondaryHookContract),
-            salt
-        );
+        pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
 
         _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
 

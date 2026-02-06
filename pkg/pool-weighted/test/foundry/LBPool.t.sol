@@ -78,16 +78,16 @@ contract LBPoolTest is WeightedLBPTest {
         });
 
         vm.expectRevert(LBPValidation.InvalidProjectToken.selector);
-        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0), address(0));
 
         lbpCommonParams.projectToken = projectToken;
         lbpCommonParams.reserveToken = IERC20(address(0));
         vm.expectRevert(LBPValidation.InvalidReserveToken.selector);
-        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0), address(0));
 
         lbpCommonParams.reserveToken = projectToken;
         vm.expectRevert(LBPValidation.TokensMustBeDifferent.selector);
-        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0));
+        lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, ONE_BYTES32, address(0), address(0));
     }
 
     function testCreatePoolLowProjectStartWeight() public {
@@ -757,9 +757,7 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testOnRegisterWrongPool() public {
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
+        (address pool, TokenConfig[] memory tokenConfig) = _directDeployNewPool();
 
         // Mock vault call to onRegister with wrong pool address
         vm.prank(address(vault));
@@ -779,10 +777,7 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testOnRegisterSuccess() public {
-        // Create token config array with 2 standard tokens
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
+        (address pool, TokenConfig[] memory tokenConfig) = _directDeployNewPool();
 
         // Mock vault call to onRegister with correct parameters
         vm.prank(address(vault));
@@ -799,6 +794,7 @@ contract LBPoolTest is WeightedLBPTest {
         );
 
         assertTrue(success, "onRegister should return true when parameters are valid");
+        assertEq(IHooks(pool).getAuthorizedCaller(), address(vault), "Wrong authorized caller");
     }
 
     function testGetHookFlags() public view {

@@ -58,11 +58,13 @@ struct MigrationParams {
  * @param vault The address of the Balancer Vault
  * @param trustedRouter The address of the trusted router (i.e., one that reliably stores the real sender)
  * @param poolVersion The pool version deployed by the factory
+ * @param secondaryHookContract Optional secondary hook contract. (The pool itself is the primary hook.)
  */
 struct FactoryParams {
     IVault vault;
     address trustedRouter;
     string poolVersion;
+    address secondaryHookContract;
 }
 
 /// @notice Common basic interface for all LBPool types.

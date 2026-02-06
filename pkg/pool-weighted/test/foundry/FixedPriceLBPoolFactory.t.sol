@@ -257,7 +257,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         uint256 salt = _saltCounter++;

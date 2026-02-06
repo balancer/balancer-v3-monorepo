@@ -682,7 +682,7 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             MigrationParams memory migrationParams,
             LBPParams memory lbpParams,
             FactoryParams memory factoryParams
-        ) = _createParams(migrationWeightProjectToken, migrationWeightReserveToken, virtualBalance);
+        ) = _createParams(migrationWeightProjectToken, migrationWeightReserveToken, virtualBalance, address(0));
 
         uint256 salt = _saltCounter++;
         newPool = lbPoolFactory.createWithMigration(
@@ -691,7 +691,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             lbpParams,
             swapFee,
             bytes32(salt),
-            address(0) // poolCreator
+            address(0), // poolCreator
+            address(0) // secondary hook
         );
 
         poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
@@ -700,7 +701,8 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
     function _createParams(
         uint256 migrationWeightProjectToken,
         uint256 migrationWeightReserveToken,
-        uint256 virtualBalance
+        uint256 virtualBalance,
+        address secondaryHookContract
     )
         internal
         view
@@ -738,7 +740,12 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             reserveTokenVirtualBalance: virtualBalance
         });
 
-        factoryParams = FactoryParams({ vault: vault, trustedRouter: address(router), poolVersion: poolVersion });
+        factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            poolVersion: poolVersion,
+            secondaryHookContract: secondaryHookContract
+        });
     }
 
     function _migrateLiquidity(
