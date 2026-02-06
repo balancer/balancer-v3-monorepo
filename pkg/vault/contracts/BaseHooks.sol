@@ -9,10 +9,32 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
  * @notice Base for pool hooks contracts.
  * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
+ *
+ * If _isSecondaryHook is true, it means this hook is being added to a pool type that registered itself as the
+ * "primary" hook (i.e., the hook contract that will be called directly by the Vault). In that case, the pool will
+ * forward the `onRegister` call to this contract, so we set `_authorizedCaller` to msg.sender, which will be the pool
+ * address.
+ *
+ * If _isSecondaryHook is false, it means this hook is being added to a pool type that is not itself a hook.
+ * In that case, the Vault will call this hook contract directly, so we set `_authorizedCaller` to the Vault address.
+ * If the derived hook contract does not set `_authorizedCaller`, it will be the zero address, and deployment will
+ * revert.
+ *
+ * Note that in both cases we are setting `_authorizedCaller` to msg.sender, but if we simply did that (without the
+ * flag), anyone could front-run the deployment transaction and become the authorized caller, at least in cases where
+ * the hook is deployed separately from the pool (e.g., not atomically in a factory create function). We must ensure
+ * that primary hook contracts can only be called by the Vault.
+ *
+ * This also avoids the chicken-and-egg problem of not knowing the pool address at deployment time, which we would
+ * encounter if we tried to make `_authorizedCaller` immutable and set it in the constructor. There is a trade-off here
+ * between the gas cost of the extra storage read to check the caller on each hook call, and the convenience of setting
+ * the authorized caller on registration.
  */
 abstract contract BaseHooks is IHooks {
-    // The address authorized to call non-view hook functions.
-    address immutable internal _authorizedCaller;
+    bool internal immutable _isSecondaryHook;
+
+    // The address authorized to call non-view hook functions. Set during hook registration.
+    address internal _authorizedCaller;
 
     /**
      * @notice The caller is not authorized to invoke the hook.
@@ -21,13 +43,16 @@ abstract contract BaseHooks is IHooks {
      */
     error HookCallerNotAuthorized(address sender);
 
+    /// @notice `_setAuthorizedCaller` has been called more than once. Should never happen.
+    error AuthorizedCallerAlreadySet();
+
     modifier onlyAuthorizedCaller() {
         _ensureOnlyAuthorizedCaller();
         _;
     }
 
-    constructor (address authorizedCaller) {
-        _authorizedCaller = authorizedCaller;
+    constructor(bool isSecondaryHook) {
+        _isSecondaryHook = isSecondaryHook;
     }
 
     /// @inheritdoc IHooks
@@ -137,5 +162,14 @@ abstract contract BaseHooks is IHooks {
 
     function _ensureOnlyAuthorizedCaller() internal view {
         require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender));
+    }
+
+    function _setAuthorizedCaller(address pool, address vault) internal {
+        address authorizedCaller = _isSecondaryHook ? pool : vault;
+
+        require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender));
+        require(_authorizedCaller == address(0), AuthorizedCallerAlreadySet());
+
+        _authorizedCaller = authorizedCaller;
     }
 }
