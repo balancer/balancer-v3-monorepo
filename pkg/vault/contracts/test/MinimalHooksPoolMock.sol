@@ -10,7 +10,7 @@ import { BaseHooks } from "../BaseHooks.sol";
 contract MinimalHooksPoolMock is BaseHooks {
     HookFlags private _hookFlags;
 
-    constructor(address authorizedCaller) BaseHooks(authorizedCaller) {
+    constructor(bool isSecondaryHook) BaseHooks(isSecondaryHook) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

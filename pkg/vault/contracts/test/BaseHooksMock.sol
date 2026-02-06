@@ -8,7 +8,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BaseHooks } from "../BaseHooks.sol";
 
 contract BaseHooksMock is BaseHooks {
-    constructor(address authorizedCaller) BaseHooks(authorizedCaller) {
+    constructor(bool isSecondaryHook) BaseHooks(isSecondaryHook) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
