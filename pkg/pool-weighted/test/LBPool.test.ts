@@ -119,7 +119,7 @@ describe('LBPool', function () {
       reserveTokenVirtualBalance,
     };
 
-    return factory.create(lbpCommonParams, lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
+    return factory.create(lbpCommonParams, lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS, ZERO_ADDRESS);
   }
 
   before('setup signers', async () => {
