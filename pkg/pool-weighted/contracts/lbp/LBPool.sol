@@ -280,10 +280,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
      * @dev Ensure the owner is initializing the pool, and ensure seedless LBPs do not accept reserve tokens.
      * @return success Allow the initialization to proceed if the conditions have been met
      */
-    function onBeforeInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory
-    ) public view override onlyBeforeSale returns (bool) {
+    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) public override returns (bool) {
         if (_reserveTokenVirtualBalanceScaled18 > 0) {
             // This is a seedless LBP; ensure the caller is initializing with 0 reserve tokens.
             if (exactAmountsIn[_reserveTokenIndex] > 0) {
@@ -291,7 +288,8 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             }
         }
 
-        return ISenderGuard(_trustedRouter).getSender() == owner();
+        // Base contract checks for timing and access control.
+        return super.onBeforeInitialize(exactAmountsIn, userData);
     }
 
     /*******************************************************************************
