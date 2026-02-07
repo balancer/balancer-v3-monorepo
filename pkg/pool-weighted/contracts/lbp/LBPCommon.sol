@@ -179,9 +179,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
      * @return hookFlags Flags indicating which hooks are supported for LBPs
      */
     function getHookFlags() public view virtual override returns (HookFlags memory hookFlags) {
-        if (_SECONDARY_HOOK_CONTRACT != address(0)) {
+        if (_secondaryHookContract != address(0)) {
             // The hook contract may include hooks the native LBP does not.
-            hookFlags = IHooks(_SECONDARY_HOOK_CONTRACT).getHookFlags();
+            hookFlags = IHooks(_secondaryHookContract).getHookFlags();
         }
 
         // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
@@ -221,10 +221,10 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         // This is the pool itself, so the Vault should be calling this, with itself as the pool argument.
         success = pool == address(this) && msg.sender == vault;
 
-        if (success && _SECONDARY_HOOK_CONTRACT != address(0)) {
+        if (success && _secondaryHookContract != address(0)) {
             // Note that the caller of `onRegister` here will be the Pool, not the Vault, so the secondary hook
             // contract must have been deployed with the `isSecondaryHook` flag set to true.
-            success = IHooks(_SECONDARY_HOOK_CONTRACT).onRegister(factory, pool, tokenConfig, liquidityManagement);
+            success = IHooks(_secondaryHookContract).onRegister(factory, pool, tokenConfig, liquidityManagement);
         }
     }
 
@@ -241,11 +241,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     function onBeforeInitialize(
         uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) public virtual override onlyBeforeSale returns (bool success) {
+    ) public virtual override onlyBeforeSale onlyAuthorizedCaller returns (bool success) {
         success = ISenderGuard(_trustedRouter).getSender() == owner();
 
-        if (success && _SECONDARY_HOOK_HAS_BEFORE_INITIALIZE) {
-            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeInitialize(exactAmountsIn, userData);
+        if (success && _secondaryHookHasBeforeInitialize) {
+            success = IHooks(_secondaryHookContract).onBeforeInitialize(exactAmountsIn, userData);
         }
     }
 
@@ -254,11 +254,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         uint256[] memory exactAmountsIn,
         uint256 bptAmountOut,
         bytes memory userData
-    ) public virtual override onlyAuthorizedCaller returns (bool success) {
+    ) public virtual override onlyWithHookContract onlyAuthorizedCaller returns (bool success) {
         // Forward to the secondary hook, if it's present and implements onAfterInitialize.
         return
-            _SECONDARY_HOOK_HAS_AFTER_INITIALIZE
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterInitialize(exactAmountsIn, bptAmountOut, userData)
+            _secondaryHookHasAfterInitialize
+                ? IHooks(_secondaryHookContract).onAfterInitialize(exactAmountsIn, bptAmountOut, userData)
                 : true;
     }
 
@@ -281,11 +281,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) public virtual override onlyBeforeSale returns (bool success) {
+    ) public virtual override onlyBeforeSale onlyAuthorizedCaller returns (bool success) {
         success = router == _trustedRouter && ISenderGuard(router).getSender() == owner();
 
-        if (success && _SECONDARY_HOOK_HAS_BEFORE_ADD_LIQUIDITY) {
-            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeAddLiquidity(
+        if (success && _secondaryHookHasBeforeAddLiquidity) {
+            success = IHooks(_secondaryHookContract).onBeforeAddLiquidity(
                 router,
                 pool,
                 kind,
@@ -307,11 +307,18 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
-        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+    )
+        public
+        virtual
+        override
+        onlyWithHookContract
+        onlyAuthorizedCaller
+        returns (bool success, uint256[] memory hookAdjustedAmountsInRaw)
+    {
+        // Forward to the secondary hook, if it's present and implements onAfterAddLiquidity.
         return
-            _SECONDARY_HOOK_HAS_AFTER_ADD_LIQUIDITY
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterAddLiquidity(
+            _secondaryHookHasAfterAddLiquidity
+                ? IHooks(_secondaryHookContract).onAfterAddLiquidity(
                     router,
                     pool,
                     kind,
@@ -351,8 +358,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
 
         success = _migrationRouter == address(0) || router == _migrationRouter;
 
-        if (success && _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY) {
-            success = IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeRemoveLiquidity(
+        if (success && _secondaryHookHasBeforeRemoveLiquidity) {
+            success = IHooks(_secondaryHookContract).onBeforeRemoveLiquidity(
                 router,
                 pool,
                 kind,
@@ -374,11 +381,18 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         uint256[] memory amountsOutRaw,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+    )
+        public
+        virtual
+        override
+        onlyWithHookContract
+        onlyAuthorizedCaller
+        returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw)
+    {
+        // Forward to the secondary hook, if it's present and implements onAfterRemoveLiquidity.
         return
-            _SECONDARY_HOOK_HAS_AFTER_REMOVE_LIQUIDITY
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterRemoveLiquidity(
+            _secondaryHookHasAfterRemoveLiquidity
+                ? IHooks(_secondaryHookContract).onAfterRemoveLiquidity(
                     router,
                     pool,
                     kind,
@@ -395,19 +409,26 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     function onBeforeSwap(
         PoolSwapParams calldata params,
         address pool
-    ) public virtual override onlyAuthorizedCaller returns (bool success) {
-        // Forward to the secondary hook, if it's present and implements onBeforeInitialize.
-        return _SECONDARY_HOOK_HAS_BEFORE_SWAP ? IHooks(_SECONDARY_HOOK_CONTRACT).onBeforeSwap(params, pool) : true;
+    ) public virtual override onlyWithHookContract onlyAuthorizedCaller returns (bool success) {
+        // Forward to the secondary hook, if it's present and implements onBeforeSwap.
+        return _secondaryHookHasBeforeSwap ? IHooks(_secondaryHookContract).onBeforeSwap(params, pool) : true;
     }
 
     /// @inheritdoc IHooks
     function onAfterSwap(
         AfterSwapParams calldata params
-    ) public virtual override onlyAuthorizedCaller returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
-        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+    )
+        public
+        virtual
+        override
+        onlyWithHookContract
+        onlyAuthorizedCaller
+        returns (bool success, uint256 hookAdjustedAmountCalculatedRaw)
+    {
+        // Forward to the secondary hook, if it's present and implements onAfterSwap.
         return
-            _SECONDARY_HOOK_HAS_AFTER_SWAP
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onAfterSwap(params)
+            _secondaryHookHasAfterSwap
+                ? IHooks(_secondaryHookContract).onAfterSwap(params)
                 : (true, params.amountCalculatedRaw);
     }
 
@@ -416,11 +437,19 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view virtual override onlyAuthorizedCaller returns (bool success, uint256 dynamicSwapFeePercentage) {
-        // Forward to the secondary hook, if it's present and implements onAfterInitialize.
+    )
+        public
+        view
+        virtual
+        override
+        onlyWithHookContract
+        onlyAuthorizedCaller
+        returns (bool success, uint256 dynamicSwapFeePercentage)
+    {
+        // Forward to the secondary hook, if it's present and implements onComputeDynamicSwapFeePercentage.
         return
-            _SECONDARY_HOOK_HAS_DYNAMIC_SWAP_FEE
-                ? IHooks(_SECONDARY_HOOK_CONTRACT).onComputeDynamicSwapFeePercentage(
+            _secondaryHookHasDynamicSwapFee
+                ? IHooks(_secondaryHookContract).onComputeDynamicSwapFeePercentage(
                     params,
                     pool,
                     staticSwapFeePercentage
