@@ -31,7 +31,7 @@ interface IHooks {
      * @notice Hook executed when a pool is registered with a non-zero hooks contract.
      * @dev Returns true if registration was successful, and false to revert the pool registration.
      * Make sure this function is properly implemented (e.g. check the factory, and check that the
-     * given pool is from the factory). The Vault address will be msg.sender.
+     * given pool is from the factory).
      *
      * @param factory Address of the pool factory (contract deploying the pool)
      * @param pool Address of the pool
