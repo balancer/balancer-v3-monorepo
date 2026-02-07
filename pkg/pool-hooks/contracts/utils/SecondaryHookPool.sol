@@ -8,7 +8,7 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 abstract contract SecondaryHookPool {
     // Support pool types that register themselves as their own hook in the Vault, but also support forwarding to a
     // secondary hook.
-    address internal immutable _SECONDARY_HOOK_CONTRACT;
+    address internal immutable _secondaryHookContract;
 
     error HookFunctionNotImplemented();
 
@@ -20,36 +20,39 @@ abstract contract SecondaryHookPool {
 
     // Store which flags the external hook implements. Storing these as immutables saves gas vs. a memory read of the
     // hook flags each time a hook is called.
-    bool internal immutable _SECONDARY_HOOK_HAS_BEFORE_INITIALIZE;
-    bool internal immutable _SECONDARY_HOOK_HAS_AFTER_INITIALIZE;
-    bool internal immutable _SECONDARY_HOOK_HAS_BEFORE_SWAP;
-    bool internal immutable _SECONDARY_HOOK_HAS_AFTER_SWAP;
-    bool internal immutable _SECONDARY_HOOK_HAS_BEFORE_ADD_LIQUIDITY;
-    bool internal immutable _SECONDARY_HOOK_HAS_AFTER_ADD_LIQUIDITY;
-    bool internal immutable _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY;
-    bool internal immutable _SECONDARY_HOOK_HAS_AFTER_REMOVE_LIQUIDITY;
-    bool internal immutable _SECONDARY_HOOK_HAS_DYNAMIC_SWAP_FEE;
+    bool internal immutable _secondaryHookHasBeforeInitialize;
+    bool internal immutable _secondaryHookHasAfterInitialize;
+    bool internal immutable _secondaryHookHasBeforeSwap;
+    bool internal immutable _secondaryHookHasAfterSwap;
+    bool internal immutable _secondaryHookHasBeforeAddLiquidity;
+    bool internal immutable _secondaryHookHasAfterAddLiquidity;
+    bool internal immutable _secondaryHookHasBeforeRemoveLiquidity;
+    bool internal immutable _secondaryHookHasAfterRemoveLiquidity;
+    bool internal immutable _secondaryHookHasDynamicSwapFee;
 
     constructor(address hookContract) {
-        _SECONDARY_HOOK_CONTRACT = hookContract;
+        _secondaryHookContract = hookContract;
 
         if (hookContract != address(0)) {
             HookFlags memory flags = IHooks(hookContract).getHookFlags();
 
-            _SECONDARY_HOOK_HAS_BEFORE_INITIALIZE = flags.shouldCallBeforeInitialize;
-            _SECONDARY_HOOK_HAS_AFTER_INITIALIZE = flags.shouldCallAfterInitialize;
-            _SECONDARY_HOOK_HAS_BEFORE_SWAP = flags.shouldCallBeforeSwap;
-            _SECONDARY_HOOK_HAS_AFTER_SWAP = flags.shouldCallAfterSwap;
-            _SECONDARY_HOOK_HAS_BEFORE_ADD_LIQUIDITY = flags.shouldCallBeforeAddLiquidity;
-            _SECONDARY_HOOK_HAS_AFTER_ADD_LIQUIDITY = flags.shouldCallAfterAddLiquidity;
-            _SECONDARY_HOOK_HAS_BEFORE_REMOVE_LIQUIDITY = flags.shouldCallBeforeRemoveLiquidity;
-            _SECONDARY_HOOK_HAS_AFTER_REMOVE_LIQUIDITY = flags.shouldCallAfterRemoveLiquidity;
-            _SECONDARY_HOOK_HAS_DYNAMIC_SWAP_FEE = flags.shouldCallComputeDynamicSwapFee;
+            _secondaryHookHasBeforeInitialize = flags.shouldCallBeforeInitialize;
+            _secondaryHookHasAfterInitialize = flags.shouldCallAfterInitialize;
+            _secondaryHookHasBeforeSwap = flags.shouldCallBeforeSwap;
+            _secondaryHookHasAfterSwap = flags.shouldCallAfterSwap;
+            _secondaryHookHasBeforeAddLiquidity = flags.shouldCallBeforeAddLiquidity;
+            _secondaryHookHasAfterAddLiquidity = flags.shouldCallAfterAddLiquidity;
+            _secondaryHookHasBeforeRemoveLiquidity = flags.shouldCallBeforeRemoveLiquidity;
+            _secondaryHookHasAfterRemoveLiquidity = flags.shouldCallAfterRemoveLiquidity;
+            // Should generally not be set for a pool type that already defines a dynamic swap fee.
+            // If such a pool allows secondary hooks, it should either disallow secondary hooks that also define it,
+            // or accommodate it somehow.
+            _secondaryHookHasDynamicSwapFee = flags.shouldCallComputeDynamicSwapFee;
         }
     }
 
     function _ensureHookContract() internal view {
-        if (_SECONDARY_HOOK_CONTRACT == address(0)) {
+        if (_secondaryHookContract == address(0)) {
             // Should not happen. Hook flags would not go beyond ReClamm-required ones without a contract.
             revert HookFunctionNotImplemented();
         }
