@@ -47,7 +47,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        FeeTakingHookExample hook = new FeeTakingHookExample(IVault(address(vault)));
+        FeeTakingHookExample hook = new FeeTakingHookExample(IVault(address(vault)), false);
         return address(hook);
     }
 

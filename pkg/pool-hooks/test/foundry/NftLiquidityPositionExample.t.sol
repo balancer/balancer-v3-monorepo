@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -11,12 +9,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LiquidityManagement,
-    PoolRoleAccounts,
-    AddLiquidityKind,
-    RemoveLiquidityKind
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-vault/contracts/test/BasicAuthorizerMock.sol";
@@ -24,12 +17,12 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-
 import { BatchRouterMock } from "@balancer-labs/v3-vault/contracts/test/BatchRouterMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { NftLiquidityPositionExample } from "../../contracts/NftLiquidityPositionExample.sol";
 
@@ -59,7 +52,13 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function onAfterDeployMainContracts() internal override {
-        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2, "NFT LiquidityPosition v1");
+        nftRouter = new NftLiquidityPositionExample(
+            IVault(address(vault)),
+            weth,
+            permit2,
+            "NFT LiquidityPosition v1",
+            false
+        );
         vm.label(address(nftRouter), "nftRouter");
     }
 
@@ -339,9 +338,9 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function testBeforeAddOnlyVault() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, admin));
+        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, admin, vault));
 
+        vm.prank(admin);
         nftRouter.onBeforeAddLiquidity(
             address(nftRouter),
             address(0),
@@ -354,9 +353,9 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function testAfterRemoveOnlyVault() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, admin));
+        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, admin, vault));
 
+        vm.prank(admin);
         nftRouter.onAfterRemoveLiquidity(
             address(nftRouter),
             address(0),

@@ -46,7 +46,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only the owner can set hook fee percentages.
         vm.prank(lp);
-        LotteryHookExample hook = new LotteryHookExample(IVault(address(vault)), address(router));
+        LotteryHookExample hook = new LotteryHookExample(IVault(address(vault)), address(router), false);
         return address(hook);
     }
 
