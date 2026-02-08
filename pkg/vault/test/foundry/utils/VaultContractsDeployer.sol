@@ -103,7 +103,8 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployBaseHookMock(bool isSecondaryHook) internal returns (BaseHooksMock) {
         if (reusingArtifacts) {
-            return BaseHooksMock(deployCode(_computeVaultTestPath(type(BaseHooksMock).name), abi.encode(isSecondaryHook)));
+            return
+                BaseHooksMock(deployCode(_computeVaultTestPath(type(BaseHooksMock).name), abi.encode(isSecondaryHook)));
         } else {
             return new BaseHooksMock(isSecondaryHook);
         }
