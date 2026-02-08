@@ -169,8 +169,14 @@ abstract contract BaseHooks is IHooks {
         address authorizedCaller = _isSecondaryHook ? pool : vault;
 
         require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender, authorizedCaller));
-        require(_authorizedCaller == address(0), AuthorizedCallerAlreadySet());
 
-        _authorizedCaller = authorizedCaller;
+        // For primary hooks, the authorized caller is always the vault, so re-registration with a
+        // different pool is safe. For secondary hooks, the authorized caller is the pool address,
+        // which will differ between pools, so this check still enforces one-pool-per-hook.
+        if (_authorizedCaller != authorizedCaller) {
+            require(_authorizedCaller == address(0), AuthorizedCallerAlreadySet());
+
+            _authorizedCaller = authorizedCaller;
+        }
     }
 }
