@@ -55,7 +55,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyAuthorizedCaller returns (bool) {
+    ) public override returns (bool) {
         emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
 
         _setAuthorizedCaller(pool, address(_vault));
