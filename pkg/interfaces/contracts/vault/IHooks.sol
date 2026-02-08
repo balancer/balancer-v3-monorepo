@@ -32,6 +32,10 @@ interface IHooks {
      * @dev Returns true if registration was successful, and false to revert the pool registration.
      * Make sure this function is properly implemented (e.g. check the factory, and check that the
      * given pool is from the factory).
+     * 
+     * NB: It is also crucial to call `_setAuthorizedCaller(pool, vault)`, so that the hook functions can validate the
+     * sender. This requires secondary hooks to have the Vault address somehow (e.g., through inheriting VaultGuard).
+     * Leaving `_authorizedCaller` at the zero address would cause all secondary hook function calls to revert.
      *
      * @param factory Address of the pool factory (contract deploying the pool)
      * @param pool Address of the pool
