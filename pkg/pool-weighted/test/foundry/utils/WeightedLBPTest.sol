@@ -38,7 +38,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         super.setUp();
     }
 
-    function onAfterDeployMainContracts() internal override {
+    function onAfterDeployMainContracts() internal virtual override {
         super.onAfterDeployMainContracts();
 
         startWeights = new uint256[](2);
