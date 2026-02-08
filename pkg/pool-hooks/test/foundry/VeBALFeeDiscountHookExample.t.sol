@@ -7,21 +7,16 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    HooksConfig,
-    LiquidityManagement,
-    PoolRoleAccounts,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
+import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { VeBALFeeDiscountHookExample } from "../../contracts/VeBALFeeDiscountHookExample.sol";
 
@@ -53,7 +48,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address veBalFeeHook = address(
-            new VeBALFeeDiscountHookExample(IVault(address(vault)), poolFactory, address(veBAL), trustedRouter)
+            new VeBALFeeDiscountHookExample(IVault(address(vault)), poolFactory, address(veBAL), trustedRouter, false)
         );
         vm.label(veBalFeeHook, "VeBAL Fee Hook");
         return veBalFeeHook;
