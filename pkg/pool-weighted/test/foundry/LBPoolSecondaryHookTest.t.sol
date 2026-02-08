@@ -441,18 +441,45 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
         secondaryHook.onAfterSwap(fakeParams);
     }
 
-    /// @notice The secondary hook's onRegister cannot be called again (AuthorizedCallerAlreadySet).
-    function testSecondaryHookCannotReRegister() public {
+    /// @notice The secondary hook's onRegister is a no-op if called again with the same value.
+    function testSecondaryHookCanReregisterSamePool() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(projectToken), address(reserveToken)].toMemoryArray().asIERC20()
         );
 
-        // Even from the pool, re-registration should fail.
+        address callerBefore = secondaryHook.getAuthorizedCaller();
+
         vm.prank(pool);
+        bool success = secondaryHook.onRegister(
+            address(lbPoolFactory),
+            pool,
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+
+        assertTrue(success, "Re-registration should succeed");
+        assertEq(secondaryHook.getAuthorizedCaller(), callerBefore, "Authorized caller should not change");
+    }
+
+    /// @notice The secondary hook's onRegister cannot be called again (AuthorizedCallerAlreadySet).
+    function testSecondaryHookCannotRegisterDifferentPool() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(projectToken), address(reserveToken)].toMemoryArray().asIERC20()
+        );
+
+        // A different pool trying to register should fail because _authorizedCaller is already
+        // set to the original pool, and the new pool address won't match.
+        address differentPool = address(0xbeef);
+        vm.prank(differentPool);
         vm.expectRevert(BaseHooks.AuthorizedCallerAlreadySet.selector);
         secondaryHook.onRegister(
             address(lbPoolFactory),
-            pool,
+            differentPool,
             tokenConfig,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
