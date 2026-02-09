@@ -11,7 +11,7 @@ abstract contract SecondaryHookPool {
     address internal immutable _secondaryHookContract;
  
     /**
-     * @notice A hook function was called that is not implemented in a secondary hook 
+     * @notice A hook function was called that was not implemented by a secondary hook.
      * @dev This could really only happen if `getHookFlags` was misconfigured.
      */
     error HookFunctionNotImplemented();
