@@ -9,7 +9,7 @@ abstract contract SecondaryHookPool {
     // Support pool types that register themselves as their own hook in the Vault, but also support forwarding to a
     // secondary hook.
     address internal immutable _secondaryHookContract;
- 
+
     /**
      * @notice A hook function was called that was not implemented by a secondary hook.
      * @dev This could really only happen if `getHookFlags` was misconfigured.
