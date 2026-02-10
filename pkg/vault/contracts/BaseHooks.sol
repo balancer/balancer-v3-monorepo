@@ -36,24 +36,13 @@ abstract contract BaseHooks is IHooks {
     // The address authorized to call non-view hook functions. Set during hook registration.
     address internal _authorizedCaller;
 
-    /**
-     * @notice The caller is not authorized to invoke the hook.
-     * @dev We could use the generic IAuthentication.SenderNotAllowed, but this makes it clearer.
-     * @param sender The unauthorized caller address
-     * @param authorizedCaller The address that is allowed to call it
-     */
-    error HookCallerNotAuthorized(address sender, address authorizedCaller);
-
-    /// @notice `_setAuthorizedCaller` has been called more than once. Should never happen.
-    error AuthorizedCallerAlreadySet();
-
     modifier onlyAuthorizedCaller() {
         _ensureOnlyAuthorizedCaller();
         _;
     }
 
-    constructor(bool isSecondaryHook) {
-        _isSecondaryHook = isSecondaryHook;
+    constructor(bool isSecondaryHook_) {
+        _isSecondaryHook = isSecondaryHook_;
     }
 
     /// @inheritdoc IHooks
@@ -157,6 +146,11 @@ abstract contract BaseHooks is IHooks {
     }
 
     /// @inheritdoc IHooks
+    function isSecondaryHook() external view returns (bool) {
+        return _isSecondaryHook;
+    }
+
+    /// @inheritdoc IHooks
     function getAuthorizedCaller() external view returns (address) {
         return _authorizedCaller;
     }
@@ -165,10 +159,12 @@ abstract contract BaseHooks is IHooks {
         require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender, _authorizedCaller));
     }
 
-    function _setAuthorizedCaller(address pool, address vault) internal {
+    function _setAuthorizedCaller(address factory, address pool, address vault) internal {
         address authorizedCaller = _isSecondaryHook ? pool : vault;
 
         require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender, authorizedCaller));
+
+        _enforceFactoryConstraints(factory, pool);
 
         // For primary hooks, the authorized caller is always the vault, so re-registration with a
         // different pool is safe. For secondary hooks, the authorized caller is the pool address,
@@ -178,5 +174,15 @@ abstract contract BaseHooks is IHooks {
 
             _authorizedCaller = authorizedCaller;
         }
+    }
+
+    /**
+     * @notice For hooks that require it, ensure that the secondary hook's pool was deployed by a trusted factory.
+     * @dev Would be stricter to revert by default, but that would force all hooks to override it.
+     * @param factory The factory address passed into `_setAuthorizedCaller`.
+     * @param pool The pool address passed into `_setAuthorizedCaller`.
+     */
+    function _enforceFactoryConstraints(address factory, address pool) internal view virtual {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

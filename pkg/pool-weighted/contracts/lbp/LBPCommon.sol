@@ -216,7 +216,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
 
         address vault = address(IRouterCommon(_trustedRouter).getVault());
 
-        _setAuthorizedCaller(pool, vault);
+        _setAuthorizedCaller(factory, pool, vault);
 
         // This is the pool itself, so the Vault should be calling this, with itself as the pool argument.
         success = pool == address(this) && msg.sender == vault;

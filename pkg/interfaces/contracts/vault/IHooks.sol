@@ -23,6 +23,24 @@ import {
  * then use the `onlyVault` modifier from `VaultGuard`. (See the examples in /pool-hooks.)
  */
 interface IHooks {
+    /**
+     * @notice The caller is not authorized to invoke the hook.
+     * @dev We could use the generic IAuthentication.SenderNotAllowed, but this makes it clearer.
+     * @param sender The unauthorized caller address
+     * @param authorizedCaller The address that is allowed to call it
+     */
+    error HookCallerNotAuthorized(address sender, address authorizedCaller);
+
+    /// @notice `_setAuthorizedCaller` has been called more than once. Should never happen.
+    error AuthorizedCallerAlreadySet();
+
+    /**
+     * @notice A hook that opted into factory validation by overriding `_enforceFactoryConstraints` rejected the pool.
+     * @param factory The address of the factory (deployer of the pool)
+     * @param pool The address of the pool being registered in the Vault
+     */
+    error FactoryValidationFailed(address factory, address pool);
+
     /***************************************************************************
                                    Register
     ***************************************************************************/
@@ -250,6 +268,12 @@ interface IHooks {
     ) external view returns (bool success, uint256 dynamicSwapFeePercentage);
 
     /**
+     * @notice Check whether this hook is primary (registered with the Vault) or secondary (registered with the pool).
+     * @return isSecondaryHook True if this is a secondary hook
+     */
+    function isSecondaryHook() external view returns (bool isSecondaryHook);
+
+    /**
      * @notice Returns the address authorized to call the hooks (e.g., the Vault or pool address).
      * @dev This is the address authorized to call non-view hook functions. It is typically the Vault (when the hook is
      * registered to a standard pool that is not its own hook (e.g., weighted or stable pools), but for pool types
@@ -259,5 +283,5 @@ interface IHooks {
      *
      * @return authorizedCaller The address authorized to call the hooks (e.g., the Vault or pool address)
      */
-    function getAuthorizedCaller() external view returns (address);
+    function getAuthorizedCaller() external view returns (address authorizedCaller);
 }
