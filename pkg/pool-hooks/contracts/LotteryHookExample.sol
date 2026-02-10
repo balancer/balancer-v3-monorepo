@@ -100,7 +100,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
 
     /// @inheritdoc IHooks
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
@@ -109,7 +109,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
 
-        _setAuthorizedCaller(pool, address(_vault));
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         emit LotteryHookExampleRegistered(address(this), pool);
 

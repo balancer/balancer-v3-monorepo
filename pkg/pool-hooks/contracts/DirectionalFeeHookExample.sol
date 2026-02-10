@@ -58,10 +58,9 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
     ) public override returns (bool) {
         emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
 
-        _setAuthorizedCaller(pool, address(_vault));
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
-        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
-        return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -123,5 +122,14 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
             // pool balances to the edge.
             feePercentage = diff.divDown(totalLiquidity);
         }
+    }
+
+    /// @inheritdoc BaseHooks
+    function _enforceFactoryConstraints(address factory, address pool) internal view override {
+        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
+        require(
+            factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool),
+            FactoryValidationFailed(factory, pool)
+        );
     }
 }

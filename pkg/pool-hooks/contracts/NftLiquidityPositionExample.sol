@@ -201,12 +201,12 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
 
     /// @inheritdoc BaseHooks
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
     ) public override returns (bool) {
-        _setAuthorizedCaller(pool, address(_vault));
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {

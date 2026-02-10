@@ -68,11 +68,11 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         // might be an overkill in real applications because the pool math doesn't play a role in the discount
         // calculation.
 
-        _setAuthorizedCaller(pool, address(_vault));
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         emit VeBALFeeDiscountHookExampleRegistered(address(this), factory, pool);
 
-        return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -95,5 +95,13 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         }
 
         return (true, staticSwapFeePercentage);
+    }
+
+    /// @inheritdoc BaseHooks
+    function _enforceFactoryConstraints(address factory, address pool) internal view override {
+        require(
+            factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool),
+            FactoryValidationFailed(factory, pool)
+        );
     }
 }
