@@ -15,8 +15,9 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 
 import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
 import { WeightedPoolContractsDeployer } from "./WeightedPoolContractsDeployer.sol";
-import { LBPMigrationRouterDeployer } from "./LBPMigrationRouterDeployer.sol";
 import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
+import { LBPMigrationRouterDeployer } from "./LBPMigrationRouterDeployer.sol";
+import { LBPValidation } from "../../../contracts/lbp/LBPValidation.sol";
 
 abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, LBPMigrationRouterDeployer {
     using ArrayHelpers for *;
@@ -28,8 +29,8 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     string public constant migrationRouterVersion = "Migration Router v1";
 
     uint256 internal constant TOKEN_COUNT = 2;
-    uint32 internal constant DEFAULT_START_OFFSET = 100;
-    uint32 internal constant DEFAULT_END_OFFSET = 200;
+    uint32 internal constant DEFAULT_START_OFFSET = LBPValidation.INITIALIZATION_BUFFER;
+    uint32 internal constant DEFAULT_END_OFFSET = 2 * LBPValidation.INITIALIZATION_BUFFER;
     bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
 
     uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;
