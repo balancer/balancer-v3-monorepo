@@ -9,6 +9,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -22,7 +23,6 @@ import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFact
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { NftLiquidityPositionExample } from "../../contracts/NftLiquidityPositionExample.sol";
 
@@ -338,7 +338,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function testBeforeAddOnlyVault() public {
-        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, admin, vault));
+        vm.expectRevert(abi.encodeWithSelector(IHooks.HookCallerNotAuthorized.selector, admin, vault));
 
         vm.prank(admin);
         nftRouter.onBeforeAddLiquidity(
@@ -353,7 +353,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function testAfterRemoveOnlyVault() public {
-        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, admin, vault));
+        vm.expectRevert(abi.encodeWithSelector(IHooks.HookCallerNotAuthorized.selector, admin, vault));
 
         vm.prank(admin);
         nftRouter.onAfterRemoveLiquidity(

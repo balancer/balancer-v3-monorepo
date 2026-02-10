@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -116,10 +117,9 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         // Registration fails because this factory is not allowed to register the hook.
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
-                directionalFeePool,
-                address(poolFactoryMock)
+                IHooks.FactoryValidationFailed.selector,
+                address(poolFactoryMock),
+                directionalFeePool
             )
         );
         _registerPoolWithHook(directionalFeePool, tokenConfig);

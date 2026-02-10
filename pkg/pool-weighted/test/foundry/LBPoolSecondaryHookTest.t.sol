@@ -393,6 +393,7 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
         vm.expectEmit();
         emit DirectionalSwapFeeTaxHook.HookFeeWithdrawn(address(secondaryHook), reserveToken, hookOwner, hookBalance);
 
+        vm.prank(bob);
         secondaryHook.withdrawFees(reserveToken);
 
         uint256 ownerBalanceAfter = reserveToken.balanceOf(hookOwner);
@@ -403,6 +404,8 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
     function testWithdrawFeesNoBalance() public {
         // Withdrawing with no balance should be a no-op (no revert).
         uint256 ownerBalance = reserveToken.balanceOf(secondaryHook.owner());
+
+        vm.prank(bob);
         secondaryHook.withdrawFees(reserveToken);
         assertEq(reserveToken.balanceOf(secondaryHook.owner()), ownerBalance, "Balance should not change");
     }
@@ -432,12 +435,12 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
 
         // Direct call from an attacker should fail.
         vm.prank(address(0xdead));
-        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, address(0xdead), pool));
+        vm.expectRevert(abi.encodeWithSelector(IHooks.HookCallerNotAuthorized.selector, address(0xdead), pool));
         secondaryHook.onAfterSwap(fakeParams);
 
         // Direct call from the vault should also fail (only the pool is authorized).
         vm.prank(address(vault));
-        vm.expectRevert(abi.encodeWithSelector(BaseHooks.HookCallerNotAuthorized.selector, address(vault), pool));
+        vm.expectRevert(abi.encodeWithSelector(IHooks.HookCallerNotAuthorized.selector, address(vault), pool));
         secondaryHook.onAfterSwap(fakeParams);
     }
 
@@ -476,7 +479,7 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
         // set to the original pool, and the new pool address won't match.
         address differentPool = address(0xbeef);
         vm.prank(differentPool);
-        vm.expectRevert(BaseHooks.AuthorizedCallerAlreadySet.selector);
+        vm.expectRevert(IHooks.AuthorizedCallerAlreadySet.selector);
         secondaryHook.onRegister(
             address(lbPoolFactory),
             differentPool,
