@@ -244,7 +244,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     ) public virtual override onlyBeforeSale onlyAuthorizedCaller returns (bool success) {
         success = ISenderGuard(_trustedRouter).getSender() == owner();
 
-        if (success && _secondaryHookHasBeforeInitialize) {
+        if (success && _secondaryHookShouldCall(BEFORE_INITIALIZE)) {
             success = IHooks(_secondaryHookContract).onBeforeInitialize(exactAmountsIn, userData);
         }
     }
@@ -257,7 +257,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     ) public virtual override onlyWithHookContract onlyAuthorizedCaller returns (bool success) {
         // Forward to the secondary hook, if it's present and implements onAfterInitialize.
         return
-            _secondaryHookHasAfterInitialize
+            _secondaryHookShouldCall(AFTER_INITIALIZE)
                 ? IHooks(_secondaryHookContract).onAfterInitialize(exactAmountsIn, bptAmountOut, userData)
                 : true;
     }
@@ -284,7 +284,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     ) public virtual override onlyBeforeSale onlyAuthorizedCaller returns (bool success) {
         success = router == _trustedRouter && ISenderGuard(router).getSender() == owner();
 
-        if (success && _secondaryHookHasBeforeAddLiquidity) {
+        if (success && _secondaryHookShouldCall(BEFORE_ADD_LIQUIDITY)) {
             success = IHooks(_secondaryHookContract).onBeforeAddLiquidity(
                 router,
                 pool,
@@ -317,7 +317,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     {
         // Forward to the secondary hook, if it's present and implements onAfterAddLiquidity.
         return
-            _secondaryHookHasAfterAddLiquidity
+            _secondaryHookShouldCall(AFTER_ADD_LIQUIDITY)
                 ? IHooks(_secondaryHookContract).onAfterAddLiquidity(
                     router,
                     pool,
@@ -358,7 +358,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
 
         success = _migrationRouter == address(0) || router == _migrationRouter;
 
-        if (success && _secondaryHookHasBeforeRemoveLiquidity) {
+        if (success && _secondaryHookShouldCall(BEFORE_REMOVE_LIQUIDITY)) {
             success = IHooks(_secondaryHookContract).onBeforeRemoveLiquidity(
                 router,
                 pool,
@@ -391,7 +391,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     {
         // Forward to the secondary hook, if it's present and implements onAfterRemoveLiquidity.
         return
-            _secondaryHookHasAfterRemoveLiquidity
+            _secondaryHookShouldCall(AFTER_REMOVE_LIQUIDITY)
                 ? IHooks(_secondaryHookContract).onAfterRemoveLiquidity(
                     router,
                     pool,
@@ -411,7 +411,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         address pool
     ) public virtual override onlyWithHookContract onlyAuthorizedCaller returns (bool success) {
         // Forward to the secondary hook, if it's present and implements onBeforeSwap.
-        return _secondaryHookHasBeforeSwap ? IHooks(_secondaryHookContract).onBeforeSwap(params, pool) : true;
+        return _secondaryHookShouldCall(BEFORE_SWAP) ? IHooks(_secondaryHookContract).onBeforeSwap(params, pool) : true;
     }
 
     /// @inheritdoc IHooks
@@ -427,7 +427,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     {
         // Forward to the secondary hook, if it's present and implements onAfterSwap.
         return
-            _secondaryHookHasAfterSwap
+            _secondaryHookShouldCall(AFTER_SWAP)
                 ? IHooks(_secondaryHookContract).onAfterSwap(params)
                 : (true, params.amountCalculatedRaw);
     }
@@ -448,7 +448,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
     {
         // Forward to the secondary hook, if it's present and implements onComputeDynamicSwapFeePercentage.
         return
-            _secondaryHookHasDynamicSwapFee
+            _secondaryHookShouldCall(COMPUTE_DYNAMIC_SWAP_FEE)
                 ? IHooks(_secondaryHookContract).onComputeDynamicSwapFeePercentage(
                     params,
                     pool,
