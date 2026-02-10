@@ -1013,6 +1013,22 @@ contract LBPoolTest is WeightedLBPTest {
         assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
     }
 
+    function testInvalidMigrationWeight() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 1e16 - 1; // Just below minimum
+        uint256 initNewWeightReserveToken = 99e16 + 1; // Still totals to ONE
+
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
+        (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
+    }
+
     /*******************************************************************************
                                    Private Helpers
     *******************************************************************************/

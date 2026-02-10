@@ -15,14 +15,17 @@ import { GradualValueChange } from "../lib/GradualValueChange.sol";
  * @dev This library is used by both factories (for clear error messages) and pools (for direct deployment protection).
  */
 library LBPValidation {
+    // solhint-disable private-vars-leading-underscore
+
     // Set a boundary on the maximum lock duration, as a safeguard against accidentally locking it forever.
-    // solhint-disable-next-line private-vars-leading-underscore
     uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;
 
     // Set a boundary on the minimum pool value to migrate; otherwise owners could circumvent the liquidity guarantee
     // by migrating a trivial amount of the proceeds.
-    // solhint-disable-next-line private-vars-leading-underscore
     uint256 internal constant MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
+
+    // Matches WeightedPool constant; ensures the migration can't fail due to an invalid weight value.
+    uint256 internal constant MIN_WEIGHTED_POOL_WEIGHT = 1e16; // 1%
 
     /// @notice The owner is the zero address.
     error InvalidOwner();
@@ -111,7 +114,7 @@ library LBPValidation {
 
             if (
                 totalTokenWeight != FixedPoint.ONE ||
-                migrationParams.migrationWeightProjectToken == 0 ||
+                migrationParams.migrationWeightProjectToken < MIN_WEIGHTED_POOL_WEIGHT || // We already know it's > 0
                 migrationParams.migrationWeightReserveToken < MIN_RESERVE_TOKEN_MIGRATION_WEIGHT
             ) {
                 revert InvalidMigrationWeights();
