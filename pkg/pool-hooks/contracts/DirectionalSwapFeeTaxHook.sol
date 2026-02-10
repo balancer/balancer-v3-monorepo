@@ -101,7 +101,7 @@ contract DirectionalSwapFeeTaxHook is BaseHooks, VaultGuard, Ownable2Step {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override returns (bool) {
-        _setAuthorizedCaller(pool, address(_vault));
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         emit DirectionSwapFeeTaxHookRegistered(pool, factory);
 
@@ -163,7 +163,7 @@ contract DirectionalSwapFeeTaxHook is BaseHooks, VaultGuard, Ownable2Step {
      * @notice Withdraws the accumulated fees and sends them to the owner.
      * @param feeToken The token with accumulated fees
      */
-    function withdrawFees(IERC20 feeToken) external {
+    function withdrawFees(IERC20 feeToken) external onlyOwner {
         uint256 feeAmount = feeToken.balanceOf(address(this));
 
         if (feeAmount > 0) {
