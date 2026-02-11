@@ -96,6 +96,11 @@ library LBPValidation {
      * If all migration parameters are zero, this is considered "no migration" and passes validation.
      * If any parameter is non-zero, all must be valid.
      *
+     * Note that it is possible to set bptPercentageToMigrate to a very small (but non-zero) value, undermining the
+     * effectiveness of the `MIN_RESERVE_TOKEN_MIGRATION_WEIGHT` check. Nevertheless, we don't wish to impose a
+     * minimum here, as migration is an optional feature (i.e., it is zero anyway if migration is turned off). We
+     * expect UIs to expose these parameters, and users to review them as part of their due diligence.
+     *
      * @param migrationParams The migration parameters to validate
      * @param migrationRouter The migration router address (must be non-zero if migration is enabled)
      * @return hasMigration True if migration parameters indicate migration is enabled
