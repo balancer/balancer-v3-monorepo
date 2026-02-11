@@ -131,8 +131,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     function testCreatePool() public {
         (pool, ) = _createFixedPriceLBPool(
             bob,
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
-            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_BUFFER)
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
         );
         initPool();
 
@@ -161,8 +161,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
 
     function testAddLiquidityPermission() public {
         (pool, ) = _createFixedPriceLBPool(
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
-            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_BUFFER)
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
         );
         initPool();
 
@@ -177,8 +177,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
 
     function testDonationNotAllowed() public {
         (pool, ) = _createFixedPriceLBPool(
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
-            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_BUFFER)
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
         );
         initPool();
 

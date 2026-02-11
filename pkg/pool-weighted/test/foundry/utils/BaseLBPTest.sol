@@ -29,8 +29,8 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     string public constant migrationRouterVersion = "Migration Router v1";
 
     uint256 internal constant TOKEN_COUNT = 2;
-    uint32 internal constant DEFAULT_START_OFFSET = LBPValidation.INITIALIZATION_BUFFER;
-    uint32 internal constant DEFAULT_END_OFFSET = 2 * LBPValidation.INITIALIZATION_BUFFER;
+    uint32 internal constant DEFAULT_START_OFFSET = LBPValidation.INITIALIZATION_PERIOD;
+    uint32 internal constant DEFAULT_END_OFFSET = 2 * LBPValidation.INITIALIZATION_PERIOD;
     bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
 
     uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;

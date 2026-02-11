@@ -347,8 +347,8 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testGradualWeightUpdateParams() public {
-        uint32 customStartTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER * 2);
-        uint32 customEndTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER * 3);
+        uint32 customStartTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD * 2);
+        uint32 customEndTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD * 3);
         uint256[] memory customStartWeights = [uint256(22e16), uint256(78e16)].toMemoryArray();
         uint256[] memory customEndWeights = [uint256(65e16), uint256(35e16)].toMemoryArray();
 
@@ -490,7 +490,7 @@ contract LBPoolTest is WeightedLBPTest {
         );
 
         // Warp to middle of weight update period
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET + LBPValidation.INITIALIZATION_BUFFER / 2);
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + LBPValidation.INITIALIZATION_PERIOD / 2);
 
         // Check interpolated weights
         LBPoolDynamicData memory midData = ILBPool(pool).getLBPoolDynamicData();

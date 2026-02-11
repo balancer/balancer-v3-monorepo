@@ -29,7 +29,7 @@ library LBPValidation {
 
     // Start time must be at least this far in the future, to allow time for funding the LBP (which can only be done
     // before the sale starts). It is a uint32 to match the timestamp bit length.
-    uint32 internal constant INITIALIZATION_BUFFER = 1 hours;
+    uint32 internal constant INITIALIZATION_PERIOD = 1 hours;
 
     /// @notice The owner is the zero address.
     error InvalidOwner();
@@ -84,7 +84,7 @@ library LBPValidation {
         if (
             lbpCommonParams.startTime > lbpCommonParams.endTime ||
             // solhint-disable-next-line not-rely-on-time
-            lbpCommonParams.startTime < block.timestamp + INITIALIZATION_BUFFER
+            lbpCommonParams.startTime < block.timestamp + INITIALIZATION_PERIOD
         ) {
             revert GradualValueChange.InvalidStartTime(lbpCommonParams.startTime, lbpCommonParams.endTime);
         }

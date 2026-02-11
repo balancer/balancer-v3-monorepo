@@ -334,8 +334,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     function testAddLiquidityPermission() public {
         (pool, ) = _createLBPool(
             address(0),
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
             true
         );
         initPool();
@@ -352,8 +352,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     function testDonationNotAllowed() public {
         (pool, ) = _createLBPool(
             address(0),
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
-            uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER),
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
             true
         );
         initPool();

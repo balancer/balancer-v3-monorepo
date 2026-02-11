@@ -90,8 +90,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     ********************************************************/
 
     function testCreatePoolTimeTravel() public {
-        uint32 startTime = uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_BUFFER);
-        uint32 endTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER);
+        uint32 startTime = uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD);
+        uint32 endTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD);
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createFixedPriceLBPool(
@@ -101,7 +101,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testCreatePoolTimeTravelWrongEndTime() public {
-        uint32 startTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_BUFFER);
+        uint32 startTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD);
         uint32 endTime = startTime - 1;
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
