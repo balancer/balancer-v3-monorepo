@@ -65,7 +65,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         IBalancerContractRegistry registry,
         uint256 defaultMevTaxMultiplier,
         uint256 defaultMevTaxThreshold
-    ) BaseHooks(false) SingletonAuthentication(vault) VaultGuard(vault) {
+    ) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
         // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.

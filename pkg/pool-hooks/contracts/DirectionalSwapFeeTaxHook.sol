@@ -60,13 +60,7 @@ contract DirectionalSwapFeeTaxHook is BaseHooks, VaultGuard, Ownable2Step {
     /// @notice The given fee exceeds the maximum allowed percentage.
     error TaxPercentageTooHigh();
 
-    constructor(
-        IVault vault,
-        IERC20 feeToken,
-        uint256 taxPercentage,
-        address owner,
-        bool isSecondaryHook
-    ) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(owner) {
+    constructor(IVault vault, IERC20 feeToken, uint256 taxPercentage, address owner) VaultGuard(vault) Ownable(owner) {
         require(taxPercentage <= MAX_TAX_PERCENTAGE, TaxPercentageTooHigh());
 
         _feeToken = feeToken;

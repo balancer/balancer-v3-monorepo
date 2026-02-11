@@ -77,7 +77,7 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
      */
     error PoolDoesNotSupportDonation();
 
-    constructor(IVault vault, bool isSecondaryHook) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

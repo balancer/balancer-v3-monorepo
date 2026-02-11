@@ -90,7 +90,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 feeAmount
     );
 
-    constructor(IVault vault, bool isSecondaryHook) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

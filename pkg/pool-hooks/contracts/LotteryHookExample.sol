@@ -90,11 +90,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 amountWon
     );
 
-    constructor(
-        IVault vault,
-        address router,
-        bool isSecondaryHook
-    ) BaseHooks(isSecondaryHook) VaultGuard(vault) Ownable(msg.sender) {
+    constructor(IVault vault, address router) VaultGuard(vault) Ownable(msg.sender) {
         _trustedRouter = router;
     }
 

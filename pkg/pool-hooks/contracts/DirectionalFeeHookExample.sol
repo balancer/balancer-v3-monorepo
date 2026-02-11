@@ -44,7 +44,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address indexed pool
     );
 
-    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(false) VaultGuard(vault) {
+    constructor(IVault vault, address allowedStablePoolFactory) VaultGuard(vault) {
         // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
