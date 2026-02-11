@@ -70,7 +70,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
 
     HookFlags private _hookFlags;
 
-    constructor(IVault vault) BaseHooks(false) VaultGuard(vault) {
+    constructor(IVault vault) VaultGuard(vault) {
         shouldSettleDiscount = true;
     }
 

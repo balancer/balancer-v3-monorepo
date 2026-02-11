@@ -49,7 +49,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address veBalFeeHook = address(
-            new VeBALFeeDiscountHookExample(IVault(address(vault)), poolFactory, address(veBAL), trustedRouter, false)
+            new VeBALFeeDiscountHookExample(IVault(address(vault)), poolFactory, address(veBAL), trustedRouter)
         );
         vm.label(veBalFeeHook, "VeBAL Fee Hook");
         return veBalFeeHook;
@@ -83,7 +83,6 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function testHookGetters() public view {
-        assertFalse(IHooks(poolHooksContract).isSecondaryHook(), "Should not be secondary hook");
         assertEq(
             address(IHooks(poolHooksContract).getAuthorizedCaller()),
             address(vault),

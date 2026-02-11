@@ -93,7 +93,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         address trustedRouter,
         address migrationRouter,
         address secondaryHookContract
-    ) BaseHooks(false) SecondaryHookPool(secondaryHookContract) Ownable(lbpCommonParams.owner) {
+    ) SecondaryHookPool(secondaryHookContract) Ownable(lbpCommonParams.owner) {
         lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
 
         // wake-disable-next-line unchecked-return-value
@@ -222,8 +222,6 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks, SecondaryHoo
         success = pool == address(this) && msg.sender == vault;
 
         if (success && _secondaryHookContract != address(0)) {
-            // Note that the caller of `onRegister` here will be the Pool, not the Vault, so the secondary hook
-            // contract must have been deployed with the `isSecondaryHook` flag set to true.
             success = IHooks(_secondaryHookContract).onRegister(factory, pool, tokenConfig, liquidityManagement);
         }
     }

@@ -49,7 +49,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault)), false));
+        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
         vm.label(exitFeeHook, "Exit Fee Hook");
         return exitFeeHook;
     }

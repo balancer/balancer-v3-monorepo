@@ -52,13 +52,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     function onAfterDeployMainContracts() internal override {
-        nftRouter = new NftLiquidityPositionExample(
-            IVault(address(vault)),
-            weth,
-            permit2,
-            "NFT LiquidityPosition v1",
-            false
-        );
+        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2, "NFT LiquidityPosition v1");
         vm.label(address(nftRouter), "nftRouter");
     }
 

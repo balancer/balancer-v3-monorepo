@@ -535,7 +535,7 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
     *******************************************************************************/
 
     /// @notice Verify that a pool without a secondary hook does not tax swaps.
-    function testNoSecondaryHook_NoTax() public {
+    function testNoSecondaryHookNoTax() public {
         // Create a pool without a secondary hook for comparison.
         (address plainPool, ) = _createLBPoolWithCustomWeights(
             address(0),
@@ -580,6 +580,36 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
         assertFalse(flags.enableHookAdjustedAmounts, "Plain pool should not enable adjusted amounts");
     }
 
+    /// @notice A random address calling onRegister is rejected (neither vault nor pool).
+    function testSecondaryHookRejectsRandomRegistrant() public {
+        DirectionalSwapFeeTaxHook freshHook = new DirectionalSwapFeeTaxHook(
+            IVault(address(vault)),
+            taxFeeToken,
+            TAX_PERCENTAGE,
+            bob
+        );
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(projectToken), address(reserveToken)].toMemoryArray().asIERC20()
+        );
+
+        address attacker = address(0xdeadbeef);
+
+        vm.prank(attacker);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.InvalidHookRegistrant.selector, address(freshHook), attacker));
+        freshHook.onRegister(
+            address(lbPoolFactory),
+            pool,
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+    }
+
     /*******************************************************************************
                               Private Helpers
     *******************************************************************************/
@@ -600,8 +630,7 @@ contract LBPoolSecondaryHookTest is WeightedLBPTest {
             IVault(address(vault)),
             taxFeeToken,
             TAX_PERCENTAGE,
-            bob, // hook owner
-            true // isSecondaryHook
+            bob // hook owner
         );
         vm.label(address(secondaryHook), "DirectionalSwapFeeTaxHook");
 
