@@ -146,7 +146,16 @@ abstract contract BaseHooks is IHooks {
         require(msg.sender == _authorizedCaller, HookCallerNotAuthorized(msg.sender, _authorizedCaller));
     }
 
-    function _setAuthorizedCaller(address factory, address pool, address vault) internal {
+    /**
+     * @notice This function "binds" the authorized caller on pool/hook registration, and must be called in onRegister.
+     * @dev Note that the factory argument here is the pool factory (i.e., the deployer of the pool contract). Renamed
+     * from just `factory` in IHooks (where it is clearer), to avoid any potential confusion with hook factories.
+     *
+     * @param poolFactory The factory address passed through from onRegister (ultimately from pool registration)
+     * @param pool The pool address passed through from onRegister
+     * @param vault The vault address, which must be known at registration time (e.g., through inheriting VaultGuard)
+     */
+    function _setAuthorizedCaller(address poolFactory, address pool, address vault) internal {
         address authorizedCaller;
 
         if (msg.sender == vault) {
@@ -157,7 +166,7 @@ abstract contract BaseHooks is IHooks {
             revert InvalidHookRegistrant(address(this), msg.sender);
         }
 
-        _enforceFactoryConstraints(factory, pool);
+        _enforceFactoryConstraints(poolFactory, pool);
 
         // For primary hooks, the authorized caller is always the vault, so re-registration with a
         // different pool is safe. For secondary hooks, the authorized caller is the pool address,
