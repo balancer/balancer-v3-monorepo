@@ -75,7 +75,9 @@ abstract contract SecondaryHookPool {
 
     function _ensureHookContract() internal view {
         if (_secondaryHookContract == address(0)) {
-            // Should not happen. Hook flags would not go beyond ReClamm-required ones without a contract.
+            // Should never happen if the hook is configured properly (i.e., getHookFlags returns correct values
+            // according to the implementation) and the `onlyWithHookContract` modifier is correctly applied.
+            // It should be placed on hook functions that are *only* implemented in the secondary hook.
             revert HookFunctionNotImplemented();
         }
     }
