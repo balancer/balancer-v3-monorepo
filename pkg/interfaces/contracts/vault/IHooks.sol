@@ -35,6 +35,13 @@ interface IHooks {
     error AuthorizedCallerAlreadySet();
 
     /**
+     * @notice `onRegister` was called by an unknown address (neither the pool nor the vault).
+     * @param hook The hook contract whose onRegister was called
+     * @param caller The address of the onRegister caller
+     */
+    error InvalidHookRegistrant(address hook, address caller);
+
+    /**
      * @notice A hook that opted into factory validation by overriding `_enforceFactoryConstraints` rejected the pool.
      * @param factory The address of the factory (deployer of the pool)
      * @param pool The address of the pool being registered in the Vault
@@ -266,12 +273,6 @@ interface IHooks {
         address pool,
         uint256 staticSwapFeePercentage
     ) external view returns (bool success, uint256 dynamicSwapFeePercentage);
-
-    /**
-     * @notice Check whether this hook is primary (registered with the Vault) or secondary (registered with the pool).
-     * @return isSecondaryHook True if this is a secondary hook
-     */
-    function isSecondaryHook() external view returns (bool isSecondaryHook);
 
     /**
      * @notice Returns the address authorized to call the hooks (e.g., the Vault or pool address).

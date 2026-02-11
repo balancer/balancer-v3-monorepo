@@ -10,15 +10,13 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
  * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  *
- * If _isSecondaryHook is true, it means this hook is being added to a pool type that registered itself as the
- * "primary" hook (i.e., the hook contract that will be called directly by the Vault). In that case, the pool will
- * forward the `onRegister` call to this contract, so we set `_authorizedCaller` to msg.sender, which will be the pool
- * address.
+ * A secondary hook is one being added to a pool type that registered itself as the "primary" hook (i.e., the hook
+ * contract that will be called directly by the Vault). In that case, the pool will forward the `onRegister` call to
+ * this contract, so we set `_authorizedCaller` to msg.sender, which will be the pool address.
  *
- * If _isSecondaryHook is false, it means this hook is being added to a pool type that is not itself a hook.
- * In that case, the Vault will call this hook contract directly, so we set `_authorizedCaller` to the Vault address.
- * If the derived hook contract does not set `_authorizedCaller`, it will be the zero address, and deployment will
- * revert.
+ * A primary hook is one being added to a pool type that is not itself a hook. In that case, the Vault will call this
+ * hook contract directly, so we set `_authorizedCaller` to the Vault address. If the derived hook contract does not
+ * set `_authorizedCaller`, it will be the zero address, and deployment will revert.
  *
  * Note that in both cases we are setting `_authorizedCaller` to msg.sender, but if we simply did that (without the
  * flag), anyone could front-run the deployment transaction and become the authorized caller, at least in cases where
@@ -31,18 +29,12 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
  * the authorized caller on registration.
  */
 abstract contract BaseHooks is IHooks {
-    bool internal immutable _isSecondaryHook;
-
     // The address authorized to call non-view hook functions. Set during hook registration.
     address internal _authorizedCaller;
 
     modifier onlyAuthorizedCaller() {
         _ensureOnlyAuthorizedCaller();
         _;
-    }
-
-    constructor(bool isSecondaryHook_) {
-        _isSecondaryHook = isSecondaryHook_;
     }
 
     /// @inheritdoc IHooks
@@ -146,11 +138,6 @@ abstract contract BaseHooks is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function isSecondaryHook() external view returns (bool) {
-        return _isSecondaryHook;
-    }
-
-    /// @inheritdoc IHooks
     function getAuthorizedCaller() external view returns (address) {
         return _authorizedCaller;
     }
@@ -160,9 +147,15 @@ abstract contract BaseHooks is IHooks {
     }
 
     function _setAuthorizedCaller(address factory, address pool, address vault) internal {
-        address authorizedCaller = _isSecondaryHook ? pool : vault;
+        address authorizedCaller;
 
-        require(msg.sender == authorizedCaller, HookCallerNotAuthorized(msg.sender, authorizedCaller));
+        if (msg.sender == vault) {
+            authorizedCaller = vault;
+        } else if (msg.sender == pool) {
+            authorizedCaller = pool;
+        } else {
+            revert InvalidHookRegistrant(address(this), msg.sender);
+        }
 
         _enforceFactoryConstraints(factory, pool);
 
