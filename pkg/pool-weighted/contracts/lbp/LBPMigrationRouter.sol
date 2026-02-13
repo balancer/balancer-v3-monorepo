@@ -222,8 +222,15 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         uint256 effectiveReserveAmountScaled18 = reserveAmountRemovedScaled18 + virtualBalanceScaled18;
 
         // Compute the spot price using effective reserve balance.
-        uint256 priceScaled18 = ((projectAmountOutScaled18 * currentWeights[data.reserveTokenIndex]) /
-            effectiveReserveAmountScaled18).divDown(currentWeights[data.projectTokenIndex]);
+        // Round price UP since it's used as a denominator when computing reserveAmountOutScaled18. Rounding up here
+        // produces a smaller (safer) reserve amount, maintaining the overall rounding-down strategy for exactAmountsIn
+        // to prevent underflow in removeAmountsOut[i] - exactAmountsIn[i].
+        //
+        // In the fallback path (where price appears as a numerator), downstream mulDown and toRawUndoRateRoundDown
+        // operations provide sufficient safety margin.
+        uint256 priceScaled18 = projectAmountOutScaled18
+            .mulDivUp(currentWeights[data.reserveTokenIndex], effectiveReserveAmountScaled18)
+            .divUp(currentWeights[data.projectTokenIndex]);
 
         // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
         // We start by assuming we can withdraw the entire project token balance. We want to use as much as possible,
