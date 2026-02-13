@@ -129,7 +129,11 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testCreatePool() public {
-        (pool, ) = _createFixedPriceLBPool(bob, uint32(block.timestamp + 100), uint32(block.timestamp + 200));
+        (pool, ) = _createFixedPriceLBPool(
+            bob,
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
+        );
         initPool();
 
         // Verify pool was created and initialized correctly
@@ -156,7 +160,10 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testAddLiquidityPermission() public {
-        (pool, ) = _createFixedPriceLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200));
+        (pool, ) = _createFixedPriceLBPool(
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
+        );
         initPool();
 
         // Try to add to the pool without permission.
@@ -169,7 +176,10 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
     }
 
     function testDonationNotAllowed() public {
-        (pool, ) = _createFixedPriceLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200));
+        (pool, ) = _createFixedPriceLBPool(
+            uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD),
+            uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD)
+        );
         initPool();
 
         // Try to donate to the pool

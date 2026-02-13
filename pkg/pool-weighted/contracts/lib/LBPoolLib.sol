@@ -10,6 +10,17 @@ library LBPoolLib {
     // Matches Weighted Pool min weight.
     uint256 internal constant _MIN_WEIGHT = 1e16; // 1%
 
+    /**
+     * @notice Ensure starting and ending weights are valid for weighted pools.
+     * @dev Standard LBPs allow for price discovery in the beginning, and price stability over the course of the sale.
+     * However, we do not enforce this as a constraint (in this or any previous versions), which allows maximum
+     * flexibility and enables potential non-standard use cases. Of course, it is also possible to misconfigure an LBP
+     * with "backwards" weights (which happened at least once in V1), potentially leading to arbitrage loss.
+     *
+     * This version mitigates that risk to some degree by enforcing an initialization period before the sale, and
+     * preventing trades before the start time. This allows time to fix any mistakes of this nature before any
+     * adverse arbitrage trades could occur.
+     */
     function verifyWeightUpdateParameters(
         uint256 projectStartWeight,
         uint256 reserveStartWeight,

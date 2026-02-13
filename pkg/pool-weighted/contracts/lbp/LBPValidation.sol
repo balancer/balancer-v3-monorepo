@@ -15,14 +15,21 @@ import { GradualValueChange } from "../lib/GradualValueChange.sol";
  * @dev This library is used by both factories (for clear error messages) and pools (for direct deployment protection).
  */
 library LBPValidation {
+    // solhint-disable private-vars-leading-underscore
+
     // Set a boundary on the maximum lock duration, as a safeguard against accidentally locking it forever.
-    // solhint-disable-next-line private-vars-leading-underscore
     uint256 internal constant MAX_BPT_LOCK_DURATION = 365 days;
 
     // Set a boundary on the minimum pool value to migrate; otherwise owners could circumvent the liquidity guarantee
     // by migrating a trivial amount of the proceeds.
-    // solhint-disable-next-line private-vars-leading-underscore
     uint256 internal constant MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
+
+    // Must be equal to or greater than the WeightedPool minimum weight; ensures the migration pool has valid weights.
+    uint256 internal constant MIN_PROJECT_TOKEN_MIGRATION_WEIGHT = 1e16; // 1%
+
+    // Start time must be at least this far in the future, to allow time for funding the LBP (which can only be done
+    // before the sale starts). It is a uint32 to match the timestamp bit length.
+    uint32 internal constant INITIALIZATION_PERIOD = 1 hours;
 
     /// @notice The owner is the zero address.
     error InvalidOwner();
@@ -51,13 +58,12 @@ library LBPValidation {
     /**
      * @notice Validates common LBP parameters.
      * @dev This should be called by both factories for early validation, and pools for direct deployment protection.
-     * Note that the time is also validated here, and the startTime might be "accelerated" to the current time, if it
-     * is in the past, per the logic in `GradualValueChange`.
+     * Note that the time is also validated here, and unlike previous versions LBPs, the startTime must be in the
+     * future, due to constraints around funding and initialization.
      *
      * @param lbpCommonParams The common LBP parameters to validate
-     * @return resolvedStartTime The final start time (might be "fast forwarded" if the start time is in the past)
      */
-    function validateCommonParams(LBPCommonParams memory lbpCommonParams) internal view returns (uint256) {
+    function validateCommonParams(LBPCommonParams memory lbpCommonParams) internal view {
         // In practice, this is already checked by Ownable.
         if (lbpCommonParams.owner == address(0)) {
             revert InvalidOwner();
@@ -75,7 +81,13 @@ library LBPValidation {
             revert TokensMustBeDifferent();
         }
 
-        return GradualValueChange.resolveStartTime(lbpCommonParams.startTime, lbpCommonParams.endTime);
+        if (
+            lbpCommonParams.startTime > lbpCommonParams.endTime ||
+            // solhint-disable-next-line not-rely-on-time
+            lbpCommonParams.startTime < block.timestamp + INITIALIZATION_PERIOD
+        ) {
+            revert GradualValueChange.InvalidStartTime(lbpCommonParams.startTime, lbpCommonParams.endTime);
+        }
     }
 
     /**
@@ -83,6 +95,11 @@ library LBPValidation {
      * @dev This checks that migration parameters are valid if migration is enabled.
      * If all migration parameters are zero, this is considered "no migration" and passes validation.
      * If any parameter is non-zero, all must be valid.
+     *
+     * Note that it is possible to set bptPercentageToMigrate to a very small (but non-zero) value, undermining the
+     * effectiveness of the `MIN_RESERVE_TOKEN_MIGRATION_WEIGHT` check. Nevertheless, we don't wish to impose a
+     * minimum here, as migration is an optional feature (i.e., it is zero anyway if migration is turned off). We
+     * expect UIs to expose these parameters, and users to review them as part of their due diligence.
      *
      * @param migrationParams The migration parameters to validate
      * @param migrationRouter The migration router address (must be non-zero if migration is enabled)
@@ -111,7 +128,7 @@ library LBPValidation {
 
             if (
                 totalTokenWeight != FixedPoint.ONE ||
-                migrationParams.migrationWeightProjectToken == 0 ||
+                migrationParams.migrationWeightProjectToken < MIN_PROJECT_TOKEN_MIGRATION_WEIGHT ||
                 migrationParams.migrationWeightReserveToken < MIN_RESERVE_TOKEN_MIGRATION_WEIGHT
             ) {
                 revert InvalidMigrationWeights();

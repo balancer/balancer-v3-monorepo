@@ -90,8 +90,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     ********************************************************/
 
     function testCreatePoolTimeTravel() public {
-        uint32 startTime = uint32(block.timestamp + 200);
-        uint32 endTime = uint32(block.timestamp + 100);
+        uint32 startTime = uint32(block.timestamp + 2 * LBPValidation.INITIALIZATION_PERIOD);
+        uint32 endTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD);
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createFixedPriceLBPool(
@@ -101,7 +101,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testCreatePoolTimeTravelWrongEndTime() public {
-        uint32 startTime = uint32(block.timestamp + 200);
+        uint32 startTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD);
         uint32 endTime = startTime - 1;
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
@@ -109,24 +109,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             startTime,
             endTime // EndTime = StartTime, it should revert
         );
-    }
-
-    function testCreatePoolStartTimeInPast() public {
-        // Set startTime in the past
-        uint32 pastStartTime = uint32(block.timestamp - 100);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        uint256 preCreateSnapshotId = vm.snapshotState();
-
-        (address newPool, ) = _createFixedPriceLBPool(pastStartTime, endTime);
-
-        vm.revertToState(preCreateSnapshotId);
-
-        vm.expectEmit();
-        // The event should be emitted with block.timestamp as startTime, not the past time.
-        emit FixedPriceLBPoolFactory.FixedPriceLBPoolCreated(newPool, bob, block.timestamp, endTime, DEFAULT_RATE);
-
-        _createFixedPriceLBPool(pastStartTime, endTime);
     }
 
     function testCreatePoolEvents() public {

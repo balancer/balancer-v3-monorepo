@@ -18,12 +18,20 @@ import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { LBPool, LBPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
-import { MONTH, MINUTE, currentTimestamp, advanceToTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
+import {
+  MONTH,
+  MINUTE,
+  currentTimestamp,
+  advanceToTimestamp,
+  DAY,
+  HOUR,
+  setNextBlockTimestamp,
+} from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
 describe('LBPool', function () {
@@ -242,10 +250,13 @@ describe('LBPool', function () {
 
     describe('Owner operations and events', () => {
       it('should emit GradualWeightUpdateScheduled event on deployment', async () => {
-        const startTime = (await currentTimestamp()) + 100n;
-        const endTime = startTime + bn(bn(MONTH));
+        const now = await currentTimestamp();
+        const deployTime = now + bn(1);
+        const startTime = deployTime + bn(HOUR);
+        const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
+        await setNextBlockTimestamp(deployTime);
         const tx = await deployPoolTx(
           WEIGHTS[0],
           WEIGHTS[1],
@@ -285,7 +296,9 @@ describe('LBPool', function () {
 
     describe('Weight update on deployment', () => {
       it('should update weights gradually', async () => {
-        const startTime = await currentTimestamp();
+        const now = await currentTimestamp();
+        const deployTime = now + bn(1);
+        const startTime = deployTime + bn(HOUR);
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
@@ -305,59 +318,123 @@ describe('LBPool', function () {
         expect(await pool.getNormalizedWeights()).to.deep.equal(endWeights);
       });
 
-      it('should constrain weights to [1%, 99%]', async () => {
-        const startTime = await currentTimestamp();
+      it('should not allow startTime within initialization buffer', async () => {
+        const now = await currentTimestamp();
+        let deployTime = now + bn(1);
+
+        // startTime too close to deployment (30 minutes)
+        const startTime = deployTime + bn(HOUR / 2);
         const endTime = startTime + bn(MONTH);
 
-        // Try to set start weight below 1%
-        await expect(
-          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
-        ).to.be.revertedWithCustomError(factory, 'MinWeight');
-
-        // Try to set start weight above 99%
-        await expect(
-          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false, bn(0))
-        ).to.be.revertedWithCustomError(factory, 'MinWeight');
-
-        // Try to set end weight below 1%
-        await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false, bn(0))
-        ).to.be.revertedWithCustomError(factory, 'MinWeight');
-
-        // Try to set end weight above 99%
-        await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false, bn(0))
-        ).to.be.revertedWithCustomError(factory, 'MinWeight');
-
-        // Valid weight update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))).to.not
-          .be.reverted;
-      });
-
-      it('should not allow endTime before startTime', async () => {
-        const startTime = await currentTimestamp();
-        const endTime = startTime - bn(MONTH);
-
-        // Try to set endTime before startTime
+        await setNextBlockTimestamp(deployTime);
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false, bn(0))
         ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
 
+        // One second short of the buffer should fail
+        deployTime += bn(1);
+        await setNextBlockTimestamp(deployTime);
+        await expect(
+          deployPoolTx(
+            WEIGHTS[0],
+            WEIGHTS[1],
+            fp(0.99),
+            fp(0.01),
+            deployTime + bn(HOUR) - bn(1),
+            deployTime + bn(HOUR) + bn(MONTH),
+            false,
+            bn(0)
+          )
+        ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
+
+        // Exactly at the buffer boundary should succeed
+        deployTime += bn(1);
+        await setNextBlockTimestamp(deployTime);
+        await expect(
+          deployPoolTx(
+            WEIGHTS[0],
+            WEIGHTS[1],
+            fp(0.99),
+            fp(0.01),
+            deployTime + bn(HOUR),
+            deployTime + bn(HOUR) + bn(MONTH),
+            false,
+            bn(0)
+          )
+        ).to.not.be.reverted;
+      });
+
+      it('should constrain weights to [1%, 99%]', async () => {
+        const now = await currentTimestamp();
+        let tick = 1;
+
+        async function nextDeploy() {
+          const deployTime = now + bn(tick++);
+          const startTime = deployTime + bn(HOUR);
+          const endTime = startTime + bn(MONTH);
+          await setNextBlockTimestamp(deployTime);
+          return { startTime, endTime };
+        }
+
+        let t = await nextDeploy();
+        // Try to set start weight below 1%
+        await expect(
+          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], t.startTime, t.endTime, false, bn(0))
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Try to set start weight above 99%
+        t = await nextDeploy();
+        await expect(
+          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], t.startTime, t.endTime, false, bn(0))
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Try to set end weight below 1%
+        t = await nextDeploy();
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), t.startTime, t.endTime, false, bn(0))
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Try to set end weight above 99%
+        t = await nextDeploy();
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), t.startTime, t.endTime, false, bn(0))
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Valid weight update
+        t = await nextDeploy();
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), t.startTime, t.endTime, false, bn(0))).to
+          .not.be.reverted;
+      });
+
+      it('should not allow endTime before startTime', async () => {
+        const now = await currentTimestamp();
+        let deployTime = now + bn(1);
+        let startTime = deployTime + bn(HOUR);
+
+        // Try to set endTime before startTime
+        await setNextBlockTimestamp(deployTime);
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime - bn(1), false, bn(0))
+        ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
+
         // Valid time update
+        deployTime = deployTime + bn(1);
+        startTime = deployTime + bn(HOUR);
+        await setNextBlockTimestamp(deployTime);
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false, bn(0))
         ).to.not.be.reverted;
       });
 
       it('should always sum weights to 1', async () => {
-        const currentTime = await currentTimestamp();
-        const startTime = currentTime + bn(MINUTE); // Set startTime 1 min in the future
+        const now = await currentTimestamp();
+        const deployTime = now + bn(1);
+        const startTime = deployTime + bn(HOUR);
         const endTime = startTime + bn(MONTH);
         const startWeights = [fp(0.5), fp(0.5)];
         const endWeights = [fp(0.7), fp(0.3)];
 
-        // Move time to just before startTime
-        await advanceToTimestamp(startTime - 1n);
+        await setNextBlockTimestamp(deployTime);
 
         // Start at 50/50, schedule gradual shift to 70/30
         const pool = await deployPool(
@@ -391,15 +468,17 @@ describe('LBPool', function () {
 
     describe('Setters and Getters', () => {
       it('should get gradual weight update params', async () => {
-        const startTime = await currentTimestamp();
+        const now = await currentTimestamp();
+        const deployTime = now + bn(1);
+        const startTime = deployTime + bn(HOUR);
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
+        await setNextBlockTimestamp(deployTime);
         const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
-        const actualStartTime = await currentTimestamp();
 
         const params = await pool.getGradualWeightUpdateParams();
-        expect(params.startTime).to.equal(actualStartTime);
+        expect(params.startTime).to.equal(startTime);
         expect(params.endTime).to.equal(endTime);
         expect(params.endWeights).to.deep.equal(endWeights);
       });

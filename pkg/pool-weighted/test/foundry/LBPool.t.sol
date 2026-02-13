@@ -220,27 +220,6 @@ contract LBPoolTest is WeightedLBPTest {
         );
     }
 
-    function testCreatePoolStartTimeInPast() public {
-        // Set startTime in the past
-        uint32 pastStartTime = uint32(block.timestamp - 100);
-        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
-
-        vm.expectEmit();
-        // The event should be emitted with block.timestamp as startTime, not the past time
-        emit LBPool.GradualWeightUpdateScheduled(block.timestamp, endTime, startWeights, endWeights);
-
-        _createLBPoolWithCustomWeights(
-            address(0), // Pool creator
-            startWeights[projectIdx],
-            startWeights[reserveIdx],
-            endWeights[projectIdx],
-            endWeights[reserveIdx],
-            pastStartTime,
-            endTime,
-            DEFAULT_PROJECT_TOKENS_SWAP_IN
-        );
-    }
-
     function testCreatePoolEvents() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
@@ -368,8 +347,8 @@ contract LBPoolTest is WeightedLBPTest {
     }
 
     function testGradualWeightUpdateParams() public {
-        uint32 customStartTime = uint32(block.timestamp + 1);
-        uint32 customEndTime = uint32(block.timestamp + 300);
+        uint32 customStartTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD * 2);
+        uint32 customEndTime = uint32(block.timestamp + LBPValidation.INITIALIZATION_PERIOD * 3);
         uint256[] memory customStartWeights = [uint256(22e16), uint256(78e16)].toMemoryArray();
         uint256[] memory customEndWeights = [uint256(65e16), uint256(35e16)].toMemoryArray();
 
@@ -511,7 +490,7 @@ contract LBPoolTest is WeightedLBPTest {
         );
 
         // Warp to middle of weight update period
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 50);
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + LBPValidation.INITIALIZATION_PERIOD / 2);
 
         // Check interpolated weights
         LBPoolDynamicData memory midData = ILBPool(pool).getLBPoolDynamicData();
@@ -1007,6 +986,22 @@ contract LBPoolTest is WeightedLBPTest {
         );
 
         assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
+    }
+
+    function testInvalidMigrationWeight() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 1e16 - 1; // Just below minimum
+        uint256 initNewWeightReserveToken = 99e16 + 1; // Still totals to ONE
+
+        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
+        (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
     }
 
     /*******************************************************************************
