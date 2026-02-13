@@ -16,7 +16,7 @@ contract WeightedMathRevertsTest is Test {
     uint256 private constant MAX_IN_RATIO = 30e16; // must match WeightedMath._MAX_IN_RATIO
     uint256 private constant MAX_OUT_RATIO = 30e16; // must match WeightedMath._MAX_OUT_RATIO
 
-    function test_computeInvariantUp_revertsOnZeroInvariant() public {
+    function testComputeInvariantUpZeroInvariant() public {
         // Use a single-token edge case so the exponent is exactly 1.0 (FixedPoint.ONE),
         // making powUp(0, 1.0) == 0 and forcing invariant == 0.
         uint256[] memory w = new uint256[](1);
@@ -29,7 +29,7 @@ contract WeightedMathRevertsTest is Test {
         WeightedMath.computeInvariantUp(w, b);
     }
 
-    function test_computeInvariantDown_revertsOnZeroInvariant() public {
+    function testComputeInvariantDownZeroInvariant() public {
         // Mirror the Up test: ensure the Down variant also hits the ZeroInvariant revert branch.
         uint256[] memory w = new uint256[](1);
         w[0] = FixedPoint.ONE;
@@ -41,7 +41,7 @@ contract WeightedMathRevertsTest is Test {
         WeightedMath.computeInvariantDown(w, b);
     }
 
-    function test_computeOutGivenExactIn_revertsOnMaxInRatio() public {
+    function testComputeOutGivenExactInMaxInRatio() public {
         uint256 balanceIn = 1e18;
         uint256 balanceOut = 1e18;
         uint256 weightIn = 50e16;
@@ -54,7 +54,7 @@ contract WeightedMathRevertsTest is Test {
         WeightedMath.computeOutGivenExactIn(balanceIn, weightIn, balanceOut, weightOut, amountIn);
     }
 
-    function test_computeInGivenExactOut_revertsOnMaxOutRatio() public {
+    function testComputeInGivenExactOutMaxOutRatio() public {
         uint256 balanceIn = 1e18;
         uint256 balanceOut = 1e18;
         uint256 weightIn = 50e16;

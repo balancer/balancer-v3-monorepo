@@ -36,7 +36,15 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
     uint256 internal immutable _uptimeResyncWindow;
 
+    // Controls behavior of `latestRoundData`. If set, use the current time; otherwise compute and return the actual
+    // minimum as `updatedAt`.
     bool internal immutable _shouldUseBlockTimeForOldestFeedUpdate;
+    // Depending on the interaction between a specific oracle and the protocol using it, different strategies for
+    // ensuring BPT prices are non-manipulable may apply. Generally, we must either ensure that the BPT balances is
+    // real (i.e., not transient), or the amount must be limited somehow. To ensure the BPT balance is non-transient,
+    // protocols can use a wrapped version (e.g., `WrappedBalancerPoolToken`), or set this flag to essentially do what
+    // the wrapper does and directly ensure the Vault is "locked" (= not in the middle of a transaction).
+    bool internal immutable _shouldRevertIfVaultUnlocked;
 
     IVault internal immutable _vault;
     uint256 internal immutable _version;
@@ -61,6 +69,15 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     uint256 internal immutable _feedToken6DecimalScalingFactor;
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
+    // Ensure the Vault is locked, if it needs to be.
+    // Every function that calls the virtual `_computeTVL` function needs this.
+    modifier withValidVaultState() {
+        if (_shouldRevertIfVaultUnlocked && _vault.isUnlocked()) {
+            revert VaultIsUnlocked();
+        }
+        _;
+    }
+
     constructor(
         IVault vault,
         IBasePool pool_,
@@ -68,12 +85,14 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     ) {
         _version = version_;
         _vault = vault;
         pool = pool_;
         _shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate;
+        _shouldRevertIfVaultUnlocked = shouldRevertIfVaultUnlocked;
 
         // The uptime feed address will be zero for L1, and for L2 networks that don't have a sequencer.
         _sequencerUptimeFeed = sequencerUptimeFeed;
@@ -174,7 +193,7 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
      * @return updatedAt The oldest / least recent timestamp when a constituent feed was updated (or current timestamp)
      * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
      */
-    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
+    function latestRoundData() external view withValidVaultState returns (uint80, int256, uint256, uint256, uint80) {
         (int256[] memory prices, uint256[] memory updatedAt) = getFeedData();
 
         uint256 tvl = _computeTVL(prices);
@@ -200,14 +219,14 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     }
 
     /// @inheritdoc ILPOracleBase
-    function computeTVL() public view returns (uint256) {
+    function computeTVL() public view withValidVaultState returns (uint256) {
         (int256[] memory prices, ) = getFeedData();
 
         return _computeTVL(prices);
     }
 
     /// @inheritdoc ILPOracleBase
-    function computeTVLGivenPrices(int256[] memory prices) public view virtual returns (uint256) {
+    function computeTVLGivenPrices(int256[] memory prices) public view virtual withValidVaultState returns (uint256) {
         // This can be called by external users, so we need length validation.
         InputHelpers.ensureInputLengthMatch(prices.length, _totalTokens);
 
@@ -260,6 +279,11 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
     /// @inheritdoc ILPOracleBase
     function getShouldUseBlockTimeForOldestFeedUpdate() external view returns (bool) {
         return _shouldUseBlockTimeForOldestFeedUpdate;
+    }
+
+    /// @inheritdoc ILPOracleBase
+    function getShouldRevertIfVaultUnlocked() external view returns (bool) {
+        return _shouldRevertIfVaultUnlocked;
     }
 
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {

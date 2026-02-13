@@ -15,9 +15,8 @@ import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
 
 /**
- * @title LBPoolEdgeCasesTest
- * @notice Additional edge case and security-focused tests for LBPool
- * @dev Tests cover: timing edge cases, weight interpolation boundaries, sandwich attack scenarios
+ * @notice Additional edge case and security-focused tests for LBPool.
+ * @dev Tests cover: timing edge cases, weight interpolation boundaries, sandwich attack scenarios.
  */
 contract LBPoolEdgeCasesTest is WeightedLBPTest {
     using ArrayHelpers for *;
@@ -212,11 +211,11 @@ contract LBPoolEdgeCasesTest is WeightedLBPTest {
      * @notice Sandwich-like round trip on an unblocked LBP should not be profitable.
      * @dev This uses an unblocked pool so both legs are possible; rounding should favor the pool.
      */
-    function testSandwichAttackAcrossWeightTransition_UnblockedNoProfit() public {
+    function testSandwichAttackAcrossWeightTransitionUnblockedNoProfit() public {
         // Create a new pool with project token swaps NOT blocked (for round-trip testing).
         uint256 currentTime = block.timestamp;
-        uint32 startTime = uint32(currentTime + 50);
-        uint32 endTime = uint32(currentTime + 200);
+        uint32 startTime = uint32(currentTime + 1 hours);
+        uint32 endTime = uint32(currentTime + 1 days);
 
         (address unblockPool, ) = _createLBPoolWithCustomWeights(
             address(0),
@@ -316,7 +315,7 @@ contract LBPoolEdgeCasesTest is WeightedLBPTest {
     function testVeryShortSalePeriod() public {
         // Record current timestamp before creating pool
         uint256 currentTime = block.timestamp;
-        uint32 shortStartTime = uint32(currentTime + 100);
+        uint32 shortStartTime = uint32(currentTime + 1 hours);
         uint32 shortEndTime = shortStartTime + 1; // Only 1 second
 
         (address shortPool, ) = _createLBPoolWithCustomWeights(
@@ -363,7 +362,7 @@ contract LBPoolEdgeCasesTest is WeightedLBPTest {
     function testVeryLongSalePeriod() public {
         // Record current timestamp before creating pool
         uint256 currentTime = block.timestamp;
-        uint32 longStartTime = uint32(currentTime + 100);
+        uint32 longStartTime = uint32(currentTime + 1 hours);
         uint32 longEndTime = longStartTime + 365 days; // 1 year
 
         (address longPool, ) = _createLBPoolWithCustomWeights(

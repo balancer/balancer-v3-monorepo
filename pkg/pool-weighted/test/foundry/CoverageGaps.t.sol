@@ -190,7 +190,7 @@ contract CoverageGapsTest is Test {
         }
     }
 
-    function test_factory_getPoolVersion_isCovered() public {
+    function testFactoryGetPoolVersion() public {
         // These constructors do not call into the Vault; any address is fine for coverage.
         WeightedPoolFactory f = new WeightedPoolFactory(IVault(address(0x1111)), 1, "fv", "pv");
         WeightedPool8020Factory f8020 = new WeightedPool8020Factory(IVault(address(0x2222)), 1, "fv", "pv8020");
@@ -199,7 +199,7 @@ contract CoverageGapsTest is Test {
         assertEq(f8020.getPoolVersion(), "pv8020");
     }
 
-    function test_weightedPool_constructor_reverts_on_minWeight() public {
+    function testWeightedPoolConstructorMinWeight() public {
         uint256[] memory weights = _weightsAllEqual8();
         weights[0] = 5e15; // 0.5% < 1% minimum
         // Fix the sum to 1 to isolate the min weight check.
@@ -214,7 +214,7 @@ contract CoverageGapsTest is Test {
         new WeightedPoolHarness(_newParams8(weights, mins), IVault(address(0x3333)));
     }
 
-    function test_weightedPool_constructor_reverts_on_weightSum() public {
+    function testWeightedPoolConstructorWeightSum() public {
         uint256[] memory weights = _weightsAllEqual8();
         weights[0] = weights[0] + 1; // sum != 1
         uint256[] memory mins = _minBalances8();
@@ -223,7 +223,7 @@ contract CoverageGapsTest is Test {
         new WeightedPoolHarness(_newParams8(weights, mins), IVault(address(0x4444)));
     }
 
-    function test_weightedPool_getMinTokenBalances_covers_all_return_paths() public {
+    function testWeightedPoolGetMinTokenBalancesCoverage() public {
         MockVaultTokens mv = new MockVaultTokens();
         // Cast is safe: we only call getPoolTokens() through the IVault ABI.
         WeightedPoolHarness pool = new WeightedPoolHarness(
@@ -239,7 +239,7 @@ contract CoverageGapsTest is Test {
         }
     }
 
-    function test_weightedPool_getNormalizedWeight_invalidToken_reverts() public {
+    function testWeightedPoolGetNormalizedWeightInvalidToken() public {
         WeightedPoolHarness pool = new WeightedPoolHarness(
             _newParams8(_weightsAllEqual8(), _minBalances8()),
             IVault(address(0x5555))
@@ -255,7 +255,7 @@ contract CoverageGapsTest is Test {
         pool.exposedGetNormalizedWeight(999);
     }
 
-    function test_weightedPool_computeBalance_hits_minBalanceSelectorBranches() public {
+    function testWeightedPoolComputeBalanceMinBalanceSelectorBranches() public {
         WeightedPoolHarness pool = new WeightedPoolHarness(
             _newParams8(_weightsAllEqual8(), _minBalances8()),
             IVault(address(0x5556))
@@ -274,7 +274,7 @@ contract CoverageGapsTest is Test {
         }
     }
 
-    function test_weightedPool_ensureMinTokenBalances_reverts_for_each_extra_token() public {
+    function testWeightedPoolEnsureMinTokenBalancesExtraTokens() public {
         WeightedPoolHarness pool = new WeightedPoolHarness(
             _newParams8(_weightsAllEqual8(), _minBalances8()),
             IVault(address(0x6666))
@@ -295,7 +295,7 @@ contract CoverageGapsTest is Test {
         }
     }
 
-    function test_weightedPool_ensureMinTokenBalances_return_paths_for_short_arrays() public {
+    function testWeightedPoolEnsureMinTokenBalancesShortArrays() public {
         WeightedPoolHarness pool = new WeightedPoolHarness(
             _newParams8(_weightsAllEqual8(), _minBalances8()),
             IVault(address(0x6667))
@@ -316,7 +316,7 @@ contract CoverageGapsTest is Test {
         }
     }
 
-    function test_lbpCommon_onBeforeInitialize_isCovered() public {
+    function testLBPCommonOnBeforeInitialize() public {
         SimpleToken project = new SimpleToken(18, "P");
         SimpleToken reserve = new SimpleToken(18, "R");
 
@@ -326,8 +326,8 @@ contract CoverageGapsTest is Test {
         common.owner = address(this);
         common.projectToken = IERC20(address(project));
         common.reserveToken = IERC20(address(reserve));
-        common.startTime = uint32(block.timestamp + 1000);
-        common.endTime = uint32(block.timestamp + 2000);
+        common.startTime = uint32(block.timestamp + 1 hours);
+        common.endTime = uint32(block.timestamp + 1 days);
         common.blockProjectTokenSwapsIn = false;
 
         MigrationParams memory migration;
@@ -343,7 +343,7 @@ contract CoverageGapsTest is Test {
         assertTrue(h.onBeforeInitialize(new uint256[](2), ""));
     }
 
-    function test_lbPool_computeBalance_reverts_and_invalidTokenWeight_reverts() public {
+    function testLBPoolComputeBalanceInvalidTokenWeight() public {
         SimpleToken project = new SimpleToken(18, "P");
         SimpleToken reserve = new SimpleToken(18, "R");
 
@@ -354,8 +354,8 @@ contract CoverageGapsTest is Test {
         common.owner = address(this);
         common.projectToken = IERC20(address(project));
         common.reserveToken = IERC20(address(reserve));
-        common.startTime = uint32(block.timestamp + 1000);
-        common.endTime = uint32(block.timestamp + 2000);
+        common.startTime = uint32(block.timestamp + 1 hours);
+        common.endTime = uint32(block.timestamp + 1 days);
         common.blockProjectTokenSwapsIn = false;
 
         MigrationParams memory migration;
