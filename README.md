@@ -151,6 +151,16 @@ The `coverage` command generates a coverage report for each package found in the
 
 **Note: We suggest adopting [lcov 1.16](https://github.com/linux-test-project/lcov/releases/tag/v1.16) since `forge coverage --report lcov` command works better in this version.**
 
+### Error documentation
+
+```bash
+$ yarn generate-errors
+```
+
+The `generate-errors` command reads the production solidity files, extracts the custom errors, and writes them to a docs/errors.md file. This is a set of tables that reproduces the directory structure and shows where all the errors come from, along with their signatures. This is useful for checking which errors a given contract can generate, and how to interpret the arguments.
+
+It also generates a docs/error-index.md file, which lists the errors by signature, useful for debugging traces where all you have is the signature, and want to know what error it corresponds to.
+
 ## Security
 
 > Upgradeability | Not Applicable. The system cannot be upgraded.
