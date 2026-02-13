@@ -99,6 +99,7 @@ contract LBPoolRealReservesTest is WeightedLBPTest {
         uint256 realReserveBalance = 1e18;
         uint256 reserveOutAmount = realReserveBalance / 2;
 
+        // Mock balances according to the vault (which are real reserves).
         uint256[] memory balances = new uint256[](2);
         balances[projectIdx] = poolInitAmount; // ~1000e18
         balances[reserveIdx] = realReserveBalance;
