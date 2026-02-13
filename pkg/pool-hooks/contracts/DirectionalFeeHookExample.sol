@@ -5,12 +5,7 @@ pragma solidity ^0.8.24;
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
@@ -60,11 +55,12 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
+    ) public override returns (bool) {
         emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
 
-        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
-        return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        _setAuthorizedCaller(factory, pool, address(_vault));
+
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -77,7 +73,7 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override onlyAuthorizedCaller returns (bool, uint256) {
         // Get pool balances
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(pool);
 
@@ -126,5 +122,14 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
             // pool balances to the edge.
             feePercentage = diff.divDown(totalLiquidity);
         }
+    }
+
+    /// @inheritdoc BaseHooks
+    function _enforceFactoryConstraints(address factory, address pool) internal view override {
+        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
+        require(
+            factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool),
+            FactoryValidationFailed(factory, pool)
+        );
     }
 }

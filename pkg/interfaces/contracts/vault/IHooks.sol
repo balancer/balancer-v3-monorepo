@@ -23,6 +23,31 @@ import {
  * then use the `onlyVault` modifier from `VaultGuard`. (See the examples in /pool-hooks.)
  */
 interface IHooks {
+    /**
+     * @notice The caller is not authorized to invoke the hook.
+     * @dev We could use the generic IAuthentication.SenderNotAllowed, but this makes it clearer.
+     * @param sender The unauthorized caller address
+     * @param authorizedCaller The address that is allowed to call it
+     */
+    error HookCallerNotAuthorized(address sender, address authorizedCaller);
+
+    /// @notice `_setAuthorizedCaller` has been called more than once. Should never happen.
+    error AuthorizedCallerAlreadySet();
+
+    /**
+     * @notice `onRegister` was called by an unknown address (neither the pool nor the vault).
+     * @param hook The hook contract whose onRegister was called
+     * @param caller The address of the onRegister caller
+     */
+    error InvalidHookRegistrant(address hook, address caller);
+
+    /**
+     * @notice A hook that opted into factory validation by overriding `_enforceFactoryConstraints` rejected the pool.
+     * @param factory The address of the factory (deployer of the pool)
+     * @param pool The address of the pool being registered in the Vault
+     */
+    error FactoryValidationFailed(address factory, address pool);
+
     /***************************************************************************
                                    Register
     ***************************************************************************/
@@ -31,7 +56,11 @@ interface IHooks {
      * @notice Hook executed when a pool is registered with a non-zero hooks contract.
      * @dev Returns true if registration was successful, and false to revert the pool registration.
      * Make sure this function is properly implemented (e.g. check the factory, and check that the
-     * given pool is from the factory). The Vault address will be msg.sender.
+     * given pool is from the factory).
+     *
+     * NB: It is also crucial to call `_setAuthorizedCaller(pool, vault)`, so that the hook functions can validate the
+     * sender. This requires secondary hooks to have the Vault address somehow (e.g., through inheriting VaultGuard).
+     * Leaving `_authorizedCaller` at the zero address would cause all secondary hook function calls to revert.
      *
      * @param factory Address of the pool factory (contract deploying the pool)
      * @param pool Address of the pool
@@ -244,4 +273,16 @@ interface IHooks {
         address pool,
         uint256 staticSwapFeePercentage
     ) external view returns (bool success, uint256 dynamicSwapFeePercentage);
+
+    /**
+     * @notice Returns the address authorized to call the hooks (e.g., the Vault or pool address).
+     * @dev This is the address authorized to call non-view hook functions. It is typically the Vault (when the hook is
+     * registered to a standard pool that is not its own hook (e.g., weighted or stable pools), but for pool types
+     * that register themselves with the Vault as the hook (e.g., ReClamm, LBP), and that are using this contract as
+     * a secondary hook: the caller will be the pool itself "forwarding" the call to the secondary hook, after doing
+     * its own processing.
+     *
+     * @return authorizedCaller The address authorized to call the hooks (e.g., the Vault or pool address)
+     */
+    function getAuthorizedCaller() external view returns (address authorizedCaller);
 }

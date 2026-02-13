@@ -211,8 +211,8 @@ interface IMevCaptureHook {
      * @dev The threshold can be any unsigned integer and represents the priority gas price, in wei. It's used to
      * check whether the priority gas price level corresponds to a retail or searcher swap. The threshold value is not
      * capped by any value, since it depends on the chain state. If the pool is not registered with the MEV Hook, it
-     * reverts with error MevCaptureHookNotRegisteredForPool(pool). A very high threshold (above the priority gas price of
-     * searchers in the chain) will disable the MEV tax and charge the static swap fee.
+     * reverts with error MevCaptureHookNotRegisteredForPool(pool). A very high threshold (above the priority gas price
+     * of searchers in the chain) will disable the MEV tax and charge the static swap fee.
      *
      * @param pool Address of the pool with the threshold
      * @param newPoolMevTaxThreshold The new threshold to be set in a pool

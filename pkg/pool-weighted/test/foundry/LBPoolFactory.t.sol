@@ -116,7 +116,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         });
 
         vm.expectRevert(LBPValidation.InvalidOwner.selector);
-        lbPoolFactory.create(commonParams, params, swapFee, ZERO_BYTES32, address(0));
+        lbPoolFactory.create(commonParams, params, swapFee, ZERO_BYTES32, address(0), address(0));
     }
 
     function testCreatePool() public {
@@ -234,7 +234,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0) // no secondary hook
         });
 
         vm.expectRevert(LBPValidation.MigrationRouterRequired.selector);
@@ -421,7 +422,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0) // no secondary hook
         });
 
         // Copy to local variable to free up parameter stack slot before operations that create temporaries.
@@ -434,7 +436,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             lbpParams,
             swapFee,
             bytes32(salt),
-            poolCreator_
+            poolCreator_,
+            address(0) // no secondary hook
         );
 
         poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams);

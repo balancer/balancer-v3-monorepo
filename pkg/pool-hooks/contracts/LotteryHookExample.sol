@@ -96,14 +96,16 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
 
     /// @inheritdoc IHooks
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
+    ) public override returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
+
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         emit LotteryHookExampleRegistered(address(this), pool);
 
@@ -124,7 +126,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
     /// @inheritdoc IHooks
     function onAfterSwap(
         AfterSwapParams calldata params
-    ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+    ) public override onlyAuthorizedCaller returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
             // If the Router is trusted, draw a number as a lottery entry. (If router is not trusted, the user can

@@ -65,18 +65,28 @@ contract LBPoolFactory is BaseLBPFactory {
      * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
-     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
+     * @param poolCreator Address that will be registered as the pool creator, which receives part of the protocol fees
+     * @param secondaryHookContract Optional secondary hook contract. (The pool itself is the primary hook.)
      */
     function create(
         LBPCommonParams memory lbpCommonParams,
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
         bytes32 salt,
-        address poolCreator
+        address poolCreator,
+        address secondaryHookContract
     ) public nonReentrant returns (address pool) {
         MigrationParams memory migrationParams;
 
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
+        pool = _createPool(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            swapFeePercentage,
+            salt,
+            poolCreator,
+            secondaryHookContract
+        );
     }
 
     /**
@@ -86,6 +96,7 @@ contract LBPoolFactory is BaseLBPFactory {
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
+     * @param secondaryHookContract Optional secondary hook contract. (The pool itself is the primary hook.)
      */
     function createWithMigration(
         LBPCommonParams memory lbpCommonParams,
@@ -93,9 +104,18 @@ contract LBPoolFactory is BaseLBPFactory {
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
         bytes32 salt,
-        address poolCreator
+        address poolCreator,
+        address secondaryHookContract
     ) public nonReentrant returns (address pool) {
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
+        pool = _createPool(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            swapFeePercentage,
+            salt,
+            poolCreator,
+            secondaryHookContract
+        );
     }
 
     function _createPool(
@@ -104,7 +124,8 @@ contract LBPoolFactory is BaseLBPFactory {
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
         bytes32 salt,
-        address poolCreator
+        address poolCreator,
+        address secondaryHookContract
     ) internal returns (address pool) {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason.
@@ -123,7 +144,8 @@ contract LBPoolFactory is BaseLBPFactory {
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            poolVersion: _poolVersion
+            poolVersion: _poolVersion,
+            secondaryHookContract: secondaryHookContract
         });
 
         pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);

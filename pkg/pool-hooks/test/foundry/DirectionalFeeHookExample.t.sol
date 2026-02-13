@@ -6,28 +6,21 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    HooksConfig,
-    LiquidityManagement,
-    PoolRoleAccounts,
-    SwapKind,
-    TokenConfig,
-    PoolSwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
-
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -124,10 +117,9 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         // Registration fails because this factory is not allowed to register the hook.
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
-                directionalFeePool,
-                address(poolFactoryMock)
+                IHooks.FactoryValidationFailed.selector,
+                address(poolFactoryMock),
+                directionalFeePool
             )
         );
         _registerPoolWithHook(directionalFeePool, tokenConfig);

@@ -152,7 +152,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
@@ -177,7 +178,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         vm.expectRevert(IFixedPriceLBPool.TokenSwapsInUnsupported.selector);
@@ -606,9 +608,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testOnRegisterWrongPool() public {
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
+        (address pool, TokenConfig[] memory tokenConfig) = _directDeployNewPool();
 
         // Mock vault call to onRegister with wrong pool address
         vm.prank(address(vault));
@@ -628,10 +628,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     }
 
     function testOnRegisterSuccess() public {
-        // Create token config array with 2 standard tokens
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
+        (address pool, TokenConfig[] memory tokenConfig) = _directDeployNewPool();
 
         // Mock vault call to onRegister with correct parameters
         vm.prank(address(vault));
@@ -648,6 +645,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         );
 
         assertTrue(success, "onRegister should return true when parameters are valid");
+        assertEq(IHooks(pool).getAuthorizedCaller(), address(vault), "Wrong authorized caller");
     }
 
     function testGetHookFlags() public view {
@@ -853,7 +851,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
@@ -907,6 +906,34 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         return _createFixedPriceLBPool(address(0), startTime, endTime, DEFAULT_RATE);
     }
 
+    function _directDeployNewPool() internal returns (address newPool, TokenConfig[] memory tokenConfig) {
+        // Create token config array with 2 standard tokens
+        tokenConfig = vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20());
+
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "FixedPriceLBPool",
+            symbol: "FLBP",
+            owner: admin,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
+        });
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
+        });
+
+        newPool = address(new FixedPriceLBPool(lbpCommonParams, factoryParams, DEFAULT_RATE));
+    }
+
     function _createFixedPriceLBPool(
         address poolCreator,
         uint32 startTime,
@@ -927,7 +954,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         uint256 salt = _saltCounter++;

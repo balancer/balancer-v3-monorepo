@@ -5,14 +5,22 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+
 import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
 import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
+import { LBPool } from "../../../contracts/lbp/LBPool.sol";
 import { BaseLBPTest } from "./BaseLBPTest.sol";
 
 abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
+    using CastingHelpers for address[];
+    using ArrayHelpers for *;
+
     uint256 internal constant HIGH_WEIGHT = uint256(70e16);
     uint256 internal constant LOW_WEIGHT = uint256(30e16);
     uint256 internal constant DEFAULT_WEIGHT = uint256(50e16);
@@ -30,7 +38,7 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         super.setUp();
     }
 
-    function onAfterDeployMainContracts() internal override {
+    function onAfterDeployMainContracts() internal virtual override {
         super.onAfterDeployMainContracts();
 
         startWeights = new uint256[](2);
@@ -139,7 +147,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             lbpParams,
             swapFee,
             bytes32(salt),
-            poolCreator_
+            poolCreator_,
+            address(0) // no secondary hook
         );
 
         poolArgs = abi.encode(
@@ -189,14 +198,15 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         // Copy to local variable to free up parameter stack slot.
         address poolCreator_ = poolCreator;
         uint256 salt = _saltCounter++;
 
-        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_);
+        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_, address(0));
 
         poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
     }
@@ -235,15 +245,54 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         FactoryParams memory factoryParams = FactoryParams({
             vault: vault,
             trustedRouter: address(router),
-            poolVersion: poolVersion
+            poolVersion: poolVersion,
+            secondaryHookContract: address(0)
         });
 
         // Copy to local variable to free up parameter stack slot.
         address poolCreator_ = poolCreator;
         uint256 salt = _saltCounter++;
 
-        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_);
+        newPool = lbPoolFactory.create(lbpCommonParams, lbpParams, swapFee, bytes32(salt), poolCreator_, address(0));
 
         poolArgs = abi.encode(lbpCommonParams, migrationParams, lbpParams, vault, factoryParams);
+    }
+
+    function _directDeployNewPool() internal returns (address newPool, TokenConfig[] memory tokenConfig) {
+        // Create token config array with 2 standard tokens
+        tokenConfig = vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20());
+
+        uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        LBPCommonParams memory lbpCommonParams = LBPCommonParams({
+            name: "LBPool",
+            symbol: "LBP",
+            owner: bob,
+            projectToken: dai,
+            reserveToken: usdc,
+            startTime: startTime,
+            endTime: endTime,
+            blockProjectTokenSwapsIn: false
+        });
+
+        LBPParams memory lbpParams = LBPParams({
+            projectTokenStartWeight: 80e16,
+            reserveTokenStartWeight: 20e16,
+            projectTokenEndWeight: 20e16,
+            reserveTokenEndWeight: 80e16,
+            reserveTokenVirtualBalance: 0
+        });
+
+        MigrationParams memory migrationParams;
+
+        FactoryParams memory factoryParams = FactoryParams({
+            vault: vault,
+            trustedRouter: address(router),
+            poolVersion: "v1",
+            secondaryHookContract: address(0)
+        });
+
+        newPool = address(new LBPool(lbpCommonParams, migrationParams, lbpParams, factoryParams));
     }
 }

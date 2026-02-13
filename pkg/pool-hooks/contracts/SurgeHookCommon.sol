@@ -86,6 +86,9 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public virtual override onlyVault returns (bool) {
+        // The surge hooks are hard-coded to be primary, so the `_authorizedCaller` is always the Vault.
+        _authorizedCaller = address(_vault);
+
         // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
         // in the future).
         _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);

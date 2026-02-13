@@ -4,24 +4,20 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    HooksConfig,
-    LiquidityManagement,
-    PoolRoleAccounts,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
+import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { VeBALFeeDiscountHookExample } from "../../contracts/VeBALFeeDiscountHookExample.sol";
 
@@ -71,12 +67,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         address unauthorizedFactory = address(deployPoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
-                veBalFeePool,
-                unauthorizedFactory
-            )
+            abi.encodeWithSelector(IHooks.FactoryValidationFailed.selector, unauthorizedFactory, veBalFeePool)
         );
         _registerPoolWithHook(veBalFeePool, tokenConfig, unauthorizedFactory);
     }
@@ -87,15 +78,16 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
-                veBalFeePool,
-                poolFactory
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(IHooks.FactoryValidationFailed.selector, poolFactory, veBalFeePool));
         _registerPoolWithHook(veBalFeePool, tokenConfig, poolFactory);
+    }
+
+    function testHookGetters() public view {
+        assertEq(
+            address(IHooks(poolHooksContract).getAuthorizedCaller()),
+            address(vault),
+            "Authorized caller is not the Vault"
+        );
     }
 
     function testSuccessfulRegistry() public {

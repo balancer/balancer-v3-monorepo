@@ -99,7 +99,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),
             trustedRouter: _trustedRouter,
-            poolVersion: _poolVersion
+            poolVersion: _poolVersion,
+            secondaryHookContract: address(0)
         });
 
         pool = _create(abi.encode(lbpCommonParams, factoryParams, projectTokenRate), salt);

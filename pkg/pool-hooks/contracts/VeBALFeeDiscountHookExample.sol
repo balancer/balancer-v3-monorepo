@@ -8,12 +8,7 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
@@ -61,15 +56,17 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
+    ) public override returns (bool) {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
         // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFeePercentage, this
         // might be an overkill in real applications because the pool math doesn't play a role in the discount
-        // calculation.
+        // calculation. We override `_enforceFactoryConstraints` to check this.
+
+        _setAuthorizedCaller(factory, pool, address(_vault));
 
         emit VeBALFeeDiscountHookExampleRegistered(address(this), factory, pool);
 
-        return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -77,7 +74,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         PoolSwapParams calldata params,
         address,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override onlyAuthorizedCaller returns (bool, uint256) {
         // If the Router is not trusted, do not apply the veBAL discount. `getSender` may be manipulated by a
         // malicious router.
         if (params.router != _trustedRouter) {
@@ -92,5 +89,13 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         }
 
         return (true, staticSwapFeePercentage);
+    }
+
+    /// @inheritdoc BaseHooks
+    function _enforceFactoryConstraints(address factory, address pool) internal view override {
+        require(
+            factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool),
+            FactoryValidationFailed(factory, pool)
+        );
     }
 }
