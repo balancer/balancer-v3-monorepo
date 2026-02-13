@@ -24,8 +24,8 @@ library LBPValidation {
     // by migrating a trivial amount of the proceeds.
     uint256 internal constant MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
 
-    // Matches WeightedPool constant; ensures the migration can't fail due to an invalid weight value.
-    uint256 internal constant MIN_WEIGHTED_POOL_WEIGHT = 1e16; // 1%
+    // Must be equal to or greater than the WeightedPool minimum weight; ensures the migration pool has valid weights.
+    uint256 internal constant MIN_PROJECT_TOKEN_MIGRATION_WEIGHT = 1e16; // 1%
 
     // Start time must be at least this far in the future, to allow time for funding the LBP (which can only be done
     // before the sale starts). It is a uint32 to match the timestamp bit length.
@@ -128,7 +128,7 @@ library LBPValidation {
 
             if (
                 totalTokenWeight != FixedPoint.ONE ||
-                migrationParams.migrationWeightProjectToken < MIN_WEIGHTED_POOL_WEIGHT || // We already know it's > 0
+                migrationParams.migrationWeightProjectToken < MIN_PROJECT_TOKEN_MIGRATION_WEIGHT ||
                 migrationParams.migrationWeightReserveToken < MIN_RESERVE_TOKEN_MIGRATION_WEIGHT
             ) {
                 revert InvalidMigrationWeights();
