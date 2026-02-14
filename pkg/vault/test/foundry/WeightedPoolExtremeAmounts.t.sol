@@ -12,7 +12,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using ArrayHelpers for *;

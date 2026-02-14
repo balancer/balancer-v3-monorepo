@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,7 +16,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BalancerPoolTokenTest is BaseVaultTest {

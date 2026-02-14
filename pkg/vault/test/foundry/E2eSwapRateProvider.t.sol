@@ -12,10 +12,9 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
-
-import { E2eSwapTest, E2eTestState, SwapLimits } from "./E2eSwap.t.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
+import { E2eSwapTest, E2eTestState } from "./E2eSwap.t.sol";
 
 contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     using CastingHelpers for address[];

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -13,23 +11,15 @@ import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISend
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    PoolRoleAccounts,
-    TokenConfig,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { RouterMock } from "../../contracts/test/RouterMock.sol";
-import { RouterHooks } from "../../contracts/RouterHooks.sol";
-import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { SimpleEIP7702Contract } from "./utils/SimpleEIP7702Contract.sol";
+import { RouterHooks } from "../../contracts/RouterHooks.sol";
 
 contract PrepaidRouterTest is BaseVaultTest {
     using Address for address payable;
