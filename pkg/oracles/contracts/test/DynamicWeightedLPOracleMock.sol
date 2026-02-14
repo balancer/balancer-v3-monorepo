@@ -17,6 +17,7 @@ contract DynamicWeightedLPOracleMock is DynamicWeightedLPOracle {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         DynamicWeightedLPOracle(
@@ -26,6 +27,7 @@ contract DynamicWeightedLPOracleMock is DynamicWeightedLPOracle {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {

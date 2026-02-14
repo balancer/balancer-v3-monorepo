@@ -36,6 +36,7 @@ contract EclpLPOracle is LPOracleBase {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         LPOracleBase(
@@ -45,6 +46,7 @@ contract EclpLPOracle is LPOracleBase {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {

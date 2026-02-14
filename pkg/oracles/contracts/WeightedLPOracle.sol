@@ -38,6 +38,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         LPOracleBase(
@@ -47,6 +48,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {

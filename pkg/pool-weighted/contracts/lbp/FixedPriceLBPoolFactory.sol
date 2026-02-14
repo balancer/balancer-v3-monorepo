@@ -94,7 +94,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
     ) internal returns (address pool) {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason.
-        lbpCommonParams.startTime = LBPValidation.validateCommonParams(lbpCommonParams);
+        LBPValidation.validateCommonParams(lbpCommonParams);
 
         FactoryParams memory factoryParams = FactoryParams({
             vault: getVault(),

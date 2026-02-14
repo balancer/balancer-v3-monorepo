@@ -120,7 +120,12 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testCreatePool() public {
-        (pool, ) = _createLBPool(bob, uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(
+            bob,
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            true
+        );
         initPool();
 
         // Verify pool was created and initialized correctly
@@ -327,7 +332,12 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testAddLiquidityPermission() public {
-        (pool, ) = _createLBPool(address(0), uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            true
+        );
         initPool();
 
         // Try to add to the pool without permission.
@@ -340,7 +350,12 @@ contract LBPoolFactoryTest is WeightedLBPTest {
     }
 
     function testDonationNotAllowed() public {
-        (pool, ) = _createLBPool(address(0), uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            true
+        );
         initPool();
 
         // Try to donate to the pool
