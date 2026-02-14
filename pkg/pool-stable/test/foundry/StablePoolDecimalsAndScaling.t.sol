@@ -23,7 +23,8 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
  * @dev BaseVaultTest's default "USDC" is 18 decimals by design; this file fills that gap using:
  *  - usdc6Decimals (6 decimals)
  *  - wbtc8Decimals (8 decimals)
- * @dev compile --via-ir
+ *
+ * compile --via-ir
  */
 contract StablePoolDecimalsAndScalingTest is StablePoolContractsDeployer, BaseVaultTest {
     uint256 internal constant DEFAULT_AMP = 200;
@@ -82,7 +83,8 @@ contract StablePoolDecimalsAndScalingTest is StablePoolContractsDeployer, BaseVa
             // - USDC-6: 1e6 raw (1 USDC) yields feeRaw ~= 1
             // - WBTC-8: 1e6 raw (0.01 WBTC) yields feeRaw ~= 1
             uint256 minAmountIn = 1e6;
-            uint256 maxAmountIn = swapUsdcToWbtc ? (100_000 * 1e6) : (1e8); // 100k USDC or 1 WBTC
+            // 1k USDC or 1k WBTC (avoids MaxImbalance issue)
+            uint256 maxAmountIn = swapUsdcToWbtc ? (1_000 * 1e6) : (1_000 * 1e8);
             uint256 amountIn = bound(rawAmountIn, minAmountIn, maxAmountIn);
 
             uint256 feesBefore = vault.getAggregateSwapFeeAmount(pool, tokenIn);
