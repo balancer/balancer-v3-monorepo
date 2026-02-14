@@ -143,9 +143,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         return newPool;
     }
 
-    /**
-     * @notice Override to use 2 tokens for ECLP
-     */
+    /// @notice Override to use 2 tokens for ECLP.
     function getTokensAndInitialBalances()
         internal
         view
@@ -163,12 +161,10 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                               FUZZ FUNCTIONS
+                                    Fuzz Functions
      ***************************************************************************/
 
-    /**
-     * @notice Fuzz: Add liquidity proportionally
-     */
+    /// @notice Fuzz: Add liquidity proportionally.
     function addLiquidityProportional(uint256 amountIn) external {
         amountIn = _boundAmount(amountIn);
 
@@ -226,9 +222,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Add liquidity unbalanced (limited in ECLP)
-     */
+    /// @notice Fuzz: Add liquidity unbalanced (limited in ECLP).
     function addLiquidityUnbalanced(uint256 amountIn0, uint256 amountIn1) external {
         // ECLP has stricter limits on unbalanced operations
         amountIn0 = _boundAmount(amountIn0);
@@ -294,9 +288,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Remove liquidity proportionally
-     */
+    /// @notice Fuzz: Remove liquidity proportionally.
     function removeLiquidityProportional(uint256 bptIn) external {
         uint256 lpBalance = IERC20(address(pool)).balanceOf(lp);
         if (lpBalance == 0) return;
@@ -349,9 +341,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Remove liquidity single token (limited in ECLP)
-     */
+    /// @notice Fuzz: Remove liquidity single token (limited in ECLP).
     function removeLiquiditySingleTokenExactOut(uint256 amountOut, uint256 tokenIndex) external {
         tokenIndex = tokenIndex % 2;
 
@@ -406,7 +396,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                              HELPER FUNCTIONS
+                                    Helper Functions
      ***************************************************************************/
 
     function _boundAmount(uint256 amount) internal pure returns (uint256) {
