@@ -34,20 +34,27 @@ contract EclpLPOracleFactoryTest is GyroEclpPoolDeployer, LPOracleFactoryBaseTes
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = false;
+        bool shouldRevertIfVaultUnlocked = true;
 
         // Snapshot is needed to predict the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
         vm.revertToState(snapshot);
 
         vm.expectEmit();
         emit EclpLPOracleFactory.EclpLPOracleCreated(
             IGyroECLPPool(address(pool)),
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             feeds,
             ILPOracleBase(address(oracle))
         );
-        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, shouldRevertIfVaultUnlocked, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {

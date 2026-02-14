@@ -21,12 +21,14 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
      * @notice A new Weighted Pool oracle was created.
      * @param pool The address of the Weighted Pool
      * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
+     * @param shouldRevertIfVaultUnlocked If true, revert if the Vault is unlocked (i.e., processing a transaction)
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
     event WeightedLPOracleCreated(
         IWeightedPool indexed pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] feeds,
         IWeightedLPOracle oracle
     );
@@ -45,6 +47,7 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
         IVault vault,
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         IWeightedLPOracle weightedOracle = new WeightedLPOracle(
@@ -54,12 +57,14 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             _oracleVersion
         );
         oracle = ILPOracleBase(address(weightedOracle));
         emit WeightedLPOracleCreated(
             IWeightedPool(address(pool)),
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             feeds,
             weightedOracle
         );

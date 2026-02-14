@@ -55,12 +55,25 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
+        bool shouldRevertIfVaultUnlocked = false;
 
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
+            address(
+                _factory.getOracle(
+                    IBasePool(address(pool)),
+                    shouldUseBlockTimeForOldestFeedUpdate,
+                    shouldRevertIfVaultUnlocked,
+                    feeds
+                )
+            ),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
@@ -68,7 +81,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
     function testGetNonExistentOracle() external view {
         assertEq(
-            address(_factory.getOracle(IBasePool(address(0x123)), false, new AggregatorV3Interface[](0))),
+            address(_factory.getOracle(IBasePool(address(0x123)), false, false, new AggregatorV3Interface[](0))),
             address(0)
         );
     }
@@ -78,23 +91,48 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = false;
+        bool shouldRevertIfVaultUnlocked = false;
 
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
 
         assertEq(
             address(oracle),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds)),
+            address(
+                _factory.getOracle(
+                    IBasePool(address(pool)),
+                    shouldUseBlockTimeForOldestFeedUpdate,
+                    shouldRevertIfVaultUnlocked,
+                    feeds
+                )
+            ),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
 
         AggregatorV3Interface[] memory feeds2 = _createFeeds(pool);
 
-        ILPOracleBase oracle2 = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds2);
+        ILPOracleBase oracle2 = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds2
+        );
 
         assertEq(
             address(oracle2),
-            address(_factory.getOracle(IBasePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds2)),
+            address(
+                _factory.getOracle(
+                    IBasePool(address(pool)),
+                    shouldUseBlockTimeForOldestFeedUpdate,
+                    shouldRevertIfVaultUnlocked,
+                    feeds2
+                )
+            ),
             "Oracle address mismatch"
         );
         assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle2 should be from factory");
@@ -105,16 +143,22 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         // Set updatedAt flag to true initially.
-        ILPOracleBase oracle = _factory.create(pool, true, feeds);
+        ILPOracleBase oracle = _factory.create(pool, true, false, feeds);
 
         // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
         vm.expectRevert(
-            abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, true, feeds, oracle)
+            abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, true, false, feeds, oracle)
         );
-        _factory.create(pool, true, feeds);
+        _factory.create(pool, true, false, feeds);
 
         // Can create an otherwise identical oracle with a different flag setting.
-        _factory.create(pool, false, feeds);
+        _factory.create(pool, false, true, feeds);
+
+        // Can create an otherwise identical oracle with a different flag setting.
+        _factory.create(pool, false, false, feeds);
+
+        // Can create an otherwise identical oracle with a different flag setting.
+        _factory.create(pool, true, true, feeds);
     }
 
     function testDisable() public {
@@ -122,7 +166,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         _factory.disable();
 
         vm.expectRevert(ILPOracleFactoryBase.OracleFactoryIsDisabled.selector);
-        _factory.create(IBasePool(address(123)), false, new AggregatorV3Interface[](0));
+        _factory.create(IBasePool(address(123)), false, false, new AggregatorV3Interface[](0));
 
         // Revert the second time
         vm.prank(admin);
@@ -139,7 +183,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        ILPOracleBase oracle = _factory.create(pool, false, feeds);
+        ILPOracleBase oracle = _factory.create(pool, false, false, feeds);
 
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = LPOracleBase(
             address(oracle)

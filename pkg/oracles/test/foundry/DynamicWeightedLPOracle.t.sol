@@ -67,6 +67,7 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             VERSION
         );
     }
@@ -155,5 +156,26 @@ contract DynamicWeightedLPOracleTest is WeightedLPOracleTest {
 
         router.initialize(address(pool), poolTokens, initialBalances, 0, false, bytes(""));
         vm.stopPrank();
+    }
+
+    function _createValidOracle() internal override returns (LPOracleBase) {
+        uint256 numTokens = 2;
+
+        uint256[] memory answers = new uint256[](numTokens);
+        uint256[] memory updateTimestamps = new uint256[](numTokens);
+        for (uint256 i = 0; i < 2; i++) {
+            answers[i] = 1e18;
+            updateTimestamps[i] = block.timestamp;
+        }
+
+        (WeightedPoolMock pool, ) = _createAndInitPool();
+        (LPOracleBase _oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        DynamicWeightedLPOracle oracle = DynamicWeightedLPOracle(address(_oracle));
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        return LPOracleBase(oracle);
     }
 }
