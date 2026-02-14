@@ -67,7 +67,7 @@ contract VaultNoFreeValueMedusaTest is BaseMedusaTest {
     }
 
     /***************************************************************************
-     *                            Actions (fuzzed)
+                                  Actions (fuzzed)
      ***************************************************************************/
 
     function computeSwapExactIn(uint256 tokenIndexIn, uint256 tokenIndexOut, uint256 exactAmountIn) public {
@@ -132,7 +132,7 @@ contract VaultNoFreeValueMedusaTest is BaseMedusaTest {
     }
 
     /***************************************************************************
-     *                              Properties
+                                    Properties
      ***************************************************************************/
 
     function property_tokenConservation() public view returns (bool) {
@@ -160,7 +160,7 @@ contract VaultNoFreeValueMedusaTest is BaseMedusaTest {
     }
 
     /***************************************************************************
-     *                         Pool construction override
+                               Pool construction override
      ***************************************************************************/
 
     function createPool(
@@ -186,7 +186,7 @@ contract VaultNoFreeValueMedusaTest is BaseMedusaTest {
     }
 
     /***************************************************************************
-     *                               Helpers
+                                     Helpers
      ***************************************************************************/
 
     function _computeInvariant(Rounding rounding) internal view returns (uint256) {

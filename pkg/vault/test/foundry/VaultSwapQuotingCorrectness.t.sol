@@ -18,7 +18,7 @@ contract VaultSwapQuotingCorrectnessTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testExactIn_MinAmountOutTooHighReverts__Fuzz(uint256 rawAmountIn) public {
+    function testExactInMinAmountOutTooHigh__Fuzz(uint256 rawAmountIn) public {
         (IERC20[] memory poolTokens, , , ) = vault.getPoolTokenInfo(pool);
         IERC20 tokenIn = poolTokens[0];
         IERC20 tokenOut = poolTokens[1];
@@ -61,7 +61,7 @@ contract VaultSwapQuotingCorrectnessTest is BaseVaultTest {
         assertEq(out, quotedOut, "quote (andRevert) and execution must match exactly");
     }
 
-    function testExactOut_MaxAmountInTooLowReverts__Fuzz(uint256 rawAmountOut) public {
+    function testExactOutMaxAmountInTooLow__Fuzz(uint256 rawAmountOut) public {
         (IERC20[] memory poolTokens, , , ) = vault.getPoolTokenInfo(pool);
         IERC20 tokenIn = poolTokens[0];
         IERC20 tokenOut = poolTokens[1];

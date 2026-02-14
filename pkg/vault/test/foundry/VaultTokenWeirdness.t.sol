@@ -38,7 +38,7 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testFeeOnTransferToken_AddLiquidityRevertsAndPoolNotInitialized() public {
+    function testFeeOnTransferTokenAddLiquidityRevertsAndPoolNotInitialized() public {
         FeeOnTransferERC20 feeToken = new FeeOnTransferERC20("FOT", "FOT", 18, 100); // 1% fee
         feeToken.mint(lp, 1_000_000e18);
 
@@ -67,7 +67,7 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
         router.initialize(p, toks, amounts, 0, false, bytes(""));
     }
 
-    function testOddDecimalsTokens_SwapExactInDoesNotBreakBptRate__Fuzz(uint256 rawAmountIn) public {
+    function testOddDecimalsTokensSwapExactInDoesNotBreakBptRate__Fuzz(uint256 rawAmountIn) public {
         (address p, IERC20[] memory toks) = _deployOddDecimalsPool();
         _assertSwapDoesNotBreakBptRate(p, toks, rawAmountIn);
     }
@@ -179,8 +179,9 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
 }
 
 /**
- * @dev ERC20 that charges a fee (burn) on transfer/transferFrom.
- *      This breaks the Router/Vault assumption that an exact amount was transferred, so operations should safely revert.
+ * @notice ERC20 that charges a fee (burn) on transfer/transferFrom.
+ * @dev This breaks the Router/Vault assumption that an exact amount was transferred, so operations should
+ * safely revert.
  */
 contract FeeOnTransferERC20 is ERC20 {
     uint8 private immutable _decimals;

@@ -23,7 +23,6 @@ import { Vault } from "../../contracts/Vault.sol";
  * @notice A collection of "fail-fast" tests for revert conditions in the Vault.
  * @dev Grouped by concern into separate contracts to keep setup minimal and explicit.
  */
-
 contract VaultSwapInputValidationTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -53,8 +52,8 @@ contract VaultSwapInputValidationTest is BaseVaultTest {
     }
 
     /**
-     * @dev Called by the Vault as part of `unlock`.
-     * In this context, `msg.sender` is the Vault, so we call back into it to exercise `Vault.swap` validations.
+     * @notice Called by the Vault as part of `unlock`.
+     * @dev In this context, `msg.sender` is the Vault, so we call back into it to exercise `Vault.swap` validations.
      */
     function doVaultSwap(VaultSwapParams calldata params) external {
         IVault(msg.sender).swap(params);
@@ -113,8 +112,8 @@ contract VaultSwapInputValidationTest is BaseVaultTest {
 }
 
 /**
- * @dev Minimal vault extension that always returns the caller as the "vault".
- * When called from the Vault constructor, msg.sender is the Vault being deployed, so this satisfies
+ * @notice Minimal vault extension that always returns the caller as the "vault".
+ * @dev When called from the Vault constructor, msg.sender is the Vault being deployed, so this satisfies
  * `vaultExtension.vault() == address(this)` without requiring precomputed addresses.
  */
 contract GoodVaultExtension {

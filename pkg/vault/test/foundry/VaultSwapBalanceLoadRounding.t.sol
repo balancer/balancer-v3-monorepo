@@ -20,10 +20,11 @@ import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 /**
- * @notice Regression test: the Vault passes `balancesScaled18` into `IBasePool.onSwap` that correspond to
- *         raw balances scaled with `toScaled18ApplyRateRoundDown` (i.e., no "11.9 -> 11" style truncation).
+ * @notice Regression test: the Vault passes `balancesScaled18` into `IBasePool.onSwap`
+ * @dev These correspond to raw balances scaled with `toScaled18ApplyRateRoundDown` (i.e., no "11.9 -> 11" style
+ * truncation).
  *
- * @dev This is intentionally Vault-level (not a math PoC): it asserts the *actual calldata* a pool receives.
+ * This is intentionally Vault-level (not a math PoC): it asserts the *actual calldata* a pool receives.
  */
 contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -73,9 +74,7 @@ contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
         poolArgs = abi.encode(vault, name, symbol);
     }
 
-    /**
-     * @dev Called by the Vault as part of `unlock`. In this context, `msg.sender` is the Vault.
-     */
+    /// @dev Called by the Vault as part of `unlock`. In this context, `msg.sender` is the Vault.
     function doVaultSwap(VaultSwapParams calldata params) external {
         (, , uint256 amountOut) = IVault(msg.sender).swap(params);
 

@@ -22,7 +22,8 @@ import { VaultAdmin } from "../../contracts/VaultAdmin.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 /**
- * @notice Tests that exist purely to close VaultCore coverage gaps:
+ * @notice Tests that exist purely to close VaultCore coverage gaps.
+ * @dev These include:
  * - contracts/Vault.sol
  * - contracts/VaultAdmin.sol
  * - contracts/VaultCommon.sol
@@ -38,28 +39,28 @@ contract CoverageVaultCoreGapsTest is BaseVaultTest {
         _unlockCaller = new UnlockCaller(IVaultMain(address(vault)));
     }
 
-    function testVaultCommon_reentrancyGuardEntered_isCallable() public view {
+    function testVaultCommonReentrancyGuardEntered() public view {
         // Covers `VaultCommon.reentrancyGuardEntered()`.
         bool entered = IVaultCommonView(address(vault)).reentrancyGuardEntered();
         // No strict expectation, just ensure it can be called.
         entered; // silence unused warning
     }
 
-    function testVault_addLiquidity_InvalidAddLiquidityKind_reverts() public pure {
+    function testVaultAddLiquidityInvalidAddLiquidityKind() public pure {
         // NOTE: Solidity ABI decoding rejects out-of-range enum values, so reaching the "InvalidAddLiquidityKind"
         // revert inside `Vault._addLiquidity` is not possible via external calls.
         // We keep this placeholder to document the gap; the line is excluded from LCOV in-source.
         assertTrue(true);
     }
 
-    function testVault_removeLiquidity_InvalidRemoveLiquidityKind_reverts() public pure {
+    function testVaultRemoveLiquidityInvalidRemoveLiquidityKind() public pure {
         // NOTE: Solidity ABI decoding rejects out-of-range enum values, so reaching the "InvalidRemoveLiquidityKind"
         // revert inside `Vault._removeLiquidity` is not possible via external calls.
         // We keep this placeholder to document the gap; the line is excluded from LCOV in-source.
         assertTrue(true);
     }
 
-    function testVault_swap_ProtocolFeesExceedTotalCollected_reverts_whenAggregateFeeCorrupted() public {
+    function testVaultSwapProtocolFeesExceedTotalCollectedAggregateFeeCorrupted() public {
         // The check in `Vault._computeAndChargeAggregateSwapFees` is defensive; normally aggregate fee <= total fee.
         // We intentionally corrupt the aggregate swap fee bits in storage to exceed 100% and hit the revert branch.
         _corruptAggregateSwapFeePercentageBits(pool);
@@ -70,7 +71,7 @@ contract CoverageVaultCoreGapsTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testVaultAdmin_updateAggregateSwapFeePercentage_reverts_whenAboveOne() public {
+    function testVaultAdminUpdateAggregateSwapFeePercentageAboveOne() public {
         // Covers `VaultAdmin.withValidPercentage` revert branch.
         vm.prank(address(feeController));
         vm.expectRevert(IVaultErrors.ProtocolFeesExceedTotalCollected.selector);
@@ -137,7 +138,7 @@ contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
         _unlockCaller = new UnlockCaller(IVaultMain(address(vault)));
     }
 
-    function testVault_erc4626BufferWrapOrUnwrap_revertsOnSwapLimit_exactIn() public {
+    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactIn() public {
         // exact-in: revert if amountOutRaw < limitRaw
         BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
             kind: SwapKind.EXACT_IN,
@@ -151,7 +152,7 @@ contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
         _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCaller.cbWrapOrUnwrap, (params)));
     }
 
-    function testVault_erc4626BufferWrapOrUnwrap_revertsOnSwapLimit_exactOut() public {
+    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactOut() public {
         // exact-out: revert if amountInRaw > limitRaw
         BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
             kind: SwapKind.EXACT_OUT,
@@ -165,7 +166,7 @@ contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
         _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCaller.cbWrapOrUnwrap, (params)));
     }
 
-    function testVaultAdmin_removeLiquidityFromBufferHook_revertsOnMinUnderlyingOut() public {
+    function testVaultAdminRemoveLiquidityFromBufferHookMinUnderlyingOut() public {
         uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
         vm.prank(lp);
         vm.expectRevert();
@@ -173,7 +174,7 @@ contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
         vault.removeLiquidityFromBuffer(waDAI, shares / 10, type(uint256).max, 0);
     }
 
-    function testVaultAdmin_removeLiquidityFromBufferHook_revertsOnMinWrappedOut() public {
+    function testVaultAdminRemoveLiquidityFromBufferHookMinWrappedOut() public {
         uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
         vm.prank(lp);
         vm.expectRevert();
@@ -184,17 +185,17 @@ contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
 
 contract CoverageVaultAdminConstructorGapsTest is Test {
     // These tests cover constructor revert branches in VaultAdmin.sol.
-    function testVaultAdmin_constructor_revertsWhenPauseWindowTooLarge() public {
+    function testVaultAdminPauseWindowTooLarge() public {
         vm.expectRevert(IVaultErrors.VaultPauseWindowDurationTooLarge.selector);
         new VaultAdmin(IVault(address(1)), uint32(type(uint32).max), 0, 0, 0);
     }
 
-    function testVaultAdmin_constructor_revertsWhenBufferPeriodTooLarge() public {
+    function testVaultAdminBufferPeriodTooLarge() public {
         vm.expectRevert(IVaultErrors.PauseBufferPeriodDurationTooLarge.selector);
         new VaultAdmin(IVault(address(1)), 0, uint32(type(uint32).max), 0, 0);
     }
 
-    function testVaultAdmin_queryModeBufferSharesIncrease_revertsWhenNotStaticCall() public {
+    function testVaultAdminQueryModeBufferSharesIncreaseNotStaticCall() public {
         VaultAdminQueryModeHarness h = new VaultAdminQueryModeHarness(IVault(address(1)));
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
         h.callQueryModeBufferSharesIncreaseNonStatic();
