@@ -19,6 +19,7 @@ contract StableLPOracleMock is StableLPOracle {
         AggregatorV3Interface sequencerUptimeFeed,
         uint256 uptimeResyncWindow,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         uint256 version_
     )
         StableLPOracle(
@@ -28,6 +29,7 @@ contract StableLPOracleMock is StableLPOracle {
             sequencerUptimeFeed,
             uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             version_
         )
     {

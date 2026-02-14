@@ -27,6 +27,7 @@ import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLP
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { EclpLPOracleMock } from "../../contracts/test/EclpLPOracleMock.sol";
+import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 import { EclpLPOracle } from "../../contracts/EclpLPOracle.sol";
 import { BaseLPOracleTest } from "./utils/BaseLPOracleTest.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
@@ -63,6 +64,7 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
             uptimeFeed,
             UPTIME_RESYNC_WINDOW,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             VERSION
         );
     }
@@ -677,5 +679,23 @@ contract EclpLPOracleTest is BaseLPOracleTest, GyroEclpPoolDeployer {
         }
 
         revert("Could not find market balances");
+    }
+
+    function _createValidOracle() internal override returns (LPOracleBase) {
+        uint256[] memory answers = new uint256[](NUM_TOKENS);
+        uint256[] memory updateTimestamps = new uint256[](NUM_TOKENS);
+        for (uint256 i = 0; i < NUM_TOKENS; i++) {
+            answers[i] = 1e18;
+            updateTimestamps[i] = block.timestamp;
+        }
+
+        IGyroECLPPool pool = createAndInitPool();
+        (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < NUM_TOKENS; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        return LPOracleBase(oracle);
     }
 }

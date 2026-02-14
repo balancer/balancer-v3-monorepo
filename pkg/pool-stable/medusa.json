@@ -31,7 +31,7 @@
       "assertionTesting": {
         "enabled": true,
         "testViewMethods": false,
-        "panicCodeConfig": {
+        "assertionModes": {
           "failOnCompilerInsertedPanic": false,
           "failOnAssertion": true,
           "failOnArithmeticUnderflow": false,
@@ -70,10 +70,12 @@
   "compilation": {
     "platform": "crytic-compile",
     "platformConfig": {
-      "target": ".",
+      "target": "test/foundry/fuzz",
       "solcVersion": "",
       "exportDirectory": "",
-      "args": ["--foundry-out-directory=forge-artifacts", "--foundry-compile-all"]
+      "args": [
+        "--foundry-compile-all"
+      ]
     }
   },
   "logging": {
