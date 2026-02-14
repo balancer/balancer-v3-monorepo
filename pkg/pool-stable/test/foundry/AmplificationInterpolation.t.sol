@@ -18,7 +18,7 @@ import { StablePool } from "../../contracts/StablePool.sol";
 
 /**
  * @title AmplificationInterpolationTest
- * @notice Foundry fuzz tests for amplification parameter updates
+ * @notice Foundry fuzz tests for amplification parameter updates.
  * @dev Tests cover:
  *   - Amp value at exact start/end times
  *   - Amp monotonically changes during update
@@ -47,7 +47,7 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          REVERT BRANCH / BOUNDARY COVERAGE
+                          Revert Branch / Boundary Coverage
      ***************************************************************************/
 
     function testConstructorRevertsWhenAmpTooLow() public {
@@ -112,13 +112,13 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          EXACT TIMING TESTS
+                            Exact Timing Tests
      ***************************************************************************/
 
     /**
-     * @notice Off-by-one safety around endTime:
-     * - 1 second before: still updating and strictly between start/end (for increase).
-     * - at endTime and after: update is finished and amp is exactly the end value.
+     * @notice Off-by-one safety around endTime.
+     * @dev - 1 second before: still updating and strictly between start/end (for increase).
+     *      - at endTime and after: update is finished and amp is exactly the end value.
      */
     function testAmpAroundEndTimeBoundaries() public {
         uint256 startAmp = DEFAULT_AMP;
@@ -221,12 +221,10 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          RATE LIMIT TESTS
+                                 Rate Limit Tests
      ***************************************************************************/
 
-    /**
-     * @notice Test update at exactly maximum allowed rate succeeds
-     */
+    /// @notice Test update at exactly maximum allowed rate succeeds.
     function testUpdateAtMaxRate() public {
         uint256 startAmp = DEFAULT_AMP;
         // Double in exactly 1 day (max rate)
@@ -248,9 +246,7 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
         assertEq(state.endTime, endTime, "Wrong endTime");
     }
 
-    /**
-     * @notice Test halving rate (decrease) at max rate
-     */
+    /// @notice Test halving rate (decrease) at max rate.
     function testHalvingAtMaxRate() public {
         // Use a fresh pool initialized at 400 so we can test the downward rate limit directly.
         stablePool = _createAndInitStablePool(400, 1e20, 1e20);
@@ -293,8 +289,8 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
 
     /**
      * @notice Even though each individual update is capped at 2x/day, multiple sequential updates can compound.
-     * @dev This is explicitly called out in `StablePool.sol` and is important to keep as a documented, tested behavior.
-     * If this ever changes, it is a governance/process/security-relevant behavior change.
+     * @dev This is explicitly called out in `StablePool.sol` and is important to keep as a documented,
+     * tested behavior. If this ever changes, it is a governance/process/security-relevant behavior change.
      */
     function testSequentialDoublingReaches8xOver3Days() public {
         uint256 startAmp = DEFAULT_AMP; // 200
@@ -326,9 +322,7 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
         assertEq(amp3, a3 * AMP_PRECISION, "Amp should be 8x after day 3");
     }
 
-    /**
-     * @notice Test stop then restart works
-     */
+    /// @notice Test stop then restart works.
     function testStopThenRestart() public {
         uint256 endAmp1 = DEFAULT_AMP * 2;
         uint256 duration = 10 days;
@@ -383,12 +377,10 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          BOUNDARY VALUE TESTS
+                                Boundary Value Tests
      ***************************************************************************/
 
-    /**
-     * @notice Test update to minimum amp
-     */
+    /// @notice Test update to minimum amp.
     function testUpdateToMinAmp() public {
         // Need to create pool with higher amp first
         stablePool = _createAndInitStablePool(10, 1e20, 1e20);
@@ -406,12 +398,10 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          INTERPOLATION ACCURACY TESTS
+                          Interpolation Accuracy Tests
      ***************************************************************************/
 
-    /**
-     * @notice Test linear interpolation accuracy at various points
-     */
+    /// @notice Test linear interpolation accuracy at various points.
     function testInterpolationAccuracy__Fuzz(uint256 rawPercentage) public {
         // Include endpoints; this test subsumes separate "exact start/end" checks for interpolation math.
         uint256 percentage = bound(rawPercentage, 0, 100); // 0-100%
@@ -446,8 +436,9 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /**
-     * @notice Integration property: as amp increases over time, a fixed ExactIn swap on a fresh pool
-     * should not yield *less* output at a later timestamp (i.e., slippage should not worsen).
+     * @notice Integration property test.
+     * @dev As amp increases over time, a fixed ExactIn swap on a fresh pool should not yield *less* output at a later
+     * timestamp (i.e., slippage should not worsen).
      */
     function testSwapOutputMonotoneInTimeDuringIncreasingAmp__Fuzz(uint256 rawT1, uint256 rawT2) public {
         uint256 startAmp = DEFAULT_AMP;
@@ -505,7 +496,7 @@ contract AmplificationInterpolationTest is StablePoolContractsDeployer, BaseVaul
     }
 
     /***************************************************************************
-                          HELPER FUNCTIONS
+                                    Helper Functions
      ***************************************************************************/
 
     function _createAndInitStablePool(

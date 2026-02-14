@@ -21,7 +21,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     // Maximum allowed imbalance ratio (10,000:1) in 18-decimal fixed point.
     uint256 internal constant MAX_IMBALANCE_RATIO = 10_000e18;
 
-    // Stable pool specific parameters
+    // Stable pool specific parameters.
     uint256 internal constant AMPLIFICATION_PARAMETER = 200;
     uint256 internal constant AMP_PRECISION = StableMath.AMP_PRECISION;
 
@@ -31,7 +31,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     // register the pool with the minimum fee and then force it to 0 via the VaultMock unsafe setter.
     uint256 internal constant MIN_SWAP_FEE = 1e12; // 0.0001%
 
-    // Track state
+    // Track state.
     uint256 internal lastKnownInvariant;
     uint256 internal maxRoundTripProfit;
 
@@ -67,7 +67,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                                   FUZZ FUNCTIONS
+                                   Fuzz Functions
      ***************************************************************************/
 
     function swapExactIn(uint256 amountIn, uint256 tokenIndexIn) external {
@@ -156,7 +156,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                                INVARIANT PROPERTIES
+                                Invariant Properties
      ***************************************************************************/
 
     function property_invariantNonDecreasing() external view returns (bool) {

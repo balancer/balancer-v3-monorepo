@@ -40,9 +40,7 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         lastKnownVaultBptRate = vault.getBptRate(address(pool));
     }
 
-    /**
-     * @notice Override to create a Stable pool instead of the default pool
-     */
+    /// @notice Override to create a Stable pool instead of the default pool.
     function createPool(
         IERC20[] memory tokens,
         uint256[] memory initialBalances
@@ -73,11 +71,11 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                               FUZZ FUNCTIONS
+                                   Fuzz Functions
      ***************************************************************************/
 
     /**
-     * @notice Fuzz: Add liquidity proportionally
+     * @notice Fuzz: Add liquidity proportionally.
      * @dev Note: `Router.addLiquidityProportional` takes an **exact BPT out** amount (not a minBPTOut).
      * @param exactBptOutSeed Seed used to derive exact BPT out (bounded)
      */
@@ -252,7 +250,7 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Remove liquidity proportionally
+     * @notice Fuzz: Remove liquidity proportionally.
      * @param bptIn Amount of BPT to burn (bounded)
      */
     function removeLiquidityProportional(uint256 bptIn) external {
@@ -311,7 +309,7 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Remove liquidity single token exact out
+     * @notice Fuzz: Remove liquidity single token exact out.
      * @param amountOut Exact amount of token to receive
      * @param tokenIndex Which token to receive
      */
@@ -364,7 +362,7 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Remove liquidity single token exact in
+     * @notice Fuzz: Remove liquidity single token exact in.
      * @param bptIn Amount of BPT to burn
      * @param tokenIndex Which token to receive
      */
@@ -415,11 +413,8 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         _assertVaultBptRateNeverDecreases();
     }
 
-    /**
-     * @notice Property: No profit from round-trip add/remove
-     */
     /***************************************************************************
-                              HELPER FUNCTIONS
+                                Helper Functions
      ***************************************************************************/
 
     function _boundValue(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
