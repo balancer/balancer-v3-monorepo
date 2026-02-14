@@ -17,13 +17,15 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new ECLP Pool oracle was created.
      * @param pool The address of the ECLP Pool
-     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
+     * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt
+     * @param shouldRevertIfVaultUnlocked If true, revert if the Vault is unlocked (i.e., processing a transaction)
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
     event EclpLPOracleCreated(
         IGyroECLPPool indexed pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] feeds,
         ILPOracleBase oracle
     );
@@ -42,6 +44,7 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
         IVault vault,
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         oracle = new EclpLPOracle(
@@ -51,9 +54,16 @@ contract EclpLPOracleFactory is LPOracleFactoryBase {
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             _oracleVersion
         );
 
-        emit EclpLPOracleCreated(IGyroECLPPool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+        emit EclpLPOracleCreated(
+            IGyroECLPPool(address(pool)),
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds,
+            oracle
+        );
     }
 }

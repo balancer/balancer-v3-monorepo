@@ -18,12 +18,14 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
      * @notice A new Stable Pool oracle was created.
      * @param pool The address of the Stable Pool
      * @param shouldUseBlockTimeForOldestFeedUpdate If true, `latestRoundData` returns the current time for `updatedAt`
+     * @param shouldRevertIfVaultUnlocked If true, revert if the Vault is unlocked (i.e., processing a transaction)
      * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
     event StableLPOracleCreated(
         IStablePool indexed pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] feeds,
         ILPOracleBase oracle
     );
@@ -42,6 +44,7 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         IVault vault,
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         oracle = new StableLPOracle(
@@ -51,8 +54,15 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
             _sequencerUptimeFeed,
             _uptimeResyncWindow,
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             _oracleVersion
         );
-        emit StableLPOracleCreated(IStablePool(address(pool)), shouldUseBlockTimeForOldestFeedUpdate, feeds, oracle);
+        emit StableLPOracleCreated(
+            IStablePool(address(pool)),
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds,
+            oracle
+        );
     }
 }

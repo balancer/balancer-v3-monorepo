@@ -40,20 +40,27 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         bool shouldUseBlockTimeForOldestFeedUpdate = true;
+        bool shouldRevertIfVaultUnlocked = true;
 
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshotState();
-        ILPOracleBase oracle = _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        ILPOracleBase oracle = _factory.create(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
         vm.revertToState(snapshot);
 
         vm.expectEmit();
         emit StableLPOracleFactory.StableLPOracleCreated(
             IStablePool(address(pool)),
             shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
             feeds,
             oracle
         );
-        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        _factory.create(pool, shouldUseBlockTimeForOldestFeedUpdate, shouldRevertIfVaultUnlocked, feeds);
     }
 
     function _createAndInitPool() internal override returns (IBasePool) {

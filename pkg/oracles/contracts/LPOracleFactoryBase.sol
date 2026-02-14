@@ -54,14 +54,26 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     function create(
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) external returns (ILPOracleBase oracle) {
         _ensureEnabled();
 
-        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        bytes32 oracleId = _computeOracleId(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
 
         if (address(_oracles[oracleId]) != address(0)) {
-            revert OracleAlreadyExists(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds, _oracles[oracleId]);
+            revert OracleAlreadyExists(
+                pool,
+                shouldUseBlockTimeForOldestFeedUpdate,
+                shouldRevertIfVaultUnlocked,
+                feeds,
+                _oracles[oracleId]
+            );
         }
 
         IVault vault = getVault();
@@ -69,7 +81,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
 
         InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
 
-        oracle = _create(vault, pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        oracle = _create(vault, pool, shouldUseBlockTimeForOldestFeedUpdate, shouldRevertIfVaultUnlocked, feeds);
         _oracles[oracleId] = oracle;
         _isOracleFromFactory[oracle] = true;
     }
@@ -78,9 +90,15 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     function getOracle(
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) external view returns (ILPOracleBase oracle) {
-        bytes32 oracleId = _computeOracleId(pool, shouldUseBlockTimeForOldestFeedUpdate, feeds);
+        bytes32 oracleId = _computeOracleId(
+            pool,
+            shouldUseBlockTimeForOldestFeedUpdate,
+            shouldRevertIfVaultUnlocked,
+            feeds
+        );
         oracle = ILPOracleBase(address(_oracles[oracleId]));
     }
 
@@ -110,10 +128,14 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
     function _computeOracleId(
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) internal pure returns (bytes32) {
         address[] memory feedAddresses = _asAddress(feeds);
-        return keccak256(abi.encode(pool, shouldUseBlockTimeForOldestFeedUpdate, feedAddresses));
+        return
+            keccak256(
+                abi.encode(pool, shouldUseBlockTimeForOldestFeedUpdate, shouldRevertIfVaultUnlocked, feedAddresses)
+            );
     }
 
     function _ensureEnabled() internal view {
@@ -134,6 +156,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeF
         IVault vault,
         IBasePool pool,
         bool shouldUseBlockTimeForOldestFeedUpdate,
+        bool shouldRevertIfVaultUnlocked,
         AggregatorV3Interface[] memory feeds
     ) internal virtual returns (ILPOracleBase oracle);
 }

@@ -40,6 +40,7 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
     IERC20[] sortedTokens;
 
     bool shouldUseBlockTimeForOldestFeedUpdate;
+    bool shouldRevertIfVaultUnlocked;
 
     function setUp() public virtual override {
         for (uint256 i = 0; i < getMaxTokens(); i++) {
@@ -66,6 +67,10 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
     function setShouldUseBlockTimeForOldestFeedUpdate(bool shouldUseBlockTimeForOldestFeedUpdate_) public {
         shouldUseBlockTimeForOldestFeedUpdate = shouldUseBlockTimeForOldestFeedUpdate_;
+    }
+
+    function setShouldRevertIfVaultUnlocked(bool shouldRevertIfVaultUnlocked_) public {
+        shouldRevertIfVaultUnlocked = shouldRevertIfVaultUnlocked_;
     }
 
     function testDecimals() public {
@@ -297,4 +302,42 @@ abstract contract BaseLPOracleTest is BaseVaultTest {
 
         assertTrue(oracle.getShouldUseBlockTimeForOldestFeedUpdate(), "Flag should be true");
     }
+
+    function testVaultUnlockedFlagGetter() public {
+        createOracle();
+
+        assertFalse(oracle.getShouldRevertIfVaultUnlocked(), "Flag should be false");
+
+        setShouldRevertIfVaultUnlocked(true);
+        createOracle();
+
+        assertTrue(oracle.getShouldRevertIfVaultUnlocked(), "Flag should be true");
+    }
+
+    function testComputeTVLWithVaultUnlocked() public {
+        setShouldRevertIfVaultUnlocked(true);
+
+        oracle = _createValidOracle();
+
+        vault.forceUnlock();
+
+        // Non TVL-related things should work.
+        assertEq(oracle.decimals(), 18, "Wrong decimals");
+
+        vm.expectRevert(ILPOracleBase.VaultIsUnlocked.selector);
+        oracle.latestRoundData();
+
+        vm.expectRevert(ILPOracleBase.VaultIsUnlocked.selector);
+        oracle.computeTVL();
+
+        int256[] memory prices = new int256[](2);
+        prices[0] = 1e18;
+        prices[1] = 1e18;
+
+        vm.expectRevert(ILPOracleBase.VaultIsUnlocked.selector);
+        oracle.computeTVLGivenPrices(prices);
+    }
+
+    // Used in base tests
+    function _createValidOracle() internal virtual returns (LPOracleBase);
 }

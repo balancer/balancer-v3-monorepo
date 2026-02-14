@@ -259,8 +259,14 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         uint256 calculatedAmountScaled18 = super.onSwap(request);
 
         // If we are returning reserve tokens, ensure we have enough real balance.
-        if (request.indexOut == _reserveTokenIndex && calculatedAmountScaled18 > originalReserveBalance) {
-            revert InsufficientRealReserveBalance(calculatedAmountScaled18, originalReserveBalance);
+        if (request.indexOut == _reserveTokenIndex) {
+            uint256 reserveAmountOut = request.kind == SwapKind.EXACT_IN
+                ? calculatedAmountScaled18
+                : request.amountGivenScaled18;
+
+            if (reserveAmountOut > originalReserveBalance) {
+                revert InsufficientRealReserveBalance(reserveAmountOut, originalReserveBalance);
+            }
         }
 
         // Restore the original request reserve balance.
