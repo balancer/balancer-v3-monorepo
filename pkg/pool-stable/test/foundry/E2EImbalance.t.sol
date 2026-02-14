@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -17,7 +16,6 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
