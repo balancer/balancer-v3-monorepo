@@ -121,9 +121,9 @@ export const runSmokeTest = async (args: {
 
   console.log('sweepProtocolFeesForToken...');
   tx = await protocolFeeSweeper.sweepProtocolFeesForToken(
-    ethers.ZeroAddress,
     args.token,
     ethers.parseEther(args.min),
+    0,
     deadline,
     args.burner,
     { gasLimit: 1000000 }

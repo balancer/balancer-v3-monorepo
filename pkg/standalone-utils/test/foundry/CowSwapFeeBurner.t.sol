@@ -72,12 +72,10 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         authorizer.grantRole(feeSweeperAuth.getActionId(IProtocolFeeSweeper.addProtocolFeeBurner.selector), admin);
         authorizer.grantRole(feeSweeperAuth.getActionId(IProtocolFeeSweeper.sweepProtocolFeesForToken.selector), admin);
 
-        // Allow the fee sweeper to withdraw protocol fees.
+        // Allow governance to withdraw.
         authorizer.grantRole(
-            IAuthentication(address(feeController)).getActionId(
-                IProtocolFeeController.withdrawProtocolFeesForToken.selector
-            ),
-            address(feeSweeper)
+            IAuthentication(address(feeController)).getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            admin
         );
 
         vm.prank(alice);
@@ -102,14 +100,19 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
+        feeController.collectAggregateFees(pool);
+
+        // Also need to withdraw them to the sweeper.
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(pool, address(feeSweeper));
 
         _mockComposableCowCreate(dai);
 
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, alice);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, alice);
 
         vm.startPrank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, orderDeadline, cowSwapFeeBurner);
+        feeSweeper.sweepProtocolFeesForToken(dai, DEFAULT_AMOUNT, DEFAULT_AMOUNT, orderDeadline, cowSwapFeeBurner);
 
         assertEq(
             dai.balanceOf(address(cowSwapFeeBurner)),
@@ -192,14 +195,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(
-            address(0),
-            dai,
-            TEST_BURN_AMOUNT,
-            usdc,
-            MIN_TARGET_TOKEN_AMOUNT,
-            alice
-        );
+        emit IProtocolFeeBurner.ProtocolFeeBurned(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice);
 
         _burn();
 
@@ -246,49 +242,37 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
                 "Fee token and target token are the same"
             )
         );
-
         vm.prank(address(feeSweeper));
-        cowSwapFeeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, dai, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(dai, TEST_BURN_AMOUNT, dai, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 
     function testBurnWithZeroAmount() public {
         vm.expectRevert(
             abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Fee token amount is zero")
         );
-
         vm.prank(address(feeSweeper));
-        cowSwapFeeBurner.burn(address(0), dai, 0, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(dai, 0, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 
     function testBurnWhenMinAmountOutIsZero() public {
         vm.expectRevert(
             abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min amount out is zero")
         );
-
         vm.prank(address(feeSweeper));
-        cowSwapFeeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, 0, alice, orderDeadline);
+        cowSwapFeeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, 0, alice, orderDeadline);
     }
 
     function testBurnWhenDeadlineLessThanCurrentBlock() public {
         vm.expectRevert(
             abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Deadline is in the past")
         );
-
         vm.prank(address(feeSweeper));
-        cowSwapFeeBurner.burn(
-            address(0),
-            dai,
-            TEST_BURN_AMOUNT,
-            usdc,
-            MIN_TARGET_TOKEN_AMOUNT,
-            alice,
-            block.timestamp - 1
-        );
+        cowSwapFeeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, block.timestamp - 1);
     }
 
     function testBurnWithoutPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        cowSwapFeeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 
     function testGetTradeableOrder() public {
@@ -826,6 +810,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
     function _burn() internal {
         vm.prank(address(feeSweeper));
-        cowSwapFeeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 }

@@ -44,7 +44,6 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
      * @notice Treats `feeToken` as an ERC4626, redeems `exactFeeTokenAmountIn`, swaps the underlying asset for
      * `targetToken`, and sends the proceeds to the `recipient`.
      * @dev Assumes the sweeper has granted allowance for the fee tokens to the burner prior to the call.
-     * @param pool The pool the fees came from (only used for documentation in the event)
      * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (`tokenOut` of the swap)
@@ -55,7 +54,6 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
@@ -98,7 +96,6 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
             underlyingToken.safeTransfer(recipient, exactFeeTokenAmountIn);
         } else {
             _burn(
-                pool,
                 underlyingToken,
                 exactFeeTokenAmountIn,
                 targetToken,

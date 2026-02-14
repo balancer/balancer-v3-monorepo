@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IProtocolFeeBurner {
     /**
      * @notice A protocol fee token has been "burned" (i.e., swapped for the desired target token).
-     * @param pool The pool on which the fee was collected (used for event tracking)
      * @param feeToken The token in which the fee was originally collected
      * @param exactFeeTokenAmountIn The number of feeTokens collected
      * @param targetToken The preferred token for fee collection (e.g., USDC)
@@ -15,7 +14,6 @@ interface IProtocolFeeBurner {
      * @param recipient The address where the target tokens were sent
      */
     event ProtocolFeeBurned(
-        address indexed pool,
         IERC20 indexed feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 indexed targetToken,
@@ -36,8 +34,7 @@ interface IProtocolFeeBurner {
 
     /**
      * @notice Swap an exact amount of `feeToken` for the `targetToken`, and send proceeds to the `recipient`.
-     * @dev Assumes the sweeper has granted allowance for the fee tokens to the burner prior to the call.
-     * @param pool The pool the fees came from (only used for documentation in the event)
+     * @dev Assumes the sweeper has transferred the tokens to the burner prior to the call.
      * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (token out of the swap)
@@ -46,7 +43,6 @@ interface IProtocolFeeBurner {
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,

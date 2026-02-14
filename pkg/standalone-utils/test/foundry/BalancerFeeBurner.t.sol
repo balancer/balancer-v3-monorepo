@@ -63,12 +63,16 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         authorizer.grantRole(feeSweeperAuth.getActionId(IProtocolFeeSweeper.addProtocolFeeBurner.selector), admin);
         authorizer.grantRole(feeSweeperAuth.getActionId(IProtocolFeeSweeper.sweepProtocolFeesForToken.selector), admin);
 
-        // Allow the fee sweeper to withdraw protocol fees.
+        // Allow the admin to withdraw protocol fees.
+        authorizer.grantRole(
+            IAuthentication(address(feeController)).getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            address(admin)
+        );
         authorizer.grantRole(
             IAuthentication(address(feeController)).getActionId(
                 IProtocolFeeController.withdrawProtocolFeesForToken.selector
             ),
-            address(feeSweeper)
+            address(admin)
         );
 
         vm.prank(admin);
@@ -100,17 +104,22 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeBurner.setBurnPath(dai, steps);
 
         // Set up the sweeper to be able to burn.
-        vm.startPrank(admin);
+        vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(daiUsdcPool, dai, TEST_BURN_AMOUNT);
+        feeController.collectAggregateFees(daiUsdcPool);
+
+        // Also need to withdraw them to the sweeper.
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(daiUsdcPool, address(feeSweeper));
 
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(daiUsdcPool, dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT, alice);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT, alice);
 
-        feeSweeper.sweepProtocolFeesForToken(daiUsdcPool, dai, TEST_BURN_AMOUNT, orderDeadline, feeBurner);
-        vm.stopPrank();
+        vm.prank(admin);
+        feeSweeper.sweepProtocolFeesForToken(dai, TEST_BURN_AMOUNT, 0, orderDeadline, feeBurner);
 
         Balances memory balancesAfter = getBalances();
 
@@ -153,7 +162,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -198,7 +207,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
         vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -246,7 +255,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
 
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, waDAI, amountOut, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, waDAI, amountOut, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -285,7 +294,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.startPrank(address(feeSweeper));
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
 
-        feeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, dai, amountOut, alice, orderDeadline);
+        feeBurner.burn(waDAI, TEST_BURN_AMOUNT, dai, amountOut, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -332,7 +341,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
 
         uint256 minAmountOut = TEST_BURN_AMOUNT - DELTA;
-        feeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, waDAI, minAmountOut, alice, orderDeadline);
+        feeBurner.burn(waDAI, TEST_BURN_AMOUNT, waDAI, minAmountOut, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -381,7 +390,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.startPrank(address(feeSweeper));
         IERC20(address(waDAI)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
 
-        feeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, waUSDC, amountOut, alice, orderDeadline);
+        feeBurner.burn(waDAI, TEST_BURN_AMOUNT, waUSDC, amountOut, alice, orderDeadline);
         vm.stopPrank();
 
         Balances memory balancesAfter = getBalances();
@@ -403,7 +412,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
     function testBurnRevertIfNotAuthorized() external {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 
     function testSetPathRevertIfNotAuthorized() external {
@@ -415,7 +424,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
 
         vm.prank(address(feeSweeper));
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, block.timestamp - 1);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, block.timestamp - 1);
     }
 
     function testBurnRevertIfOutLessThanMinAmount() external {
@@ -434,7 +443,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, TEST_BURN_AMOUNT, TEST_BURN_AMOUNT + 1)
         );
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT + 1, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT + 1, alice, orderDeadline);
         vm.stopPrank();
     }
 
@@ -447,7 +456,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
 
         vm.startPrank(address(feeSweeper));
         vm.expectRevert(IBalancerFeeBurner.TargetTokenOutMismatch.selector);
-        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, weth, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        feeBurner.burn(dai, TEST_BURN_AMOUNT, weth, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
     }
 
@@ -455,7 +464,6 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         BalancerFeeBurner(address(feeBurner)).burnHook(
             IBalancerFeeBurner.BurnHookParams({
-                pool: address(0),
                 sender: address(0),
                 feeToken: dai,
                 feeTokenAmount: TEST_BURN_AMOUNT,

@@ -85,7 +85,6 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
@@ -97,7 +96,6 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
             abi.encodeCall(
                 BalancerFeeBurner.burnHook,
                 BurnHookParams({
-                    pool: pool,
                     sender: msg.sender,
                     feeToken: feeToken,
                     feeTokenAmount: feeTokenAmount,
@@ -172,7 +170,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         // Last stepTokenIn is the final token out. Last stepExactAmountIn is the amount out.
         _vault.sendTo(stepTokenIn, params.recipient, stepExactAmountIn);
 
-        emit ProtocolFeeBurned(params.pool, feeToken, feeTokenAmount, targetToken, stepExactAmountIn, params.recipient);
+        emit ProtocolFeeBurned(feeToken, feeTokenAmount, targetToken, stepExactAmountIn, params.recipient);
     }
 
     function _tokenExists(IERC20 token, IERC20[] memory tokens) private pure returns (bool) {
