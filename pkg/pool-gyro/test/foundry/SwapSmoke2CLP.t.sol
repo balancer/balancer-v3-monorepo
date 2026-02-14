@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -23,7 +23,7 @@ contract SwapSmoke2CLPTest is BaseVaultTest, Gyro2ClpPoolDeployer {
         return createGyro2ClpPool(tokens, rateProviders, label, vault, lp);
     }
 
-    function testSwapExactInAndExactOut_smoke() public {
+    function testSwapExactInAndExactOutSmoke() public {
         IERC20[] memory ts = IPoolInfo(pool).getTokens();
         IERC20 token0 = ts[0];
         IERC20 token1 = ts[1];

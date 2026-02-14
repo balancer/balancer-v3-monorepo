@@ -4,10 +4,11 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+
 import { GyroECLPMath } from "../../contracts/lib/GyroECLPMath.sol";
 
 contract GyroECLPMathCoverageTest is Test {
-    function test_mulAinv_inverts_mulA_noRotation() public pure {
+    function testMulAinvInvertsMulANoRotation() public pure {
         IGyroECLPPool.EclpParams memory p;
         p.c = 1e18;
         p.s = 0;
@@ -21,7 +22,7 @@ contract GyroECLPMathCoverageTest is Test {
         assertEq(back.y, tp.y);
     }
 
-    function test_tau_eta_zeta_smoke() public pure {
+    function testTauEtaZetaSmoke() public pure {
         // Hit tau/eta/zeta helpers (often only reached in “derived param” helper code).
         IGyroECLPPool.EclpParams memory p;
         // Minimal valid-ish params for mapping; values chosen to avoid divide-by-zero.
@@ -36,7 +37,7 @@ contract GyroECLPMathCoverageTest is Test {
         assertTrue(tpp.y != 0);
     }
 
-    function test_priceHelpers_smoke() public pure {
+    function testPriceHelpersSmoke() public pure {
         // Hit the remaining “price helpers” that are otherwise only exercised in specific price-oracle style paths.
         IGyroECLPPool.EclpParams memory p;
         p.alpha = int256(9e17);

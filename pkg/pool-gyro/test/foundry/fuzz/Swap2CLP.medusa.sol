@@ -10,16 +10,15 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { BaseMedusaTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseMedusaTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPMath } from "../../../contracts/lib/Gyro2CLPMath.sol";
 
 /**
  * @title Swap2CLP Medusa Fuzz Test
- * @notice Medusa fuzzing tests for Gyro 2-CLP pool swap operations
+ * @notice Medusa fuzzing tests for Gyro 2-CLP pool swap operations.
  * @dev Key invariants tested:
  *   - Swap integration correctness: token deltas match returned amounts
  *   - Revert-safety: failed swaps must not mutate pool/user state
@@ -67,9 +66,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         lastKnownBptRate = _getCurrentBptRate();
     }
 
-    /**
-     * @notice Override to create a Gyro 2-CLP pool
-     */
+    /// @notice Override to create a Gyro 2-CLP pool.
     function createPool(
         IERC20[] memory tokens,
         uint256[] memory initialBalances
@@ -100,9 +97,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         return newPool;
     }
 
-    /**
-     * @notice Override to use 2 tokens
-     */
+    /// @notice Override to use 2 tokens.
     function getTokensAndInitialBalances()
         internal
         view
@@ -120,12 +115,10 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                               FUZZ FUNCTIONS
+                                   Fuzz Functions
      ***************************************************************************/
 
-    /**
-     * @notice Fuzz: Exact input swap token0 -> token1 and assert BPT rate never decreases
-     */
+    /// @notice Fuzz: Exact input swap token0 -> token1 and assert BPT rate never decreases.
     function swapExactIn0to1(uint256 amountIn) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -179,9 +172,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact input swap token1 -> token0 and assert BPT rate never decreases
-     */
+    /// @notice Fuzz: Exact input swap token1 -> token0 and assert BPT rate never decreases.
     function swapExactIn1to0(uint256 amountIn) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -230,9 +221,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact output swap token0 -> token1 and assert BPT rate never decreases
-     */
+    /// @notice Fuzz: Exact output swap token0 -> token1 and assert BPT rate never decreases.
     function swapExactOut0to1(uint256 amountOut) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -282,9 +271,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact output swap token1 -> token0 and assert BPT rate never decreases
-     */
+    /// @notice Fuzz: Exact output swap token1 -> token0 and assert BPT rate never decreases.
     function swapExactOut1to0(uint256 amountOut) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -334,7 +321,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Mixed-mode round-trip (ExactIn then ExactOut) - should not profit trader
+     * @notice Fuzz: Mixed-mode round-trip (ExactIn then ExactOut) - should not profit trader.
      * @dev Exercises both swap paths and enforces revert-safety (no state changes on revert).
      * Also asserts BPT rate never decreases.
      */
@@ -401,7 +388,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz (strict): Round-trip swap should not profit trader (tiny rounding dust only)
+     * @notice Fuzz (strict): Round-trip swap should not profit trader (tiny rounding dust only).
      * @dev direction=0 means token0->token1->token0, direction=1 means token1->token0->token1
      * Also asserts BPT rate never decreases.
      */
@@ -476,7 +463,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                              HELPER FUNCTIONS
+                                    Helper Functions
      ***************************************************************************/
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {

@@ -3,11 +3,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { Gyro2CLPMath } from "../../contracts/lib/Gyro2CLPMath.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { Gyro2CLPMath } from "../../contracts/lib/Gyro2CLPMath.sol";
+
 contract Gyro2CLPMathCoverageTest is Test {
-    function test_calculateInvariant_and_virtualParams_smoke() public pure {
+    function testCalculateInvariantAndVirtualParamsSmoke() public pure {
         uint256[] memory balances = new uint256[](2);
         balances[0] = 100e18;
         balances[1] = 100e18;
@@ -28,13 +29,13 @@ contract Gyro2CLPMathCoverageTest is Test {
         assertGt(inAmt, 0);
     }
 
-    function test_calcSpotPriceAinB_smoke() public pure {
+    function testCalcSpotPriceAinBSmoke() public pure {
         // Hit Gyro2CLPMath.calcSpotPriceAinB, which is not necessarily exercised by pool integration tests.
         uint256 price = Gyro2CLPMath.calcSpotPriceAinB(10e18, 3e18, 20e18, 5e18);
         assertGt(price, 0);
     }
 
-    function test_calcOutGivenIn_assetBoundsExceeded_reverts() public {
+    function testCalcOutGivenInAssetBoundsExceeded() public {
         // Force amountOut > balanceOut by using an (intentionally invalid) large virtualOffsetOut.
         // `calcOutGivenIn` does not validate offsets; it only enforces the post-condition `amountOut <= balanceOut`.
         vm.expectRevert(Gyro2CLPMath.AssetBoundsExceeded.selector);

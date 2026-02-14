@@ -21,7 +21,7 @@ contract ComputeBalanceECLPTest is BaseVaultTest, GyroEclpPoolDeployer {
         return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
-    function testComputeBalance_smoke() public view {
+    function testComputeBalanceSmoke() public view {
         uint256[] memory balancesScaled18 = vault.getCurrentLiveBalances(pool);
         uint256 invariantRatio = 1e18;
 

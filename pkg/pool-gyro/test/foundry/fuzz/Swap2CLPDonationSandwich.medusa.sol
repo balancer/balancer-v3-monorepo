@@ -8,9 +8,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { BaseMedusaTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseMedusaTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPMath } from "../../../contracts/lib/Gyro2CLPMath.sol";
@@ -161,7 +160,7 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
     /**
      * @notice Sandwich sequence: attacker swap, victim swap, attacker reverses.
      * @dev Attacker (alice) must not increase her starting token balance (allow +1 unit dust).
-     * @param direction 0: token0 is the "start token" for attacker, 1: token1 is start token.
+     * @param direction 0: token0 is the "start token" for attacker, 1: token1 is start token
      */
     function sandwichExactIn(uint256 attackerAmountIn, uint256 victimAmountIn, uint256 direction) external {
         direction = direction & 1;

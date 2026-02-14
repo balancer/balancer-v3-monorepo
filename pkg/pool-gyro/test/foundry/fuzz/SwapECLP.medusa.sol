@@ -10,9 +10,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { BaseMedusaTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseMedusaTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol";
 import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
@@ -85,9 +84,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         lastKnownBptRate = _getCurrentBptRate();
     }
 
-    /**
-     * @notice Override to create an ECLP pool
-     */
+    /// @notice Override to create an ECLP pool.
     function createPool(
         IERC20[] memory tokens,
         uint256[] memory initialBalances
@@ -136,9 +133,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         return newPool;
     }
 
-    /**
-     * @notice Override to use 2 tokens
-     */
+    /// @notice Override to use 2 tokens.
     function getTokensAndInitialBalances()
         internal
         view
@@ -156,12 +151,10 @@ contract SwapECLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                               FUZZ FUNCTIONS
+                                    Fuzz Functions
      ***************************************************************************/
 
-    /**
-     * @notice Fuzz: Exact input swap token0 -> token1
-     */
+    /// @notice Fuzz: Exact input swap token0 -> token1.
     function swapExactIn0to1(uint256 amountIn) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -212,9 +205,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact input swap token1 -> token0
-     */
+    /// @notice Fuzz: Exact input swap token1 -> token0.
     function swapExactIn1to0(uint256 amountIn) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -265,9 +256,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact output swap token0 -> token1
-     */
+    /// @notice Fuzz: Exact output swap token0 -> token1.
     function swapExactOut0to1(uint256 amountOut) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -318,9 +307,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         }
     }
 
-    /**
-     * @notice Fuzz: Exact output swap token1 -> token0
-     */
+    /// @notice Fuzz: Exact output swap token1 -> token0.
     function swapExactOut1to0(uint256 amountOut) external {
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, ) = vault.getPoolTokenInfo(address(pool));
 
@@ -372,8 +359,8 @@ contract SwapECLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz (strict): Round-trip swap should not profit trader (tiny rounding dust only)
-     * @dev direction=0 means token0->token1->token0, direction=1 means token1->token0->token1
+     * @notice Fuzz (strict): Round-trip swap should not profit trader (tiny rounding dust only).
+     * @dev direction=0 means token0->token1->token0, direction=1 means token1->token0->token1.
      */
     function roundTripSwapStrict(uint256 amountIn, uint256 direction) external {
         direction = direction & 1;
@@ -429,9 +416,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
         _assertBptRateNeverDecreases();
     }
 
-    /**
-     * @notice Fuzz: Multiple sequential swaps
-     */
+    /// @notice Fuzz: Multiple sequential swaps.
     function multipleSwaps(uint256 seed, uint256 count) external {
         count = _boundLocal(count, 1, 5);
         (IERC20[] memory tokens, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
@@ -535,7 +520,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                              HELPER FUNCTIONS
+                                    Helper Functions
      ***************************************************************************/
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {

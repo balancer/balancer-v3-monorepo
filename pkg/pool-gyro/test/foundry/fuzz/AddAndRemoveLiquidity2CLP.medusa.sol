@@ -17,7 +17,7 @@ import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol"
 
 /**
  * @title AddAndRemoveLiquidity2CLP Medusa Fuzz Test
- * @notice Medusa fuzzing tests for Gyro 2-CLP pool liquidity operations
+ * @notice Medusa fuzzing tests for Gyro 2-CLP pool liquidity operations.
  * @dev Key invariants tested:
  *   - BPT rate should never decrease after add/remove liquidity
  *   - Total supply should be consistent with balances
@@ -64,9 +64,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         lastKnownBptRate = initialBptRate;
     }
 
-    /**
-     * @notice Override to create a Gyro 2-CLP pool instead of the default pool
-     */
+    /// @notice Override to create a Gyro 2-CLP pool instead of the default pool.
     function createPool(
         IERC20[] memory tokens,
         uint256[] memory initialBalances
@@ -99,9 +97,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         return newPool;
     }
 
-    /**
-     * @notice Override to use 2 tokens for Gyro 2-CLP
-     */
+    /// @notice Override to use 2 tokens for Gyro 2-CLP.
     function getTokensAndInitialBalances()
         internal
         view
@@ -120,11 +116,11 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                               FUZZ FUNCTIONS
+                                    Fuzz Functions
      ***************************************************************************/
 
     /**
-     * @notice Fuzz: Add liquidity proportionally
+     * @notice Fuzz: Add liquidity proportionally.
      * @param amountIn Amount to add for each token (bounded)
      */
     function addLiquidityProportional(uint256 amountIn) external {
@@ -175,7 +171,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Add liquidity unbalanced
+     * @notice Fuzz: Add liquidity unbalanced.
      * @param amountIn0 Amount of token 0 to add
      * @param amountIn1 Amount of token 1 to add
      */
@@ -244,7 +240,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Remove liquidity proportionally
+     * @notice Fuzz: Remove liquidity proportionally.
      * @param bptIn Amount of BPT to burn (bounded)
      */
     function removeLiquidityProportional(uint256 bptIn) external {
@@ -308,7 +304,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     }
 
     /**
-     * @notice Fuzz: Remove liquidity single token exact out
+     * @notice Fuzz: Remove liquidity single token exact out.
      * @param amountOut Exact amount of token to receive
      * @param tokenIndex Which token to receive (0 or 1)
      */
@@ -374,7 +370,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     }
 
     /***************************************************************************
-                              HELPER FUNCTIONS
+                                    Helper Functions
      ***************************************************************************/
 
     function _boundAmount(uint256 amount) internal pure returns (uint256) {
