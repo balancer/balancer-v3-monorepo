@@ -363,8 +363,8 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         LBPParams memory lbpParams,
         string memory poolVersion
     ) private view returns (NewPoolParams memory) {
-        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpCommonParams.projectToken <
-            lbpCommonParams.reserveToken
+        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = address(lbpCommonParams.projectToken) <
+            address(lbpCommonParams.reserveToken)
             ? (0, 1)
             : (1, 0);
 
