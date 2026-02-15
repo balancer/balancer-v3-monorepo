@@ -31,6 +31,8 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     string internal constant POOL_VERSION = "CoW Pool v1";
 
+    string internal constant _ROUTER_VERSION = "1.0.0";
+
     ICowRouter internal cowRouter;
     ICowPoolFactory internal cowFactory;
     address internal feeSweeper;
@@ -43,12 +45,14 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
+        address payable cowRouterPayable = payable(address(cowRouter));
+
         // Set router permissions.
         authorizer.grantRole(
-            CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
+            CowRouter(cowRouterPayable).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
-        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
+        authorizer.grantRole(CowRouter(cowRouterPayable).getActionId(ICowRouter.setFeeSweeper.selector), admin);
 
         // Set factory permissions.
         authorizer.grantRole(
@@ -68,7 +72,7 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
         feeSweeper = bob;
 
         // Creates cowRouter before the factory, so we have an address to set as trusted router.
-        cowRouter = deployCowPoolRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
+        cowRouter = deployCowPoolRouter(vault, weth, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper, _ROUTER_VERSION);
 
         cowFactory = deployCowPoolFactory(
             IVault(address(vault)),
