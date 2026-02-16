@@ -2,9 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+
+import { LBPKYCHook } from "@balancer-labs/v3-pool-hooks/contracts/LBPKYCHook.sol";
 
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
 import { LBPValidation } from "./LBPValidation.sol";
@@ -115,6 +119,51 @@ contract LBPoolFactory is BaseLBPFactory {
             salt,
             poolCreator,
             secondaryHookContract
+        );
+    }
+
+    /**
+     * @notice Deploys a new `LBPool` with KYC (and optional cap).
+     * @dev This method does not support native ETH management; WETH needs to be used instead.
+     * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
+     * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
+     * @param salt The salt value that will be passed to create3 deployment
+     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
+     * @param maxProjectTokenAmountRaw Cap on project tokens per address (or MAX_UINT256 for no cap)
+     * @param initialSigners Addresses initially authorized to sign KYC approvals
+     */
+    function createWithKYC(
+        LBPCommonParams memory lbpCommonParams,
+        MigrationParams memory migrationParams,
+        LBPParams memory lbpParams,
+        uint256 swapFeePercentage,
+        bytes32 salt,
+        address poolCreator,
+        uint256 maxProjectTokenAmountRaw,
+        address[] memory initialSigners
+    ) public nonReentrant returns (address pool) {
+        // Scale the max amount (if applicable).
+        uint256 maxProjectTokenAmountScaled18 = maxProjectTokenAmountRaw == type(uint256).max
+            ? type(uint256).max
+            : 10 ** (18 - IERC20Metadata(address(lbpCommonParams.projectToken)).decimals()) * maxProjectTokenAmountRaw;
+
+        LBPKYCHook secondaryHookContract = new LBPKYCHook(
+            getVault(),
+            _trustedRouter,
+            lbpCommonParams.owner,
+            lbpCommonParams.projectToken,
+            maxProjectTokenAmountScaled18,
+            initialSigners
+        );
+
+        pool = _createPool(
+            lbpCommonParams,
+            migrationParams,
+            lbpParams,
+            swapFeePercentage,
+            salt,
+            poolCreator,
+            address(secondaryHookContract)
         );
     }
 
