@@ -93,6 +93,8 @@ contract LBPoolFactory is BaseLBPFactory {
      * @notice Deploys a new `LBPool` with migration.
      * @dev This method does not support native ETH management; WETH needs to be used instead.
      * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
+     * @param migrationParams The migration parameters for the successor weighted pool
+     * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
