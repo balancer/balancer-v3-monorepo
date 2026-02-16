@@ -205,27 +205,22 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      * non-zero.
      *
      * @param exactAmountsInScaled18 The amounts being used to initialize the pool (18-decimal scaled)
+     * @param userData Additional (optional) data sent with the initialize request
      * @return success Always true: allow the initialization to proceed if all conditions have been met
      */
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
-        bytes memory
-    ) public view override onlyBeforeSale returns (bool) {
-        // Verify the sender is the owner through the trusted router
-        if (ISenderGuard(_trustedRouter).getSender() != owner()) {
-            return false;
-        }
-
+        bytes memory userData
+    ) public override returns (bool) {
         uint256 projectAmount = exactAmountsInScaled18[_projectTokenIndex];
         uint256 reserveAmount = exactAmountsInScaled18[_reserveTokenIndex];
 
         // One-way pool: only buying project tokens with reserve.
         // Therefore, there is no point adding reserve tokens, as they will never be tokenOut in a swap.
         // This is a form of "seedless" LBP; easy because the math is very simple.
-        if (projectAmount == 0 || reserveAmount != 0) {
-            revert InvalidInitializationAmount();
-        }
+        require(reserveAmount == 0 && projectAmount > 0, InvalidInitializationAmount());
 
-        return true;
+        // Base contract checks for timing and access control.
+        return super.onBeforeInitialize(exactAmountsInScaled18, userData);
     }
 }
