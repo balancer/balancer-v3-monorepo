@@ -125,7 +125,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         });
 
         vm.expectRevert(LBPValidation.InvalidOwner.selector);
-        lbPoolFactory.create(commonParams, DEFAULT_RATE, swapFee, ZERO_BYTES32, address(0));
+        lbPoolFactory.create(commonParams, DEFAULT_RATE, swapFee, ZERO_BYTES32, address(0), address(0));
     }
 
     function testCreatePool() public {
@@ -220,7 +220,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         uint256 salt = _saltCounter++;
 
         vm.expectRevert(IFixedPriceLBPool.InvalidProjectTokenRate.selector);
-        lbPoolFactory.create(lbpCommonParams, 0, swapFee, bytes32(salt), address(0));
+        lbPoolFactory.create(lbpCommonParams, 0, swapFee, bytes32(salt), address(0), address(0));
     }
 
     function testBuyOnlyInFactory() public {
@@ -238,7 +238,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         uint256 salt = _saltCounter++;
 
         vm.expectRevert(IFixedPriceLBPool.TokenSwapsInUnsupported.selector);
-        lbPoolFactory.create(lbpCommonParams, DEFAULT_RATE, swapFee, bytes32(salt), address(0));
+        lbPoolFactory.create(lbpCommonParams, DEFAULT_RATE, swapFee, bytes32(salt), address(0), address(0));
     }
 
     function _createFixedPriceLBPool(
@@ -273,7 +273,7 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
 
         uint256 salt = _saltCounter++;
 
-        newPool = lbPoolFactory.create(lbpCommonParams, DEFAULT_RATE, swapFee, bytes32(salt), poolCreator);
+        newPool = lbPoolFactory.create(lbpCommonParams, DEFAULT_RATE, swapFee, bytes32(salt), poolCreator, address(0));
 
         poolArgs = abi.encode(lbpCommonParams, factoryParams, DEFAULT_RATE);
     }

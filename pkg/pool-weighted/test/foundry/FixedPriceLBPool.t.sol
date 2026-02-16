@@ -682,8 +682,11 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Mock router to return wrong factory address as sender
         _mockGetSender(address(1));
 
+        uint256[] memory amounts = new uint256[](2);
+        amounts[projectIdx] = 1e18;
+
         assertFalse(
-            IHooks(pool).onBeforeInitialize(new uint256[](0), ""),
+            IHooks(pool).onBeforeInitialize(amounts, ""),
             "onBeforeInitialize should return false when sender is not owner"
         );
     }
@@ -961,7 +964,14 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint256 salt = _saltCounter++;
         address poolCreator_ = poolCreator;
 
-        newPool = lbPoolFactory.create(lbpCommonParams, projectTokenRate, swapFee, bytes32(salt), poolCreator_);
+        newPool = lbPoolFactory.create(
+            lbpCommonParams,
+            projectTokenRate,
+            swapFee,
+            bytes32(salt),
+            poolCreator_,
+            address(0)
+        );
 
         poolArgs = abi.encode(lbpCommonParams, factoryParams, projectTokenRate);
     }
