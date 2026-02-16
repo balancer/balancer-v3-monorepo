@@ -179,7 +179,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     *******************************************************************************/
 
     function computeProportionalAmountsIn(uint256 bptAmountOut) public returns (uint256[] memory amountsIn) {
-        assumeValidTradeAmount(bptAmountOut);
         bptAmountOut = boundBptMint(bptAmountOut);
 
         uint256[] memory maxAmountsIn = getMaxAmountsIn();
@@ -190,7 +189,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     }
 
     function computeProportionalAmountsOut(uint256 bptAmountIn) public returns (uint256[] memory amountsOut) {
-        assumeValidTradeAmount(bptAmountIn);
         bptAmountIn = boundBptBurn(bptAmountIn);
 
         uint256[] memory minAmountsOut = getMinAmountsOut();
@@ -202,9 +200,13 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function computeAddLiquidityUnbalanced(uint256[] memory exactAmountsIn) public returns (uint256 bptAmountOut) {
         exactAmountsIn = boundBalanceLength(exactAmountsIn);
+        bool anyNonZero = false;
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
             exactAmountsIn[i] = boundTokenDeposit(exactAmountsIn[i], i);
+            if (exactAmountsIn[i] != 0) anyNonZero = true;
         }
+        // All-zero input just reverts; skip to avoid wasting a fuzz cycle.
+        if (!anyNonZero) return 0;
 
         medusa.prank(lp);
         bptAmountOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
@@ -216,7 +218,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenInIndex,
         uint256 exactBptAmountOut
     ) public returns (uint256 amountIn) {
-        assumeValidTradeAmount(exactBptAmountOut);
         tokenInIndex = boundTokenIndex(tokenInIndex);
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
 
@@ -239,7 +240,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenOutIndex,
         uint256 exactAmountOut
     ) public returns (uint256 bptAmountIn) {
-        assumeValidTradeAmount(exactAmountOut);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactAmountOut = boundTokenAmountOut(exactAmountOut, tokenOutIndex);
 
@@ -262,7 +262,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn
     ) public returns (uint256 amountOut) {
-        assumeValidTradeAmount(exactBptAmountIn);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);
 
@@ -311,12 +310,19 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         boundedIndex = bound(tokenIndex, 0, len - 1);
     }
 
+    // For unbalanced adds: each token is either 0 or >= _MINIMUM_TRADE_AMOUNT.
+    // Snap the (0, _MINIMUM_TRADE_AMOUNT) dead zone to the nearest valid value.
     function boundTokenDeposit(
         uint256 tokenAmountIn,
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, 0, _MAX_BALANCE - balancesRaw[tokenIndex]);
+        uint256 maxDeposit = _MAX_BALANCE - balancesRaw[tokenIndex];
+        boundedAmountIn = bound(tokenAmountIn, 0, maxDeposit);
+        // Snap dead zone: amounts in (0, _MINIMUM_TRADE_AMOUNT) are invalid.
+        if (boundedAmountIn != 0 && boundedAmountIn < _MINIMUM_TRADE_AMOUNT) {
+            boundedAmountIn = _MINIMUM_TRADE_AMOUNT;
+        }
     }
 
     function boundTokenAmountOut(
@@ -324,17 +330,17 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountOut) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountOut = bound(tokenAmountOut, 0, balancesRaw[tokenIndex]);
+        boundedAmountOut = bound(tokenAmountOut, _MINIMUM_TRADE_AMOUNT, balancesRaw[tokenIndex]);
     }
 
     function boundBptMint(uint256 bptAmount) internal view returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        boundedAmt = bound(bptAmount, 0, _MAX_BALANCE - totalSupply);
+        boundedAmt = bound(bptAmount, _MINIMUM_TRADE_AMOUNT, _MAX_BALANCE - totalSupply);
     }
 
     function boundBptBurn(uint256 bptAmt) internal view returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        boundedAmt = bound(bptAmt, 0, totalSupply);
+        boundedAmt = bound(bptAmt, _MINIMUM_TRADE_AMOUNT, totalSupply);
     }
 
     function boundBalanceLength(uint256[] memory balances) internal view returns (uint256[] memory) {
@@ -344,12 +350,6 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
             mstore(balances, length)
         }
         return balances;
-    }
-
-    function assumeValidTradeAmount(uint256 tradeAmount) internal pure {
-        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
-            revert();
-        }
     }
 
     function getMinAmountsOut() internal view returns (uint256[] memory minAmountsOut) {
