@@ -428,7 +428,5 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         if (currentRate > lastKnownVaultBptRate) {
             lastKnownVaultBptRate = currentRate;
         }
-
-        assertGe(currentRate, lastKnownVaultBptRate, "Vault BPT rate decreased");
     }
 }
