@@ -110,7 +110,7 @@ contract StablePoolDecimalsAndScalingTest is StablePoolContractsDeployer, BaseVa
         }
 
         uint256 bptRateAfter = vault.getBptRate(pool);
-        assertGe(bptRateAfter + 1, bptRateBefore, "BPT rate should not decrease after swap");
+        assertGe(bptRateAfter, bptRateBefore, "BPT rate should not decrease after swap");
 
         uint256 invAfterRoundDown = _computeInvariantScaled18(pool, Rounding.ROUND_DOWN);
         uint256 invAfterRoundUp = _computeInvariantScaled18(pool, Rounding.ROUND_UP);

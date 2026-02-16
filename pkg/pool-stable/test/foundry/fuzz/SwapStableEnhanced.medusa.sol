@@ -147,11 +147,12 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
                     bytes("")
                 )
             returns (uint256 amountOut2) {
-                if (amountOut2 > amountIn + 2) {
+                if (amountOut2 > amountIn) {
                     uint256 profit = amountOut2 - amountIn;
-                    if (profit > maxRoundTripProfit) maxRoundTripProfit = profit;
+                    if (profit > maxRoundTripProfit) {
+                        maxRoundTripProfit = profit;
+                    }
                 }
-                assert(amountOut2 <= amountIn + 2);
             } catch {}
         } catch {}
     }
@@ -171,7 +172,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     }
 
     function property_noRoundTripProfit() external view returns (bool) {
-        return maxRoundTripProfit <= 2;
+        return maxRoundTripProfit == 0;
     }
 
     function property_balancesPositive() external view returns (bool) {
