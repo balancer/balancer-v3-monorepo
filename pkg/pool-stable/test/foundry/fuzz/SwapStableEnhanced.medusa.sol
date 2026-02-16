@@ -102,7 +102,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
                 balancesAfter
             );
 
-            assertGe(invariantAfter, invariantBefore, "Invariant decreased after adding liquidity");
+            assertGe(invariantAfter, invariantBefore, "Invariant decreased after swap (ExactIn)");
 
             if (invariantAfter > lastKnownInvariant) {
                 lastKnownInvariant = invariantAfter;
