@@ -2,10 +2,14 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+
+import { LBPKYCHook } from "@balancer-labs/v3-pool-hooks/contracts/LBPKYCHook.sol";
 
 import { FixedPriceLBPool } from "./FixedPriceLBPool.sol";
 import { BaseLBPFactory } from "./BaseLBPFactory.sol";
@@ -70,7 +74,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
-        address poolCreator
+        address poolCreator,
+        address secondaryPoolContract
     ) public nonReentrant returns (address pool) {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason. `_createPool` does further validation.
@@ -82,7 +87,58 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             revert IFixedPriceLBPool.TokenSwapsInUnsupported();
         }
 
-        pool = _createPool(lbpCommonParams, projectTokenRate, swapFeePercentage, salt, poolCreator);
+        pool = _createPool(
+            lbpCommonParams,
+            projectTokenRate,
+            swapFeePercentage,
+            salt,
+            poolCreator,
+            secondaryPoolContract
+        );
+    }
+
+    /**
+     * @notice Deploys a new `FixedPriceLBPool` with KYC (and optional cap).
+     * @dev This method does not support native ETH management; WETH needs to be used instead.
+     * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
+     * @param projectTokenRate The price of the project token in terms of the reserve
+     * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
+     * @param salt The salt value that will be passed to create3 deployment
+     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
+     * @param maxProjectTokenAmountRaw Cap on project tokens per address (or MAX_UINT256 for no cap)
+     * @param initialSigners Addresses initially authorized to sign KYC approvals
+     */
+    function createWithKYC(
+        LBPCommonParams memory lbpCommonParams,
+        uint256 projectTokenRate,
+        uint256 swapFeePercentage,
+        bytes32 salt,
+        address poolCreator,
+        uint256 maxProjectTokenAmountRaw,
+        address[] memory initialSigners
+    ) public nonReentrant returns (address pool) {
+        // Scale the max amount (if applicable).
+        uint256 maxProjectTokenAmountScaled18 = maxProjectTokenAmountRaw == type(uint256).max
+            ? type(uint256).max
+            : 10 ** (18 - IERC20Metadata(address(lbpCommonParams.projectToken)).decimals()) * maxProjectTokenAmountRaw;
+
+        LBPKYCHook secondaryHookContract = new LBPKYCHook(
+            getVault(),
+            _trustedRouter,
+            lbpCommonParams.owner,
+            lbpCommonParams.projectToken,
+            maxProjectTokenAmountScaled18,
+            initialSigners
+        );
+
+        pool = _createPool(
+            lbpCommonParams,
+            projectTokenRate,
+            swapFeePercentage,
+            salt,
+            poolCreator,
+            address(secondaryHookContract)
+        );
     }
 
     function _createPool(
@@ -90,7 +146,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         uint256 projectTokenRate,
         uint256 swapFeePercentage,
         bytes32 salt,
-        address poolCreator
+        address poolCreator,
+        address secondaryHookContract
     ) internal returns (address pool) {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason.
@@ -100,7 +157,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             vault: getVault(),
             trustedRouter: _trustedRouter,
             poolVersion: _poolVersion,
-            secondaryHookContract: address(0)
+            secondaryHookContract: secondaryHookContract
         });
 
         pool = _create(abi.encode(lbpCommonParams, factoryParams, projectTokenRate), salt);
