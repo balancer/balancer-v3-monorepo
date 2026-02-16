@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { IKYCSignerAdmin } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IKYCSignerAdmin.sol";
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -106,7 +107,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      * @param maxProjectTokenAmountRaw Cap on project tokens per address (or MAX_UINT256 for no cap)
-     * @param initialSigners Addresses initially authorized to sign KYC approvals
+     * @param kycSignerAdmin Address of the singleton contract for KYC signers
      */
     function createWithKYC(
         LBPCommonParams memory lbpCommonParams,
@@ -115,7 +116,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         bytes32 salt,
         address poolCreator,
         uint256 maxProjectTokenAmountRaw,
-        address[] memory initialSigners
+        IKYCSignerAdmin kycSignerAdmin
     ) public nonReentrant returns (address pool) {
         // Scale the max amount (if applicable).
         uint256 maxProjectTokenAmountScaled18 = maxProjectTokenAmountRaw == type(uint256).max
@@ -128,7 +129,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             lbpCommonParams.owner,
             lbpCommonParams.projectToken,
             maxProjectTokenAmountScaled18,
-            initialSigners
+            kycSignerAdmin.getKYCSigner()
         );
 
         pool = _createPool(
