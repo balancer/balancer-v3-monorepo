@@ -100,7 +100,7 @@ contract StablePoolRateProviderScalingTest is StablePoolContractsDeployer, BaseV
                 invBefore,
                 "Invariant should not decrease after swap at rate1"
             );
-            assertGe(vault.getBptRate(pool) + 1, bptRateBefore, "BPT rate should not decrease at rate1");
+            assertGe(vault.getBptRate(pool), bptRateBefore, "BPT rate should not decrease at rate1");
         }
 
         // Swap 2 at rate2 (rate changes between operations).
@@ -139,7 +139,7 @@ contract StablePoolRateProviderScalingTest is StablePoolContractsDeployer, BaseV
                 invBefore,
                 "Invariant should not decrease after swap at rate2"
             );
-            assertGe(vault.getBptRate(pool) + 1, bptRateBefore, "BPT rate should not decrease at rate2");
+            assertGe(vault.getBptRate(pool), bptRateBefore, "BPT rate should not decrease at rate2");
         }
     }
 
@@ -185,7 +185,7 @@ contract StablePoolRateProviderScalingTest is StablePoolContractsDeployer, BaseV
                 invBefore,
                 "Invariant should not decrease after swap at low rate"
             );
-            assertGe(vault.getBptRate(pool) + 1, bptRateBefore, "BPT rate should not decrease at low rate");
+            assertGe(vault.getBptRate(pool), bptRateBefore, "BPT rate should not decrease at low rate");
         }
 
         // Swap 2 after high-rate jump (separate scope).
@@ -220,7 +220,7 @@ contract StablePoolRateProviderScalingTest is StablePoolContractsDeployer, BaseV
                 invBefore,
                 "Invariant should not decrease after swap at high rate"
             );
-            assertGe(vault.getBptRate(pool) + 1, bptRateBefore, "BPT rate should not decrease at high rate");
+            assertGe(vault.getBptRate(pool), bptRateBefore, "BPT rate should not decrease at high rate");
         }
     }
 
