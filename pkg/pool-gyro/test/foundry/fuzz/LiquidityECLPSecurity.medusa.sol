@@ -156,9 +156,9 @@ contract LiquidityECLPSecurityMedusa is BaseMedusaTest {
         uint256 endToken1 = tokens[1].balanceOf(alice);
         uint256 endBpt = IERC20(address(pool)).balanceOf(alice);
 
-        if (endToken0 > startToken0 + 1) revert LiquidityRoundTripProfit(0, startToken0, endToken0);
-        if (endToken1 > startToken1 + 1) revert LiquidityRoundTripProfit(1, startToken1, endToken1);
-        if (endBpt > startBpt + 1) revert BptRoundTripProfit(startBpt, endBpt);
+        if (endToken0 > startToken0) revert LiquidityRoundTripProfit(0, startToken0, endToken0);
+        if (endToken1 > startToken1) revert LiquidityRoundTripProfit(1, startToken1, endToken1);
+        if (endBpt > startBpt) revert BptRoundTripProfit(startBpt, endBpt);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
