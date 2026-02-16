@@ -102,10 +102,11 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
                 balancesAfter
             );
 
-            // Allow tiny tolerance for rounding.
-            assert(invariantAfter + invariantBefore / 1e12 >= invariantBefore);
+            assertGe(invariantAfter, invariantBefore, "Invariant decreased after adding liquidity");
 
-            if (invariantAfter > lastKnownInvariant) lastKnownInvariant = invariantAfter;
+            if (invariantAfter > lastKnownInvariant) {
+                lastKnownInvariant = invariantAfter;
+            }
         } catch {}
     }
 
@@ -163,7 +164,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         try this.externalComputeInvariant(balances) returns (uint256 currentInvariant) {
-            return currentInvariant + lastKnownInvariant / 1e12 >= lastKnownInvariant;
+            return currentInvariant >= lastKnownInvariant;
         } catch {
             return true;
         }

@@ -137,7 +137,8 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
             AMPLIFICATION_PARAMETER * AMP_PRECISION,
             balancesScaled18After
         );
-        assert(invariantAfter + invariantBefore / 1e12 >= invariantBefore);
+
+        assertGe(invariantAfter, invariantBefore, "Invariant decreased after adding liquidity");
     }
 
     function _anyNonZero(uint256[] memory xs) internal pure returns (bool) {
@@ -147,10 +148,10 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         return false;
     }
 
-    function _balancesOf(IERC20[] memory tokens, address user) internal view returns (uint256[] memory bals) {
-        bals = new uint256[](tokens.length);
+    function _balancesOf(IERC20[] memory tokens, address user) internal view returns (uint256[] memory balances) {
+        balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            bals[i] = tokens[i].balanceOf(user);
+            balances[i] = tokens[i].balanceOf(user);
         }
     }
 
@@ -427,7 +428,7 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         if (currentRate > lastKnownVaultBptRate) {
             lastKnownVaultBptRate = currentRate;
         }
-        // Allow for tiny rounding errors (0.001%)
-        assert(currentRate >= lastKnownVaultBptRate.mulDown(99999e13));
+
+        assertGe(currentRate, lastKnownVaultBptRate, "Vault BPT rate decreased");
     }
 }

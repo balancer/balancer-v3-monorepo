@@ -116,8 +116,8 @@ contract StablePoolDecimalsAndScalingTest is StablePoolContractsDeployer, BaseVa
         uint256 invAfterRoundUp = _computeInvariantScaled18(pool, Rounding.ROUND_UP);
         assertGe(invAfterRoundUp, invBeforeRoundDown, "Invariant decreased (scaled18)");
         // Stronger check when rounding isn't binding.
-        assertGe(invAfterRoundDown + 1, invBeforeRoundDown, "Invariant decreased (roundDown)");
-        assertGe(invAfterRoundUp + 1, invBeforeRoundUp, "Invariant decreased (roundUp)");
+        assertGe(invAfterRoundDown, invBeforeRoundDown, "Invariant decreased (roundDown)");
+        assertGe(invAfterRoundUp, invBeforeRoundUp, "Invariant decreased (roundUp)");
     }
 
     function _createAndInitOddDecimalsPool() internal returns (address newPool) {
