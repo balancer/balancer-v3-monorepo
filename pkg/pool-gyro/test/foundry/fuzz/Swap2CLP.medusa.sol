@@ -513,11 +513,12 @@ contract Swap2CLPMedusa is BaseMedusaTest {
 
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
+
         if (currentRate > lastKnownBptRate) {
             lastKnownBptRate = currentRate;
+        } else if (currentRate < lastKnownBptRate) {
+            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
         }
-        uint256 minAllowed = lastKnownBptRate.mulDown(99999e13);
-        if (currentRate < minAllowed) revert BptRateDecreased(currentRate, lastKnownBptRate, minAllowed);
     }
 
     function _assertExpectedSwapRevert(bytes memory err) internal pure {

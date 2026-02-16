@@ -391,10 +391,9 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         // Update tracked rate if it increased
         if (currentRate > lastKnownBptRate) {
             lastKnownBptRate = currentRate;
+        } else if (currentRate < lastKnownBptRate) {
+            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
         }
-        // Allow for tiny rounding errors (0.001%)
-        uint256 minAllowed = lastKnownBptRate.mulDown(99999e13);
-        if (currentRate < minAllowed) revert BptRateDecreased(currentRate, lastKnownBptRate, minAllowed);
     }
 
     function _assertPoolBalanceDecreasedByExpectedAmount(

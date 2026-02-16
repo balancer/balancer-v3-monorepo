@@ -213,7 +213,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
                 );
                 uint256 ratio = invAfter.divDown(invBefore);
                 uint256 maxRatio = IBasePool(address(pool)).getMaximumInvariantRatio();
-                assertLe(ratio, maxRatio + 1, "Invariant ratio above max (prop add)");
+                assertLe(ratio, maxRatio, "Invariant ratio above max (prop add)");
             }
 
             _assertBptRateNeverDecreases();
@@ -430,9 +430,9 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 currentRate = _getCurrentBptRate();
         if (currentRate > lastKnownBptRate) {
             lastKnownBptRate = currentRate;
+        } else if (currentRate < lastKnownBptRate) {
+            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
         }
-        uint256 minAllowed = lastKnownBptRate.mulDown(99999e13);
-        if (currentRate < minAllowed) revert BptRateDecreased(currentRate, lastKnownBptRate, minAllowed);
     }
 
     function _assertInvariantRatioWithinBounds(
@@ -451,8 +451,8 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 maxRatio = IBasePool(address(pool)).getMaximumInvariantRatio();
 
         // Use a tiny slack to avoid false positives due to rounding differences vs Vault internal calculations.
-        if (ratio + 1 < minRatio) assertGe(ratio, minRatio, "Invariant ratio below min bound");
-        assertLe(ratio, maxRatio + 1, "Invariant ratio above max bound");
+        if (ratio < minRatio) assertGe(ratio, minRatio, "Invariant ratio below min bound");
+        assertLe(ratio, maxRatio, "Invariant ratio above max bound");
     }
 
     function _assertPoolBalanceAndInvariantAfterSingleTokenExactOut(

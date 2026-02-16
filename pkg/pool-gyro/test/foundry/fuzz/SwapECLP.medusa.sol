@@ -622,8 +622,11 @@ contract SwapECLPMedusa is BaseMedusaTest {
 
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
-        uint256 minAllowed = lastKnownBptRate.mulDown(99999e13);
-        if (currentRate < minAllowed) revert BptRateDecreased(currentRate, lastKnownBptRate, minAllowed);
-        if (currentRate > lastKnownBptRate) lastKnownBptRate = currentRate;
+
+        if (currentRate < lastKnownBptRate) {
+            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
+        } else if (currentRate > lastKnownBptRate) {
+            lastKnownBptRate = currentRate;
+        }
     }
 }
