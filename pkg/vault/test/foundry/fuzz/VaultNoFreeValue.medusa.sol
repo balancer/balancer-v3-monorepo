@@ -117,13 +117,19 @@ contract VaultNoFreeValueMedusaTest is BaseMedusaTest {
         uint256[] memory amountsIn = _boundBalanceLength(rawAmountsIn);
 
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        bool anyNonZero = false;
         for (uint256 i = 0; i < amountsIn.length; i++) {
-            // Keep within packed-balance headroom.
+            // Keep within packed-balance headroom. If headroom is very small, also keep within user's balance to avoid
+            // reverting and get some non-zero donation amounts to test.
             uint256 headroom = type(uint128).max - balancesRaw[i];
             uint256 userBal = tokens[i].balanceOf(bob);
             uint256 maxDonate = headroom < userBal ? headroom : userBal;
             amountsIn[i] = bound(amountsIn[i], 0, maxDonate);
+            if (amountsIn[i] != 0) anyNonZero = true;
         }
+
+        // All-zero input just reverts; skip to avoid wasting a fuzz cycle.
+        if (!anyNonZero) return;
 
         medusa.prank(bob);
         router.donate(address(pool), amountsIn, false, bytes(""));
