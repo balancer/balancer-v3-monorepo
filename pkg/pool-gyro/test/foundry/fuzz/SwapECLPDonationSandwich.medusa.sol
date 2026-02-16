@@ -218,7 +218,7 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
         if (victimOk) _assertVictimPoolDeltas(ctx, balInAfter1, balOutAfter1, victimOut);
 
         uint256 endIn = _unwindLeg(ctx, attackerOut);
-        if (endIn > ctx.startIn + 1) revert SandwichProfit(ctx.startIn, endIn, ctx.iIn);
+        if (endIn > ctx.startIn) revert SandwichProfit(ctx.startIn, endIn, ctx.iIn);
 
         // Integration sanity: after a *successful* sandwich, spot price should remain within [alpha, beta].
         // (We don't assert this after donation calls, since donation can move balances without swap clamping.)

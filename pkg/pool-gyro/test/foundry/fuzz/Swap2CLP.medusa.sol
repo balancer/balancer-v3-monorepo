@@ -382,7 +382,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         if (midSpent == 0) revert ZeroAmountIn();
 
         // No-profit condition in intermediate token terms (allow +1 wei for rounding path differences).
-        if (midSpent + 1 < midReceived) revert RoundTripProfitExactInExactOut(midReceived, midSpent + 1, amountIn);
+        if (midSpent < midReceived) revert RoundTripProfitExactInExactOut(midReceived, midSpent, amountIn);
 
         _assertBptRateNeverDecreases();
     }
@@ -456,8 +456,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
 
         // Strict: no profit beyond tiny rounding dust.
         // With non-zero fees this should be strictly <= amountIn; allow +1 wei for rounding.
-        uint256 maxAllowed = amountIn + 1;
-        if (finalAmount > maxAllowed) revert RoundTripProfitStrict(finalAmount, maxAllowed, amountIn);
+        if (finalAmount > amountIn) revert RoundTripProfitStrict(finalAmount, amountIn, amountIn);
 
         _assertBptRateNeverDecreases();
     }

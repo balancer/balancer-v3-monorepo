@@ -407,8 +407,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
 
         // Strict no-profit: end balance in input token must not exceed start balance (+1 unit dust).
         uint256 endIn = tokenIn.balanceOf(alice);
-        uint256 maxAllowed = startIn + 1;
-        if (endIn > maxAllowed) revert RoundTripProfitStrict(endIn, maxAllowed, amountIn);
+        if (endIn > startIn) revert RoundTripProfitStrict(endIn, startIn, amountIn);
 
         // Extra integration assertions on the end state.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));

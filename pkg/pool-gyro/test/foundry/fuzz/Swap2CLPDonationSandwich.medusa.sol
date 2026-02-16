@@ -194,7 +194,7 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         _victimLeg(tokenIn, tokenOut, victimAmountIn);
 
         uint256 endIn = _unwindLeg(tokenIn, tokenOut, attackerOut);
-        if (endIn > startIn + 1) revert SandwichProfit(startIn, endIn, direction);
+        if (endIn > startIn) revert SandwichProfit(startIn, endIn, direction);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
