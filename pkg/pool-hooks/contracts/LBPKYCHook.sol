@@ -48,8 +48,8 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
      */
     uint256 internal immutable _maxCappedTokenAmountScaled18;
 
-    // Addresses authorized to sign KYC approvals.
-    mapping(address signer => bool isAuthorized) internal _authorizedSigners;
+    // Address authorized to sign KYC approvals.
+    address internal immutable _authorizedSigner;
 
     // Cumulative capped tokens bought per user address, as an 18-decimal FixedPoint number.
     mapping(address user => uint256 totalCappedTokenAmount) internal _totalCappedTokenAmountScaled18;
@@ -59,16 +59,11 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
     ***************************************************************************/
 
     /**
-     * @notice Emitted when a KYC signer is added.
-     * @param signer The address of the signer that was added
+     * @notice Emitted on successful registration with a pool.
+     * @param pool The address of the pool to which this hook is attached
+     * @param factory The factory from which the pool was deployed
      */
-    event SignerAdded(address indexed signer);
-
-    /**
-     * @notice Emitted when a KYC signer is removed.
-     * @param signer The address of the signer that was removed
-     */
-    event SignerRemoved(address indexed signer);
+    event LBPKYCHookRegistered(address indexed pool, address indexed factory);
 
     /**
      * @notice Emitted when a user acquires capped tokens.
@@ -77,13 +72,6 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
      * @param amountRaw The amount purchased, in native token decimals
      */
     event CappedTokensBought(address indexed user, IERC20 indexed token, uint256 amountRaw);
-
-    /**
-     * @notice Emitted on successful registration with a pool.
-     * @param pool The address of the pool to which this hook is attached
-     * @param factory The factory from which the pool was deployed
-     */
-    event KYCCapHookRegistered(address indexed pool, address indexed factory);
 
     /***************************************************************************
                                     Errors
@@ -122,7 +110,7 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
      * @param owner The owner of this hook contract (can manage signers, revocations)
      * @param cappedToken The token on which the cap is imposed (e.g., projectToken)
      * @param maxCappedTokenAmountScaled18 The maximum number of capped tokens allowed per address
-     * @param initialSigners Addresses initially authorized to sign KYC approvals
+     * @param authorizedSigner Address authorized to sign KYC approvals
      */
     constructor(
         IVault vault,
@@ -130,20 +118,15 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
         address owner,
         IERC20 cappedToken,
         uint256 maxCappedTokenAmountScaled18,
-        address[] memory initialSigners
+        address authorizedSigner
     ) VaultGuard(vault) Ownable(owner) EIP712(EIP712_NAME, EIP712_VERSION) {
         _trustedRouter = trustedRouter;
         _cappedToken = cappedToken;
         _maxCappedTokenAmountScaled18 = maxCappedTokenAmountScaled18;
+        _authorizedSigner = authorizedSigner;
 
-        // Used for events.
+        // Used for computing raw amounts for output in events.
         _cappedTokenScalingFactor = 10 ** (18 - IERC20Metadata(address(cappedToken)).decimals());
-
-        for (uint256 i = 0; i < initialSigners.length; ++i) {
-            _authorizedSigners[initialSigners[i]] = true;
-
-            emit SignerAdded(initialSigners[i]);
-        }
     }
 
     /***************************************************************************
@@ -151,12 +134,14 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
     ***************************************************************************/
 
     /// @inheritdoc BaseHooks
-    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
+    function getHookFlags() public view override returns (HookFlags memory hookFlags) {
         // KYC is always enforced before the swap.
         hookFlags.shouldCallBeforeSwap = true;
 
         // Cap enforcement happens after the swap, when we know the exact amounts.
-        hookFlags.shouldCallAfterSwap = true;
+        if (_maxCappedTokenAmountScaled18 != type(uint256).max) {
+            hookFlags.shouldCallAfterSwap = true;
+        }
     }
 
     /// @inheritdoc BaseHooks
@@ -168,7 +153,7 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
     ) public override returns (bool) {
         _setAuthorizedCaller(factory, pool, address(_vault));
 
-        emit KYCCapHookRegistered(pool, factory);
+        emit LBPKYCHookRegistered(pool, factory);
 
         return true;
     }
@@ -212,7 +197,7 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(digest, signature);
 
-        require(_authorizedSigners[signer], UnauthorizedSigner(signer));
+        require(_authorizedSigner == signer, UnauthorizedSigner(signer));
 
         return true;
     }
@@ -247,40 +232,21 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
             uint256 previousTotal = _totalCappedTokenAmountScaled18[endUser];
             uint256 newTotal = previousTotal + cappedTokensOut;
 
+            uint256 cappedTokensOutRaw = _toRaw(cappedTokensOut, _cappedTokenScalingFactor);
+
             if (newTotal > _maxCappedTokenAmountScaled18) {
                 // Could be unchecked, but don't need to optimize a revert path.
                 uint256 amountRemaining = _maxCappedTokenAmountScaled18 - previousTotal;
 
-                revert CapExceeded(
-                    _toRaw(cappedTokensOut, _cappedTokenScalingFactor),
-                    _toRaw(amountRemaining, _cappedTokenScalingFactor)
-                );
+                revert CapExceeded(cappedTokensOutRaw, _toRaw(amountRemaining, _cappedTokenScalingFactor));
             }
 
             _totalCappedTokenAmountScaled18[endUser] = newTotal;
 
-            emit CappedTokensBought(endUser, _cappedToken, cappedTokensOut);
+            emit CappedTokensBought(endUser, _cappedToken, cappedTokensOutRaw);
         }
 
         return (true, params.amountCalculatedRaw);
-    }
-
-    /***************************************************************************
-                                  Signer Management
-    ***************************************************************************/
-
-    /// @notice Add an address as an authorized KYC signer.
-    function addSigner(address signer) external onlyOwner {
-        _authorizedSigners[signer] = true;
-
-        emit SignerAdded(signer);
-    }
-
-    /// @notice Remove an address from the authorized KYC signers.
-    function removeSigner(address signer) external onlyOwner {
-        _authorizedSigners[signer] = false;
-
-        emit SignerRemoved(signer);
     }
 
     /***************************************************************************
