@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ILBPKYCHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ILBPKYCHook.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -15,16 +16,22 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { LBPKYCHook } from "../../contracts/LBPKYCHook.sol";
 
 contract LBPKYCHookTest is BaseVaultTest {
-    uint256 internal constant MAX_CAP_RAW = 1000e18;
+    // Cap for the 18-decimal token (dai): 1000 tokens.
+    uint256 internal constant MAX_CAP_RAW_18DEC = 1000e18;
+    // Cap for the 6-decimal token (usdc6Decimals): 1000 tokens.
+    uint256 internal constant MAX_CAP_RAW_6DEC = 1000e6;
 
     LBPKYCHook internal hook;
     LBPKYCHook internal hookNoCap;
+    LBPKYCHook internal hook6Dec;
 
     uint256 internal signerPk;
     address internal signerAddr;
     address internal lbpPool;
 
-    // `dai` is used as the capped (project) token; `usdc` as the reserve token.
+    // `dai` is used as the capped (project) token for 18-decimal tests.
+    // `usdc6Decimals` is used as the capped (project) token for 6-decimal tests.
+    // `usdc` is used as the reserve token in both cases.
 
     function setUp() public override {
         super.setUp();
@@ -33,15 +40,19 @@ contract LBPKYCHookTest is BaseVaultTest {
         signerAddr = vm.addr(signerPk);
         lbpPool = makeAddr("lbpPool");
 
-        // Hook with cap enabled.
-        hook = new LBPKYCHook(IVault(address(vault)), address(router), dai, MAX_CAP_RAW, signerAddr);
+        // Hook with cap enabled (18-decimal capped token).
+        hook = new LBPKYCHook(IVault(address(vault)), address(router), dai, MAX_CAP_RAW_18DEC, signerAddr);
 
-        // Hook with cap disabled (KYC-only mode).
-        hookNoCap = new LBPKYCHook(IVault(address(vault)), address(router), dai, MAX_UINT256, signerAddr);
+        // Hook with cap disabled (KYC-only mode): zero capped token, zero cap amount.
+        hookNoCap = new LBPKYCHook(IVault(address(vault)), address(router), IERC20(address(0)), 0, signerAddr);
 
-        // Register both hooks so `onlyAuthorizedCaller` passes.
+        // Hook with cap enabled (6-decimal capped token).
+        hook6Dec = new LBPKYCHook(IVault(address(vault)), address(router), usdc6Decimals, MAX_CAP_RAW_6DEC, signerAddr);
+
+        // Register all hooks so `onlyAuthorizedCaller` passes.
         _registerHook(hook);
         _registerHook(hookNoCap);
+        _registerHook(hook6Dec);
     }
 
     function _registerHook(LBPKYCHook hookToRegister) internal {
@@ -54,12 +65,74 @@ contract LBPKYCHookTest is BaseVaultTest {
         );
     }
 
+    /***************************************************************************
+                                  Constructor
+    ***************************************************************************/
+
     function testConstructorSetsImmutables() public view {
         assertEq(
             hook.KYC_AUTHORIZATION_TYPEHASH(),
             keccak256("KYCAuthorization(address user,address pool,uint256 deadline)")
         );
         assertNotEq(hook.domainSeparator(), bytes32(0));
+    }
+
+    function testConstructorRevertsIfZeroTokenWithNonZeroCap() public {
+        vm.expectRevert(ILBPKYCHook.InvalidConfiguration.selector);
+
+        new LBPKYCHook(IVault(address(vault)), address(router), IERC20(address(0)), 1000e18, signerAddr);
+    }
+
+    function testConstructorAcceptsZeroTokenWithZeroCap() public {
+        // Should not revert.
+        LBPKYCHook kycOnly = new LBPKYCHook(IVault(address(vault)), address(router), IERC20(address(0)), 0, signerAddr);
+
+        assertEq(address(kycOnly.getCappedToken()), address(0));
+    }
+
+    /***************************************************************************
+                                    Getters
+    ***************************************************************************/
+
+    function testGetTrustedRouter() public view {
+        assertEq(hook.getTrustedRouter(), address(router));
+    }
+
+    function testGetAuthorizedSigner() public view {
+        assertEq(hook.getAuthorizedSigner(), signerAddr);
+    }
+
+    function testGetCappedToken() public view {
+        assertEq(address(hook.getCappedToken()), address(dai));
+        assertEq(address(hookNoCap.getCappedToken()), address(0));
+        assertEq(address(hook6Dec.getCappedToken()), address(usdc6Decimals));
+    }
+
+    function testGetCurrentCappedTokenTotalForUserFreshUser() public view {
+        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), 0);
+    }
+
+    function testGetCurrentCappedTokenTotalForUserAfterPurchase() public {
+        uint256 buyAmount = 200e18;
+        _mockGetSender(alice);
+
+        AfterSwapParams memory params = _buildAfterSwapParams(usdc, dai, buyAmount, address(router), lbpPool);
+        vm.prank(address(vault));
+        hook.onAfterSwap(params);
+
+        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), buyAmount);
+    }
+
+    function testGetCurrentCappedTokenTotalRevertsIfNoCappedToken() public {
+        vm.expectRevert(ILBPKYCHook.NoCappedTokenSet.selector);
+
+        hookNoCap.getCurrentCappedTokenTotalForUser(alice);
+    }
+
+    function testGetRemainingCappedTokenAllocationRevertsIfNoCappedToken() public {
+        vm.expectRevert(ILBPKYCHook.NoCappedTokenSet.selector);
+
+        hookNoCap.getRemainingCappedTokenAllocation(alice);
     }
 
     /***************************************************************************
@@ -87,6 +160,13 @@ contract LBPKYCHookTest is BaseVaultTest {
         assertFalse(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be false");
     }
 
+    function testHookFlagsWith6DecCap() public view {
+        HookFlags memory flags = hook6Dec.getHookFlags();
+
+        assertTrue(flags.shouldCallBeforeSwap, "shouldCallBeforeSwap should be true");
+        assertTrue(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be true");
+    }
+
     /***************************************************************************
                           onBeforeSwap — KYC Enforcement
     ***************************************************************************/
@@ -111,7 +191,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         bytes memory userData = _encodeUserData(deadline, sig);
         PoolSwapParams memory params = _buildSwapParams(untrustedRouter, userData);
 
-        vm.expectRevert(abi.encodeWithSelector(LBPKYCHook.RouterNotTrusted.selector, untrustedRouter));
+        vm.expectRevert(abi.encodeWithSelector(ILBPKYCHook.RouterNotTrusted.selector, untrustedRouter));
 
         vm.prank(address(vault));
         hook.onBeforeSwap(params, lbpPool);
@@ -125,7 +205,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         bytes memory userData = _encodeUserData(deadline, sig);
         PoolSwapParams memory params = _buildSwapParams(address(router), userData);
 
-        vm.expectRevert(LBPKYCHook.KYCExpired.selector);
+        vm.expectRevert(ILBPKYCHook.KYCExpired.selector);
 
         vm.prank(address(vault));
         hook.onBeforeSwap(params, lbpPool);
@@ -141,7 +221,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         bytes memory userData = _encodeUserData(deadline, sig);
         PoolSwapParams memory params = _buildSwapParams(address(router), userData);
 
-        vm.expectRevert(abi.encodeWithSelector(LBPKYCHook.UnauthorizedSigner.selector, bogusAddr));
+        vm.expectRevert(abi.encodeWithSelector(ILBPKYCHook.UnauthorizedSigner.selector, bogusAddr));
 
         vm.prank(address(vault));
         hook.onBeforeSwap(params, lbpPool);
@@ -222,8 +302,20 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.stopPrank();
     }
 
+    function testOnBeforeSwapWorksOnKYCOnlyHook() public {
+        uint256 deadline = block.timestamp + 1 hours;
+        _mockGetSender(alice);
+
+        bytes memory sig = _signKYC(signerPk, hookNoCap, alice, lbpPool, deadline);
+        bytes memory userData = _encodeUserData(deadline, sig);
+        PoolSwapParams memory params = _buildSwapParams(address(router), userData);
+
+        vm.prank(address(vault));
+        assertTrue(hookNoCap.onBeforeSwap(params, lbpPool));
+    }
+
     /***************************************************************************
-                          onAfterSwap — Cap Enforcement
+                    onAfterSwap — Cap Enforcement (18-decimal)
     ***************************************************************************/
 
     function testOnAfterSwapTracksAllocation() public {
@@ -236,7 +328,8 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params);
 
         assertTrue(success);
-        assertEq(hook.remainingAllocation(alice), MAX_CAP_RAW - buyAmount);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC - buyAmount);
+        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), buyAmount);
     }
 
     function testOnAfterSwapAllowsMultiplePurchasesUpToCap() public {
@@ -253,7 +346,8 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params2);
 
         assertTrue(success);
-        assertEq(hook.remainingAllocation(alice), 0);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), 0);
+        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testOnAfterSwapRevertsWhenCapExceeded() public {
@@ -269,7 +363,7 @@ contract LBPKYCHookTest is BaseVaultTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                LBPKYCHook.CapExceeded.selector,
+                ILBPKYCHook.CapExceeded.selector,
                 300e18, // requestedAmountRaw (dai is 18 decimals, so raw == scaled18)
                 200e18 // remainingAllocationRaw
             )
@@ -289,7 +383,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params);
 
         assertTrue(success);
-        assertEq(hook.remainingAllocation(alice), MAX_CAP_RAW);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testOnAfterSwapCapsArePerUser() public {
@@ -305,8 +399,10 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(paramsBob);
 
-        assertEq(hook.remainingAllocation(alice), 400e18);
-        assertEq(hook.remainingAllocation(bob), 200e18);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), 400e18);
+        assertEq(hook.getRemainingCappedTokenAllocation(bob), 200e18);
+        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), 600e18);
+        assertEq(hook.getCurrentCappedTokenTotalForUser(bob), 800e18);
     }
 
     function testOnAfterSwapEmitsCappedTokensBought() public {
@@ -316,7 +412,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         AfterSwapParams memory params = _buildAfterSwapParams(usdc, dai, buyAmount, address(router), lbpPool);
 
         vm.expectEmit();
-        emit LBPKYCHook.CappedTokensBought(alice, dai, buyAmount);
+        emit ILBPKYCHook.CappedTokensBought(alice, dai, buyAmount);
 
         vm.prank(address(vault));
         hook.onAfterSwap(params);
@@ -327,7 +423,7 @@ contract LBPKYCHookTest is BaseVaultTest {
 
         AfterSwapParams memory params = _buildAfterSwapParams(usdc, dai, 100e18, untrustedRouter, lbpPool);
 
-        vm.expectRevert(abi.encodeWithSelector(LBPKYCHook.RouterNotTrusted.selector, untrustedRouter));
+        vm.expectRevert(abi.encodeWithSelector(ILBPKYCHook.RouterNotTrusted.selector, untrustedRouter));
 
         vm.prank(address(vault));
         hook.onAfterSwap(params);
@@ -356,23 +452,114 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(buyParams);
 
-        assertEq(hook.remainingAllocation(alice), 500e18);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), 500e18);
 
         // Alice sells capped token back (tokenIn=dai, tokenOut=usdc) — should NOT change allocation.
         AfterSwapParams memory sellParams = _buildAfterSwapParams(dai, usdc, 500e18, address(router), lbpPool);
         vm.prank(address(vault));
         hook.onAfterSwap(sellParams);
 
-        assertEq(hook.remainingAllocation(alice), 500e18, "Selling should not reduce tracked allocation");
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), 500e18, "Selling should not reduce tracked allocation");
     }
+
+    /***************************************************************************
+              onAfterSwap — Cap Enforcement (6-decimal capped token)
+    ***************************************************************************/
+
+    function testOnAfterSwap6DecTracksAllocation() public {
+        // Buy 200 tokens. Vault passes scaled18; remaining allocation returns raw (6 decimals).
+        uint256 buyAmountScaled18 = 200e18;
+        uint256 expectedRemainingRaw = MAX_CAP_RAW_6DEC - 200e6;
+        _mockGetSender(alice);
+
+        AfterSwapParams memory params = _buildAfterSwapParams(
+            usdc,
+            usdc6Decimals,
+            buyAmountScaled18,
+            address(router),
+            lbpPool
+        );
+
+        vm.prank(address(vault));
+        (bool success, ) = hook6Dec.onAfterSwap(params);
+
+        assertTrue(success);
+        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), expectedRemainingRaw);
+        assertEq(hook6Dec.getCurrentCappedTokenTotalForUser(alice), 200e6);
+    }
+
+    function testOnAfterSwap6DecEmitsRawAmount() public {
+        // Buy 123.456789 tokens: scaled18 = 123.456789e18, raw 6-dec = 123456789 = 123.456789e6.
+        uint256 buyAmountScaled18 = 123_456789e12; // 123.456789e18
+        uint256 expectedRaw = 123_456789; // 123.456789 in 6 decimals
+        _mockGetSender(alice);
+
+        AfterSwapParams memory params = _buildAfterSwapParams(
+            usdc,
+            usdc6Decimals,
+            buyAmountScaled18,
+            address(router),
+            lbpPool
+        );
+
+        vm.expectEmit();
+        emit ILBPKYCHook.CappedTokensBought(alice, usdc6Decimals, expectedRaw);
+
+        vm.prank(address(vault));
+        hook6Dec.onAfterSwap(params);
+    }
+
+    function testOnAfterSwap6DecCapExceededShowsRawAmounts() public {
+        _mockGetSender(alice);
+
+        // First purchase: 800 tokens (scaled18 = 800e18).
+        AfterSwapParams memory params1 = _buildAfterSwapParams(usdc, usdc6Decimals, 800e18, address(router), lbpPool);
+        vm.prank(address(vault));
+        hook6Dec.onAfterSwap(params1);
+
+        // Second purchase: 300 tokens (scaled18 = 300e18). Total would be 1100 > 1000 cap.
+        AfterSwapParams memory params2 = _buildAfterSwapParams(usdc, usdc6Decimals, 300e18, address(router), lbpPool);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILBPKYCHook.CapExceeded.selector,
+                300e6, // requestedAmountRaw (6 decimals)
+                200e6 // remainingAllocationRaw (6 decimals)
+            )
+        );
+
+        vm.prank(address(vault));
+        hook6Dec.onAfterSwap(params2);
+    }
+
+    function testOnAfterSwap6DecMultiplePurchasesUpToCap() public {
+        _mockGetSender(alice);
+
+        // First purchase: 600 tokens.
+        AfterSwapParams memory params1 = _buildAfterSwapParams(usdc, usdc6Decimals, 600e18, address(router), lbpPool);
+        vm.prank(address(vault));
+        hook6Dec.onAfterSwap(params1);
+
+        // Second purchase: 400 tokens (total = 1000 = cap).
+        AfterSwapParams memory params2 = _buildAfterSwapParams(usdc, usdc6Decimals, 400e18, address(router), lbpPool);
+        vm.prank(address(vault));
+        (bool success, ) = hook6Dec.onAfterSwap(params2);
+
+        assertTrue(success);
+        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), 0);
+        assertEq(hook6Dec.getCurrentCappedTokenTotalForUser(alice), MAX_CAP_RAW_6DEC);
+    }
+
+    function testOnAfterSwap6DecRemainingAllocationFreshUser() public view {
+        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_6DEC);
+    }
+
+    /***************************************************************************
+                          remainingAllocation / misc
+    ***************************************************************************/
 
     function testRemainingAllocationFreshUser() public view {
-        assertEq(hook.remainingAllocation(alice), MAX_CAP_RAW);
-    }
-
-    function testRemainingAllocationNoCap() public view {
-        // When cap is type(uint256).max, remainingAllocation should return max - 0 = max.
-        assertEq(hookNoCap.remainingAllocation(alice), type(uint256).max);
+        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testDomainSeparatorsAreDifferentPerHook() public view {
