@@ -141,8 +141,8 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
         PoolSwapParams calldata params,
         address pool
     ) public view override onlyAuthorizedCaller returns (bool success) {
-        // The Vault reliably reports which router initiated the swap, but routers are permissionless —
-        // we must verify it's one we trust to accurately report the sender.
+        // The Vault reliably reports which router initiated the swap, but routers are permissionless.
+        // We must verify it's one we trust to accurately report the sender.
         require(params.router == _trustedRouter, RouterNotTrusted(params.router));
 
         // Decode the KYC authorization from userData.
@@ -158,7 +158,7 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(digest, signature);
 
-        require(_authorizedSigner == signer, UnauthorizedSigner(signer));
+        require(signer == _authorizedSigner, UnauthorizedSigner(signer));
 
         return true;
     }
@@ -170,7 +170,7 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
     /**
      * @notice Enforces the per-address allocation cap after a swap is executed.
      * @dev Only tracks swaps where the user is *buying* capped tokens (i.e., the capped token is `tokenOut`).
-     * Selling project tokens back into the pool does NOT decrease the tracked allocation — this is intentional
+     * Selling project tokens back into the pool does NOT decrease the tracked allocation. This is intentional,
      * to prevent wash-trading exploits where a user buys, transfers to another wallet, sells back, and buys again.
      *
      * Uses `amountOutScaled18` to track uniformly regardless of swap kind (EXACT_IN / EXACT_OUT).
@@ -244,14 +244,14 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
         return _toRaw(_maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user], _cappedTokenScalingFactor);
     }
 
-    /***************************************************************************
-                                Helper Functions
-    ***************************************************************************/
-
     /// @inheritdoc ILBPKYCHook
     function domainSeparator() external view returns (bytes32 domainSeparatorV4) {
         return _domainSeparatorV4();
     }
+    
+    /***************************************************************************
+                                Helper Functions
+    ***************************************************************************/
 
     function _toRaw(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return amount / scalingFactor;
