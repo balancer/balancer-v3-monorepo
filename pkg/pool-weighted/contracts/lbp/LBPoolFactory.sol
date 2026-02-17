@@ -48,7 +48,8 @@ contract LBPoolFactory is BaseLBPFactory {
         string memory factoryVersion,
         string memory poolVersion,
         address trustedRouter,
-        address migrationRouter
+        address migrationRouter,
+        IKYCSignerAdmin kycSignerAdmin
     )
         BaseLBPFactory(
             vault,
@@ -57,6 +58,7 @@ contract LBPoolFactory is BaseLBPFactory {
             poolVersion,
             trustedRouter,
             migrationRouter,
+            kycSignerAdmin,
             type(LBPool).creationCode
         )
     {
@@ -133,7 +135,6 @@ contract LBPoolFactory is BaseLBPFactory {
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      * @param maxProjectTokenAmountRaw Cap on project tokens per address (or MAX_UINT256 for no cap)
-     * @param kycSignerAdmin Address of the singleton contract for KYC signers
      */
     function createWithKYC(
         LBPCommonParams memory lbpCommonParams,
@@ -142,8 +143,7 @@ contract LBPoolFactory is BaseLBPFactory {
         uint256 swapFeePercentage,
         bytes32 salt,
         address poolCreator,
-        uint256 maxProjectTokenAmountRaw,
-        IKYCSignerAdmin kycSignerAdmin
+        uint256 maxProjectTokenAmountRaw
     ) public nonReentrant returns (address pool) {
         // Scale the max amount (if applicable).
         uint256 maxProjectTokenAmountScaled18 = maxProjectTokenAmountRaw == type(uint256).max
@@ -153,10 +153,9 @@ contract LBPoolFactory is BaseLBPFactory {
         LBPKYCHook secondaryHookContract = new LBPKYCHook(
             getVault(),
             _trustedRouter,
-            lbpCommonParams.owner,
             lbpCommonParams.projectToken,
             maxProjectTokenAmountScaled18,
-            kycSignerAdmin.getKYCSigner()
+            _kycSignerAdmin.getKYCSigner()
         );
 
         pool = _createPool(

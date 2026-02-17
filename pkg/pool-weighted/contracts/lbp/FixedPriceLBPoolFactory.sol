@@ -46,7 +46,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRouter
+        address trustedRouter,
+        IKYCSignerAdmin kycSignerAdmin
     )
         BaseLBPFactory(
             vault,
@@ -55,6 +56,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             poolVersion,
             trustedRouter,
             address(0),
+            kycSignerAdmin,
             type(FixedPriceLBPool).creationCode
         ) // no migration router
     {
@@ -107,7 +109,6 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
      * @param salt The salt value that will be passed to create3 deployment
      * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      * @param maxProjectTokenAmountRaw Cap on project tokens per address (or MAX_UINT256 for no cap)
-     * @param kycSignerAdmin Address of the singleton contract for KYC signers
      */
     function createWithKYC(
         LBPCommonParams memory lbpCommonParams,
@@ -115,8 +116,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         uint256 swapFeePercentage,
         bytes32 salt,
         address poolCreator,
-        uint256 maxProjectTokenAmountRaw,
-        IKYCSignerAdmin kycSignerAdmin
+        uint256 maxProjectTokenAmountRaw
     ) public nonReentrant returns (address pool) {
         // Scale the max amount (if applicable).
         uint256 maxProjectTokenAmountScaled18 = maxProjectTokenAmountRaw == type(uint256).max
@@ -126,10 +126,9 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
         LBPKYCHook secondaryHookContract = new LBPKYCHook(
             getVault(),
             _trustedRouter,
-            lbpCommonParams.owner,
             lbpCommonParams.projectToken,
             maxProjectTokenAmountScaled18,
-            kycSignerAdmin.getKYCSigner()
+            _kycSignerAdmin.getKYCSigner()
         );
 
         pool = _createPool(
