@@ -2,8 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
+import { IKYCSignerAdmin } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IKYCSignerAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
@@ -29,18 +28,27 @@ contract FixedPriceLBPoolContractsDeployer is BaseContractsDeployer {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address router
+        address router,
+        IKYCSignerAdmin kycSignerAdmin
     ) internal returns (FixedPriceLBPoolFactory) {
         if (reusingArtifacts) {
             return
                 FixedPriceLBPoolFactory(
                     deployCode(
                         _computeLBPoolPath(type(FixedPriceLBPoolFactory).name),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router)
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router, kycSignerAdmin)
                     )
                 );
         } else {
-            return new FixedPriceLBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router);
+            return
+                new FixedPriceLBPoolFactory(
+                    vault,
+                    pauseWindowDuration,
+                    factoryVersion,
+                    poolVersion,
+                    router,
+                    kycSignerAdmin
+                );
         }
     }
 

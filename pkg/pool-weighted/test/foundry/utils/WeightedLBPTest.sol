@@ -57,7 +57,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             factoryVersion,
             poolVersion,
             address(router),
-            address(migrationRouter)
+            address(migrationRouter),
+            kycSignerAdmin
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
 

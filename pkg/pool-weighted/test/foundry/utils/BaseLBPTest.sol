@@ -7,8 +7,10 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { IKYCSignerAdmin } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IKYCSignerAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { KYCSignerAdminDeployer } from "@balancer-labs/v3-standalone-utils/test/foundry/utils/KYCSignerAdminDeployer.sol";
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -19,7 +21,7 @@ import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol"
 import { LBPMigrationRouterDeployer } from "./LBPMigrationRouterDeployer.sol";
 import { LBPValidation } from "../../../contracts/lbp/LBPValidation.sol";
 
-abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, LBPMigrationRouterDeployer {
+abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, LBPMigrationRouterDeployer, KYCSignerAdminDeployer {
     using ArrayHelpers for *;
 
     uint256 public constant swapFee = 1e16; // 1%
@@ -58,8 +60,16 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
     WeightedPoolFactory internal weightedPoolFactory;
     LBPMigrationRouterMock internal migrationRouter;
 
+    IKYCSignerAdmin internal kycSignerAdmin;
+    address internal kycSigner;
+
     function setUp() public virtual override {
         super.setUp();
+
+        // Create a KYC signer for tests.
+        kycSigner = makeAddr("kycSigner");
+        kycSignerAdmin = deployKYCSignerAdmin(admin, kycSigner);
+        vm.label(address(kycSignerAdmin), "kycSignerAdmin");
     }
 
     function onAfterDeployMainContracts() internal virtual override {
