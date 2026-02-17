@@ -17,6 +17,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { LBPool, LBPoolFactory } from '../typechain-types';
+import { KYCSignerAdmin } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/KYCSignerAdmin';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import {
   MONTH,
@@ -42,6 +43,7 @@ describe('LBPool', function () {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let factory: LBPoolFactory;
+  let kycSigner: KYCSignerAdmin;
   // Most parameters are immutable so we'll need to deploy the pool several times during the test.
   // However, we will run liquidity tests on the global one to save unnecessary initialization steps every time.
   let globalPool: LBPool;
@@ -153,8 +155,10 @@ describe('LBPool', function () {
 
   sharedBeforeEach('create pool and grant approvals', async () => {
     // Not testing the migration router here; address can't be zero. Just use the regular router address.
+    kycSigner = await deploy('v3-standalone-utils/KYCSignerAdmin', { args: [admin.address, alice.address] });
+
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, router],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, router, kycSigner],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
