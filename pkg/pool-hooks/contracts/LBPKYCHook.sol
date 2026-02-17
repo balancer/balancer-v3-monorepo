@@ -226,14 +226,14 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
     }
 
     /// @inheritdoc ILBPKYCHook
-    function getCurrentCappedTokenTotalForUser(address user) external view returns (uint256 totalCappedTokenAmountRaw) {
+    function getCappedTokenAllocationUsed(address user) external view returns (uint256 totalCappedTokenAmountRaw) {
         require(address(_cappedToken) != address(0), NoCappedTokenSet());
 
         return _toRaw(_totalCappedTokenAmountScaled18[user], _cappedTokenScalingFactor);
     }
 
     /// @inheritdoc ILBPKYCHook
-    function getRemainingCappedTokenAllocation(address user) external view returns (uint256) {
+    function getCappedTokenAllocationRemaining(address user) external view returns (uint256) {
         require(address(_cappedToken) != address(0), NoCappedTokenSet());
 
         return _toRaw(_maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user], _cappedTokenScalingFactor);

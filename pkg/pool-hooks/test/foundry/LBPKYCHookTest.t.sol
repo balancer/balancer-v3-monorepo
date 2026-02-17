@@ -109,7 +109,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     }
 
     function testGetCurrentCappedTokenTotalForUserFreshUser() public view {
-        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), 0);
+        assertEq(hook.getCappedTokenAllocationUsed(alice), 0);
     }
 
     function testGetCurrentCappedTokenTotalForUserAfterPurchase() public {
@@ -120,19 +120,19 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(params);
 
-        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), buyAmount);
+        assertEq(hook.getCappedTokenAllocationUsed(alice), buyAmount);
     }
 
     function testGetCurrentCappedTokenTotalRevertsIfNoCappedToken() public {
         vm.expectRevert(ILBPKYCHook.NoCappedTokenSet.selector);
 
-        hookNoCap.getCurrentCappedTokenTotalForUser(alice);
+        hookNoCap.getCappedTokenAllocationUsed(alice);
     }
 
     function testGetRemainingCappedTokenAllocationRevertsIfNoCappedToken() public {
         vm.expectRevert(ILBPKYCHook.NoCappedTokenSet.selector);
 
-        hookNoCap.getRemainingCappedTokenAllocation(alice);
+        hookNoCap.getCappedTokenAllocationRemaining(alice);
     }
 
     /***************************************************************************
@@ -328,8 +328,8 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params);
 
         assertTrue(success);
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC - buyAmount);
-        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), buyAmount);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), MAX_CAP_RAW_18DEC - buyAmount);
+        assertEq(hook.getCappedTokenAllocationUsed(alice), buyAmount);
     }
 
     function testOnAfterSwapAllowsMultiplePurchasesUpToCap() public {
@@ -346,8 +346,8 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params2);
 
         assertTrue(success);
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), 0);
-        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), MAX_CAP_RAW_18DEC);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), 0);
+        assertEq(hook.getCappedTokenAllocationUsed(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testOnAfterSwapRevertsWhenCapExceeded() public {
@@ -383,7 +383,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook.onAfterSwap(params);
 
         assertTrue(success);
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testOnAfterSwapCapsArePerUser() public {
@@ -399,10 +399,10 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(paramsBob);
 
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), 400e18);
-        assertEq(hook.getRemainingCappedTokenAllocation(bob), 200e18);
-        assertEq(hook.getCurrentCappedTokenTotalForUser(alice), 600e18);
-        assertEq(hook.getCurrentCappedTokenTotalForUser(bob), 800e18);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), 400e18);
+        assertEq(hook.getCappedTokenAllocationRemaining(bob), 200e18);
+        assertEq(hook.getCappedTokenAllocationUsed(alice), 600e18);
+        assertEq(hook.getCappedTokenAllocationUsed(bob), 800e18);
     }
 
     function testOnAfterSwapEmitsCappedTokensBought() public {
@@ -452,14 +452,14 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(buyParams);
 
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), 500e18);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), 500e18);
 
         // Alice sells capped token back (tokenIn=dai, tokenOut=usdc) — should NOT change allocation.
         AfterSwapParams memory sellParams = _buildAfterSwapParams(dai, usdc, 500e18, address(router), lbpPool);
         vm.prank(address(vault));
         hook.onAfterSwap(sellParams);
 
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), 500e18, "Selling should not reduce tracked allocation");
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), 500e18, "Selling should not reduce tracked allocation");
     }
 
     /***************************************************************************
@@ -484,8 +484,8 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook6Dec.onAfterSwap(params);
 
         assertTrue(success);
-        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), expectedRemainingRaw);
-        assertEq(hook6Dec.getCurrentCappedTokenTotalForUser(alice), 200e6);
+        assertEq(hook6Dec.getCappedTokenAllocationRemaining(alice), expectedRemainingRaw);
+        assertEq(hook6Dec.getCappedTokenAllocationUsed(alice), 200e6);
     }
 
     function testOnAfterSwap6DecEmitsRawAmount() public {
@@ -546,12 +546,12 @@ contract LBPKYCHookTest is BaseVaultTest {
         (bool success, ) = hook6Dec.onAfterSwap(params2);
 
         assertTrue(success);
-        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), 0);
-        assertEq(hook6Dec.getCurrentCappedTokenTotalForUser(alice), MAX_CAP_RAW_6DEC);
+        assertEq(hook6Dec.getCappedTokenAllocationRemaining(alice), 0);
+        assertEq(hook6Dec.getCappedTokenAllocationUsed(alice), MAX_CAP_RAW_6DEC);
     }
 
     function testOnAfterSwap6DecRemainingAllocationFreshUser() public view {
-        assertEq(hook6Dec.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_6DEC);
+        assertEq(hook6Dec.getCappedTokenAllocationRemaining(alice), MAX_CAP_RAW_6DEC);
     }
 
     /***************************************************************************
@@ -559,7 +559,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     ***************************************************************************/
 
     function testRemainingAllocationFreshUser() public view {
-        assertEq(hook.getRemainingCappedTokenAllocation(alice), MAX_CAP_RAW_18DEC);
+        assertEq(hook.getCappedTokenAllocationRemaining(alice), MAX_CAP_RAW_18DEC);
     }
 
     function testDomainSeparatorsAreDifferentPerHook() public view {

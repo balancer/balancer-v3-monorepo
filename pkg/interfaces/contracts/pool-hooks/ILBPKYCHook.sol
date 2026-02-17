@@ -90,14 +90,14 @@ interface ILBPKYCHook {
      * @param user The user address
      * @return totalCappedTokenAmountRaw The total amount of capped tokens the user purchased, in native token decimals
      */
-    function getCurrentCappedTokenTotalForUser(address user) external view returns (uint256 totalCappedTokenAmountRaw);
+    function getCappedTokenAllocationUsed(address user) external view returns (uint256 totalCappedTokenAmountRaw);
 
     /**
      * @notice Returns the remaining allocation for a user. Returns max if cap is disabled.
      * @param user The address of the user
      * @return remainingAllocationRaw The remaining allocation for the user, in native token decimals
      */
-    function getRemainingCappedTokenAllocation(address user) external view returns (uint256 remainingAllocationRaw);
+    function getCappedTokenAllocationRemaining(address user) external view returns (uint256 remainingAllocationRaw);
 
     /**
      * @notice EIP-712 domain separator is cached in the EIP712 base contract, but not exposed.
