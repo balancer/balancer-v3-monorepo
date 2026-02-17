@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILBPKYCHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ILBPKYCHook.sol";
@@ -88,6 +86,66 @@ contract LBPKYCHookTest is BaseVaultTest {
         LBPKYCHook kycOnly = new LBPKYCHook(IVault(address(vault)), address(router), IERC20(address(0)), 0, signerAddr);
 
         assertEq(address(kycOnly.getCappedToken()), address(0));
+    }
+
+    function testOnRegisterEmitsEvent() public {
+        LBPKYCHook newHook = new LBPKYCHook(
+            IVault(address(vault)),
+            address(router),
+            dai,
+            MAX_CAP_RAW_18DEC,
+            signerAddr
+        );
+        address newPool = makeAddr("newPool");
+
+        vm.expectEmit();
+        emit ILBPKYCHook.LBPKYCHookRegistered(newPool, address(this), dai, MAX_CAP_RAW_18DEC);
+
+        vm.prank(address(vault));
+        newHook.onRegister(
+            address(this),
+            newPool,
+            new TokenConfig[](2),
+            LiquidityManagement(false, false, false, false)
+        );
+    }
+
+    function testOnRegisterEmitsEventNoCap() public {
+        LBPKYCHook newHook = new LBPKYCHook(IVault(address(vault)), address(router), IERC20(address(0)), 0, signerAddr);
+        address newPool = makeAddr("newPool");
+
+        vm.expectEmit();
+        emit ILBPKYCHook.LBPKYCHookRegistered(newPool, address(this), IERC20(address(0)), 0);
+
+        vm.prank(address(vault));
+        newHook.onRegister(
+            address(this),
+            newPool,
+            new TokenConfig[](2),
+            LiquidityManagement(false, false, false, false)
+        );
+    }
+
+    function testOnRegisterEmitsEvent6Dec() public {
+        LBPKYCHook newHook = new LBPKYCHook(
+            IVault(address(vault)),
+            address(router),
+            usdc6Decimals,
+            MAX_CAP_RAW_6DEC,
+            signerAddr
+        );
+        address newPool = makeAddr("newPool");
+
+        vm.expectEmit();
+        emit ILBPKYCHook.LBPKYCHookRegistered(newPool, address(this), usdc6Decimals, MAX_CAP_RAW_6DEC);
+
+        vm.prank(address(vault));
+        newHook.onRegister(
+            address(this),
+            newPool,
+            new TokenConfig[](2),
+            LiquidityManagement(false, false, false, false)
+        );
     }
 
     /***************************************************************************
