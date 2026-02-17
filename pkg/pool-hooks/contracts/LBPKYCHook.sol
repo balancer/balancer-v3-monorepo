@@ -106,23 +106,23 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
      * @param vault The Balancer V3 Vault
      * @param trustedRouter The router that reliably reports the end-user sender address
      * @param cappedToken The token on which the cap is imposed (e.g., projectToken)
-     * @param maxCappedTokenAmountScaled18 The maximum number of capped tokens allowed per address
+     * @param maxCappedTokenAmountRaw The maximum number of capped tokens allowed per address
      * @param authorizedSigner Address authorized to sign KYC approvals
      */
     constructor(
         IVault vault,
         address trustedRouter,
         IERC20 cappedToken,
-        uint256 maxCappedTokenAmountScaled18,
+        uint256 maxCappedTokenAmountRaw,
         address authorizedSigner
     ) VaultGuard(vault) EIP712(EIP712_NAME, EIP712_VERSION) {
         _trustedRouter = trustedRouter;
         _cappedToken = cappedToken;
-        _maxCappedTokenAmountScaled18 = maxCappedTokenAmountScaled18;
         _authorizedSigner = authorizedSigner;
 
         // Used for computing raw amounts for output in events.
         _cappedTokenScalingFactor = 10 ** (18 - IERC20Metadata(address(cappedToken)).decimals());
+        _maxCappedTokenAmountScaled18 = maxCappedTokenAmountRaw * _cappedTokenScalingFactor;
     }
 
     /***************************************************************************
