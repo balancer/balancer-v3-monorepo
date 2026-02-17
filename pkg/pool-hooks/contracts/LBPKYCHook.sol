@@ -248,7 +248,7 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
     function domainSeparator() external view returns (bytes32 domainSeparatorV4) {
         return _domainSeparatorV4();
     }
-    
+
     /***************************************************************************
                                 Helper Functions
     ***************************************************************************/
