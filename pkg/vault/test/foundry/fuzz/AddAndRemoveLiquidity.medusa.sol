@@ -18,6 +18,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
     uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
+    uint256 internal maxRateTolerance = 0;
+
     uint256 internal initialRate;
 
     // State var for optimization mode
