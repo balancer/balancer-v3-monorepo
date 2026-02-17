@@ -8,12 +8,22 @@
     "callSequenceLength": 10,
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
-    "targetContracts": ["AddAndRemoveLiquidityWeightedMedusaTest", "SwapMedusaTest"],
+    "targetContracts": [
+      "AddAndRemoveLiquidityWeightedMedusaTest",
+      "AddAndRemoveLiquidityWeightedDonationMedusaTest",
+      "JoinSwapExitProfitWeightedMedusaTest",
+      "SwapWeightedMedusaTest",
+      "SwapWeightedMixedDecimalsMedusaTest"
+    ],
     "predeployedContracts": {},
     "targetContractsBalances": [],
     "constructorArgs": {},
     "deployerAddress": "0x30000",
-    "senderAddresses": ["0x10000", "0x20000", "0x30000"],
+    "senderAddresses": [
+      "0x10000",
+      "0x20000",
+      "0x30000"
+    ],
     "blockNumberDelayMax": 60480,
     "blockTimestampDelayMax": 604800,
     "blockGasLimit": 1250000000,
@@ -42,11 +52,15 @@
       },
       "propertyTesting": {
         "enabled": true,
-        "testPrefixes": ["property_"]
+        "testPrefixes": [
+          "property_"
+        ]
       },
       "optimizationTesting": {
         "enabled": true,
-        "testPrefixes": ["optimize_"]
+        "testPrefixes": [
+          "optimize_"
+        ]
       },
       "targetFunctionSignatures": [],
       "excludeFunctionSignatures": []
