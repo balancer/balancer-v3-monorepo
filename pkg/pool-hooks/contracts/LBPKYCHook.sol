@@ -7,6 +7,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ILBPKYCHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ILBPKYCHook.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
@@ -20,7 +21,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * @dev This hook is designed to be deployed as a secondary hook through the LBP factory (necessary because we need to
  * know the tokens, which are unknown to the pool at deployment time). KYC is always enabled; the cap is optional.
  */
-contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
+contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
     // EIP-712 type hash for the KYC authorization struct.
     bytes32 public constant KYC_AUTHORIZATION_TYPEHASH =
         keccak256("KYCAuthorization(address user,address pool,uint256 deadline)");
@@ -30,6 +31,9 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
 
     /// @notice The router trusted to accurately report the sender via `ISenderGuard.getSender()`.
     address internal immutable _trustedRouter;
+
+    /// @notice Address authorized to sign KYC approvals.
+    address internal immutable _authorizedSigner;
 
     /**
      * @notice The address of the token to be restricted (or the zero address if there is no cap.
@@ -46,57 +50,8 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
      */
     uint256 internal immutable _maxCappedTokenAmountScaled18;
 
-    // Address authorized to sign KYC approvals.
-    address internal immutable _authorizedSigner;
-
     // Cumulative capped tokens bought per user address, as an 18-decimal FixedPoint number.
     mapping(address user => uint256 totalCappedTokenAmount) internal _totalCappedTokenAmountScaled18;
-
-    /***************************************************************************
-                                    Events
-    ***************************************************************************/
-
-    /**
-     * @notice Emitted on successful registration with a pool.
-     * @param pool The address of the pool to which this hook is attached
-     * @param factory The factory from which the pool was deployed
-     */
-    event LBPKYCHookRegistered(address indexed pool, address indexed factory);
-
-    /**
-     * @notice Emitted when a user acquires capped tokens.
-     * @param user The user who purchased the capped tokens
-     * @param token The capped token address
-     * @param amountRaw The amount purchased, in native token decimals
-     */
-    event CappedTokensBought(address indexed user, IERC20 indexed token, uint256 amountRaw);
-
-    /***************************************************************************
-                                    Errors
-    ***************************************************************************/
-
-    /**
-     * @notice The swap was not routed through the trusted router.
-     * @dev Routers are permissionless; we must use one we trust to report the ultimate sender reliably.
-     * @param router The address of the untrusted router
-     */
-    error RouterNotTrusted(address router);
-
-    /// @notice The KYC authorization signature has expired.
-    error KYCExpired();
-
-    /**
-     * @notice The recovered signer is not in the authorized signers set.
-     * @param signer The unauthorized signer
-     */
-    error UnauthorizedSigner(address signer);
-
-    /**
-     * @notice The swap would push the user's cumulative capped token acquisition over the cap.
-     * @param requestedAmountRaw The capped tokens the user is trying to acquire in this swap
-     * @param remainingAllocationRaw The remaining allocation available to the user
-     */
-    error CapExceeded(uint256 requestedAmountRaw, uint256 remainingAllocationRaw);
 
     /**
      * @notice Deploy a new KYCCapHook.
@@ -121,8 +76,15 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
         _authorizedSigner = authorizedSigner;
 
         // Used for computing raw amounts for output in events.
-        _cappedTokenScalingFactor = 10 ** (18 - IERC20Metadata(address(cappedToken)).decimals());
-        _maxCappedTokenAmountScaled18 = maxCappedTokenAmountRaw * _cappedTokenScalingFactor;
+        if (address(cappedToken) == address(0)) {
+            require(maxCappedTokenAmountRaw == 0, InvalidConfiguration());
+
+            _cappedTokenScalingFactor = 1;
+            _maxCappedTokenAmountScaled18 = 0;
+        } else {
+            _cappedTokenScalingFactor = 10 ** (18 - IERC20Metadata(address(cappedToken)).decimals());
+            _maxCappedTokenAmountScaled18 = maxCappedTokenAmountRaw * _cappedTokenScalingFactor;
+        }
     }
 
     /***************************************************************************
@@ -135,9 +97,7 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
         hookFlags.shouldCallBeforeSwap = true;
 
         // Cap enforcement happens after the swap, when we know the exact amounts.
-        if (_maxCappedTokenAmountScaled18 != type(uint256).max) {
-            hookFlags.shouldCallAfterSwap = true;
-        }
+        hookFlags.shouldCallAfterSwap = address(_cappedToken) != address(0);
     }
 
     /// @inheritdoc BaseHooks
@@ -215,7 +175,8 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
      * @return amountCalculatedRaw The calculated swap amount
      */
     function onAfterSwap(AfterSwapParams calldata params) public override onlyAuthorizedCaller returns (bool, uint256) {
-        // Only enforce cap when user is buying capped tokens.
+        // Only enforce cap when user is buying capped tokens. We set the after swap hook to false in getHookFlags
+        // if there is no cap, so this code will be skipped entirely in that case.
 
         if (address(params.tokenOut) == address(_cappedToken)) {
             // Router was already validated in onBeforeSwap, but verify here too for defense-in-depth.
@@ -246,16 +207,44 @@ contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
     }
 
     /***************************************************************************
+                                      Getters
+    ***************************************************************************/
+
+    /// @inheritdoc ILBPKYCHook
+    function getTrustedRouter() external view returns (address) {
+        return _trustedRouter;
+    }
+
+    /// @inheritdoc ILBPKYCHook
+    function getAuthorizedSigner() external view returns (address) {
+        return _authorizedSigner;
+    }
+
+    /// @inheritdoc ILBPKYCHook
+    function getCappedToken() external view returns (IERC20) {
+        return _cappedToken;
+    }
+
+    /// @inheritdoc ILBPKYCHook
+    function getCurrentCappedTokenTotalForUser(address user) external view returns (uint256 totalCappedTokenAmountRaw) {
+        require(address(_cappedToken) != address(0), NoCappedTokenSet());
+
+        return _toRaw(_totalCappedTokenAmountScaled18[user], _cappedTokenScalingFactor);
+    }
+
+    /// @inheritdoc ILBPKYCHook
+    function getRemainingCappedTokenAllocation(address user) external view returns (uint256) {
+        require(address(_cappedToken) != address(0), NoCappedTokenSet());
+
+        return _toRaw(_maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user], _cappedTokenScalingFactor);
+    }
+
+    /***************************************************************************
                                 Helper Functions
     ***************************************************************************/
 
-    /// @notice Returns the remaining allocation (scaled18) for a given user. Returns max if cap is disabled.
-    function remainingAllocation(address user) external view returns (uint256) {
-        return _maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user];
-    }
-
-    /// @notice Returns the EIP-712 domain separator for off-chain signing tools.
-    function domainSeparator() external view returns (bytes32) {
+    /// @inheritdoc ILBPKYCHook
+    function domainSeparator() external view returns (bytes32 domainSeparatorV4) {
         return _domainSeparatorV4();
     }
 
