@@ -226,7 +226,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     }
 
     /***************************************************************************
-                          onBeforeSwap — KYC Enforcement
+                          onBeforeSwap KYC Enforcement
     ***************************************************************************/
 
     function testOnBeforeSwapValidSignature() public {
@@ -334,7 +334,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     }
 
     function testOnBeforeSwapAcceptsExactDeadline() public {
-        uint256 deadline = block.timestamp; // exactly now — should pass (<=)
+        uint256 deadline = block.timestamp; // exactly now; should pass (<=)
         _mockGetSender(alice);
 
         bytes memory sig = _signKYC(signerPk, hook, alice, lbpPool, deadline);
@@ -373,7 +373,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     }
 
     /***************************************************************************
-                    onAfterSwap — Cap Enforcement (18-decimal)
+                    onAfterSwap Cap Enforcement (18-decimal)
     ***************************************************************************/
 
     function testOnAfterSwapTracksAllocation() public {
@@ -434,7 +434,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     function testOnAfterSwapIgnoresNonCappedTokenOut() public {
         _mockGetSender(alice);
 
-        // tokenOut is usdc (reserve), not dai (capped) — should not track.
+        // tokenOut is usdc (reserve), not dai (capped): should not track.
         AfterSwapParams memory params = _buildAfterSwapParams(dai, usdc, 5000e18, address(router), lbpPool);
 
         vm.prank(address(vault));
@@ -451,7 +451,7 @@ contract LBPKYCHookTest is BaseVaultTest {
         vm.prank(address(vault));
         hook.onAfterSwap(paramsAlice);
 
-        // Bob buys 800 — fine, his own cap.
+        // Bob buys 800 (his own cap)
         _mockGetSender(bob);
         AfterSwapParams memory paramsBob = _buildAfterSwapParams(usdc, dai, 800e18, address(router), lbpPool);
         vm.prank(address(vault));
@@ -512,7 +512,7 @@ contract LBPKYCHookTest is BaseVaultTest {
 
         assertEq(hook.getCappedTokenAllocationRemaining(alice), 500e18);
 
-        // Alice sells capped token back (tokenIn=dai, tokenOut=usdc) — should NOT change allocation.
+        // Alice sells capped token back (tokenIn=dai, tokenOut=usdc): should NOT change allocation.
         AfterSwapParams memory sellParams = _buildAfterSwapParams(dai, usdc, 500e18, address(router), lbpPool);
         vm.prank(address(vault));
         hook.onAfterSwap(sellParams);
@@ -521,7 +521,7 @@ contract LBPKYCHookTest is BaseVaultTest {
     }
 
     /***************************************************************************
-              onAfterSwap — Cap Enforcement (6-decimal capped token)
+              onAfterSwap Cap Enforcement (6-decimal capped token)
     ***************************************************************************/
 
     function testOnAfterSwap6DecTracksAllocation() public {
