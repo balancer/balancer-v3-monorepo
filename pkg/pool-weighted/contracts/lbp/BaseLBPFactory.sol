@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LBPCommonParams, MigrationParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
+import { IKYCSignerAdmin } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IKYCSignerAdmin.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -31,6 +32,9 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
 
     address internal immutable _trustedRouter;
     address internal immutable _migrationRouter;
+
+    // Supports LBPKYCHooks in LBPs.
+    IKYCSignerAdmin internal immutable _kycSignerAdmin;
 
     /**
      * @notice Emitted on deployment so that offchain processes know which token is which from the beginning.
@@ -68,6 +72,7 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
         string memory poolVersion,
         address trustedRouter,
         address migrationRouter,
+        IKYCSignerAdmin kycSignerAdmin,
         bytes memory creationCode
     ) BasePoolFactory(vault, pauseWindowDuration, creationCode) Version(factoryVersion) {
         if (trustedRouter == address(0)) {
@@ -83,6 +88,10 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
         // but all pools that choose migration must use the same router, set at the factory level. If this is zero,
         // migration is unsupported for the pool type.
         _migrationRouter = migrationRouter;
+
+        // In order to support pools with the LBPKYCHook, the factory needs a reference to the KYC signer admin to
+        // read the current signer at pool deployment time.
+        _kycSignerAdmin = kycSignerAdmin;
 
         _poolVersion = poolVersion;
     }
@@ -126,6 +135,14 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
      */
     function getMigrationRouter() external view returns (address) {
         return _migrationRouter;
+    }
+
+    /**
+     * @notice Returns the KYC signer admin contract, which is used to read the current signer for LBPKYCHooks.
+     * @return kycSignerAdmin The address of the KYC signer admin contract
+     */
+    function getKYCSignerAdmin() external view returns (address) {
+        return address(_kycSignerAdmin);
     }
 
     // Helper function to create a `TokenConfig` array from the two LBP tokens.
