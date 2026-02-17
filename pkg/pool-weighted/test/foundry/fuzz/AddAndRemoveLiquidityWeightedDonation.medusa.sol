@@ -84,8 +84,12 @@ contract AddAndRemoveLiquidityWeightedDonationMedusaTest is AddAndRemoveLiquidit
 
         // Bound donations so we don't exceed Vault's packed-balance limits.
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        for (uint256 i = 0; i < amountsIn.length; i++) {
-            amountsIn[i] = bound(amountsIn[i], 0, type(uint128).max - balancesRaw[i]);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            uint256 headroom = type(uint128).max - balancesRaw[i];
+            uint256 donorBal = tokens[i].balanceOf(bob);
+            uint256 maxDonate = headroom < donorBal ? headroom : donorBal;
+
+            amountsIn[i] = bound(amountsIn[i], 0, maxDonate);
         }
 
         // Avoid wasting sequences on "donate all zeros" no-ops (still keep amounts bounded above).

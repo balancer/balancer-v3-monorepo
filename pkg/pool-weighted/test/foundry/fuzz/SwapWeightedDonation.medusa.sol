@@ -14,9 +14,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 
-/**
- * @notice Donation sequencing fuzz for WeightedPool swaps.
- */
+/// @notice Donation sequencing fuzz for WeightedPool swaps.
 contract SwapWeightedDonationMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
@@ -140,15 +138,17 @@ contract SwapWeightedDonationMedusaTest is BaseMedusaTest {
         return address(newPool);
     }
 
-    /**
-     * @notice Donate arbitrary amounts into the pool, to be interleaved with swaps in fuzz sequences.
-     */
+    /// @notice Donate arbitrary amounts into the pool, to be interleaved with swaps in fuzz sequences.
     function computeDonate(uint256[] memory rawAmountsIn) public {
         uint256[] memory amountsIn = _boundBalanceLength(rawAmountsIn);
 
-        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         for (uint256 i = 0; i < amountsIn.length; i++) {
-            amountsIn[i] = bound(amountsIn[i], 0, type(uint128).max - balancesRaw[i]);
+            uint256 headroom = type(uint128).max - balancesRaw[i];
+            uint256 donorBal = tokens[i].balanceOf(bob);
+            uint256 maxDonate = headroom < donorBal ? headroom : donorBal;
+
+            amountsIn[i] = bound(amountsIn[i], 0, maxDonate);
         }
 
         // Avoid wasting sequences on "donate all zeros" no-ops (still keep amounts bounded above).
@@ -212,6 +212,14 @@ contract SwapWeightedDonationMedusaTest is BaseMedusaTest {
     }
 
     function _sum(IERC20 t) internal view returns (uint256) {
-        return t.balanceOf(alice) + t.balanceOf(bob) + t.balanceOf(lp) + t.balanceOf(address(vault));
+        return
+            t.balanceOf(alice) +
+            t.balanceOf(bob) +
+            t.balanceOf(lp) +
+            t.balanceOf(address(vault)) +
+            t.balanceOf(address(router)) +
+            t.balanceOf(address(batchRouter)) +
+            t.balanceOf(address(compositeLiquidityRouter)) +
+            t.balanceOf(address(pool));
     }
 }
