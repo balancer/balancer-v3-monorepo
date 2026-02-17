@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -22,7 +20,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * @dev This hook is designed to be deployed as a secondary hook through the LBP factory (necessary because we need to
  * know the tokens, which are unknown to the pool at deployment time). KYC is always enabled; the cap is optional.
  */
-contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
+contract LBPKYCHook is BaseHooks, VaultGuard, EIP712 {
     // EIP-712 type hash for the KYC authorization struct.
     bytes32 public constant KYC_AUTHORIZATION_TYPEHASH =
         keccak256("KYCAuthorization(address user,address pool,uint256 deadline)");
@@ -107,7 +105,6 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
      *
      * @param vault The Balancer V3 Vault
      * @param trustedRouter The router that reliably reports the end-user sender address
-     * @param owner The owner of this hook contract (can manage signers, revocations)
      * @param cappedToken The token on which the cap is imposed (e.g., projectToken)
      * @param maxCappedTokenAmountScaled18 The maximum number of capped tokens allowed per address
      * @param authorizedSigner Address authorized to sign KYC approvals
@@ -115,11 +112,10 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
     constructor(
         IVault vault,
         address trustedRouter,
-        address owner,
         IERC20 cappedToken,
         uint256 maxCappedTokenAmountScaled18,
         address authorizedSigner
-    ) VaultGuard(vault) Ownable(owner) EIP712(EIP712_NAME, EIP712_VERSION) {
+    ) VaultGuard(vault) EIP712(EIP712_NAME, EIP712_VERSION) {
         _trustedRouter = trustedRouter;
         _cappedToken = cappedToken;
         _maxCappedTokenAmountScaled18 = maxCappedTokenAmountScaled18;
@@ -255,10 +251,7 @@ contract LBPKYCHook is BaseHooks, VaultGuard, Ownable2Step, EIP712 {
 
     /// @notice Returns the remaining allocation (scaled18) for a given user. Returns max if cap is disabled.
     function remainingAllocation(address user) external view returns (uint256) {
-        return
-            address(_cappedToken) == address(0)
-                ? type(uint256).max
-                : _maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user];
+        return _maxCappedTokenAmountScaled18 - _totalCappedTokenAmountScaled18[user];
     }
 
     /// @notice Returns the EIP-712 domain separator for off-chain signing tools.
