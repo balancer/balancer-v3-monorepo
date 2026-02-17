@@ -13,8 +13,15 @@ interface ILBPKYCHook {
      * @notice Emitted on successful registration with a pool.
      * @param pool The address of the pool to which this hook is attached
      * @param factory The factory from which the pool was deployed
+     * @param cappedToken The token that is capped by this hook (or the zero address if there is no cap)
+     * @param maxCappedTokenAmountRaw The maximum amount of the capped token that can be purchased per user
      */
-    event LBPKYCHookRegistered(address indexed pool, address indexed factory);
+    event LBPKYCHookRegistered(
+        address indexed pool,
+        address indexed factory,
+        IERC20 cappedToken,
+        uint256 maxCappedTokenAmountRaw
+    );
 
     /**
      * @notice Emitted when a user acquires capped tokens.

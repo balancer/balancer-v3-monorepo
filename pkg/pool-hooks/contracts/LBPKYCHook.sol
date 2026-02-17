@@ -109,7 +109,12 @@ contract LBPKYCHook is ILBPKYCHook, BaseHooks, VaultGuard, EIP712 {
     ) public override returns (bool) {
         _setAuthorizedCaller(factory, pool, address(_vault));
 
-        emit LBPKYCHookRegistered(pool, factory);
+        emit LBPKYCHookRegistered(
+            pool,
+            factory,
+            _cappedToken,
+            _toRaw(_maxCappedTokenAmountScaled18, _cappedTokenScalingFactor)
+        );
 
         return true;
     }
