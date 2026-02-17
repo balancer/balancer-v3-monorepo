@@ -672,7 +672,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
 
         uint256[] memory amounts = new uint256[](2);
         amounts[projectIdx] = 1e18;
-        
+
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.AddingLiquidityNotAllowed.selector);
         IHooks(pool).onBeforeInitialize(amounts, "");

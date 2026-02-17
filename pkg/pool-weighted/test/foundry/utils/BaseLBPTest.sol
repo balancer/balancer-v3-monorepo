@@ -2,18 +2,18 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IKYCSignerAdmin } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IKYCSignerAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { KYCSignerAdminDeployer } from "@balancer-labs/v3-standalone-utils/test/foundry/utils/KYCSignerAdminDeployer.sol";
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import {
+    KYCSignerAdminDeployer
+} from "@balancer-labs/v3-standalone-utils/test/foundry/utils/KYCSignerAdminDeployer.sol";
 
 import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
 import { WeightedPoolContractsDeployer } from "./WeightedPoolContractsDeployer.sol";
@@ -21,7 +21,12 @@ import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol"
 import { LBPMigrationRouterDeployer } from "./LBPMigrationRouterDeployer.sol";
 import { LBPValidation } from "../../../contracts/lbp/LBPValidation.sol";
 
-abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, LBPMigrationRouterDeployer, KYCSignerAdminDeployer {
+abstract contract BaseLBPTest is
+    BaseVaultTest,
+    WeightedPoolContractsDeployer,
+    LBPMigrationRouterDeployer,
+    KYCSignerAdminDeployer
+{
     using ArrayHelpers for *;
 
     uint256 public constant swapFee = 1e16; // 1%
