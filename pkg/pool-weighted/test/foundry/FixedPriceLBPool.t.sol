@@ -64,7 +64,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             365 days,
             factoryVersion,
             poolVersion,
-            address(router)
+            address(router),
+            kycSignerAdmin
         );
         vm.label(address(lbPoolFactory), "Fixed Price LB pool factory");
 
@@ -669,9 +670,12 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
     function testOnBeforeInitializeAfterStartTime() public {
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
 
+        uint256[] memory amounts = new uint256[](2);
+        amounts[projectIdx] = 1e18;
+        
         vm.prank(address(vault));
         vm.expectRevert(LBPCommon.AddingLiquidityNotAllowed.selector);
-        IHooks(pool).onBeforeInitialize(new uint256[](0), "");
+        IHooks(pool).onBeforeInitialize(amounts, "");
     }
 
     function testOnBeforeInitializeWrongSender() public {

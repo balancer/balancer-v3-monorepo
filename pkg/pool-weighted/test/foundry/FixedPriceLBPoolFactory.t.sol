@@ -42,7 +42,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             365 days,
             factoryVersion,
             poolVersion,
-            address(router)
+            address(router),
+            kycSignerAdmin
         );
         vm.label(address(lbPoolFactory), "Fixed Price LB pool factory");
 
@@ -95,7 +96,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             365 days,
             factoryVersion,
             poolVersion,
-            ZERO_ADDRESS // invalid trusted router address
+            ZERO_ADDRESS, // invalid trusted router address
+            kycSignerAdmin
         );
     }
 

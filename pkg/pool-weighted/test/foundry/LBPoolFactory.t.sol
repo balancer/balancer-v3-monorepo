@@ -65,7 +65,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             factoryVersion,
             poolVersion,
             ZERO_ADDRESS, // invalid trusted router address
-            ZERO_ADDRESS // migration router address
+            ZERO_ADDRESS, // migration router address
+            kycSignerAdmin
         );
     }
 
