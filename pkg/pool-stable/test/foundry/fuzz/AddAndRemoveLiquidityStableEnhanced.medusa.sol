@@ -193,20 +193,13 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         uint256[3] memory seeds = [seed0, seed1, seed2];
         bool anyIn = false;
         for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 headroom = type(uint128).max - balancesBefore[i];
-            uint256 userBal = tokens[i].balanceOf(alice);
-            uint256 max = headroom < userBal ? headroom : userBal;
-            max = max / 200; // 0.5% of available headroom/balance
-
-            if (max < MIN_TRADE_AMOUNT) {
-                exactAmountsIn[i] = 0;
-                continue;
+            uint256 max = balancesBefore[i] * 5; // Up to 5x current pool balance. User has enough tokens.
+            uint256 amountIn = _boundValue(seeds[i], 0, max);
+            if (amountIn != 0 && amountIn < MIN_TRADE_AMOUNT) {
+                amountIn = MIN_TRADE_AMOUNT;
             }
-
-            uint256 amt = _boundValue(seeds[i], 0, max);
-            if (amt != 0 && amt < MIN_TRADE_AMOUNT) amt = MIN_TRADE_AMOUNT;
-            exactAmountsIn[i] = amt;
-            if (amt != 0) anyIn = true;
+            exactAmountsIn[i] = amountIn;
+            if (amountIn != 0) anyIn = true;
         }
         if (!anyIn) return;
 
@@ -310,23 +303,17 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         uint256 lpTokenBefore = tokens[tokenIndex].balanceOf(lp);
 
         medusa.prank(lp);
-        try
-            router.removeLiquiditySingleTokenExactOut(
-                address(pool),
-                lpBptBefore,
-                tokens[tokenIndex],
-                amountOut,
-                false,
-                bytes("")
-            )
-        returns (uint256 bptIn) {
-            // Verify accounting
-            uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
-            assert(lpBptBefore - lpBptAfter == bptIn);
-        } catch {
-            // Should never revert
-            assert(false);
-        }
+        uint256 bptIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            lpBptBefore,
+            tokens[tokenIndex],
+            amountOut,
+            false,
+            bytes("")
+        );
+        // Verify accounting
+        uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
+        assert(lpBptBefore - lpBptAfter == bptIn);
 
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
         assert(tokens[tokenIndex].balanceOf(lp) - lpTokenBefore == amountOut);
