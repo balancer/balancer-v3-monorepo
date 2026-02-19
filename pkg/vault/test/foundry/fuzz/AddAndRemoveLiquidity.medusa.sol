@@ -336,7 +336,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     ) internal view returns (uint256 boundedAmountIn) {
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         uint256 poolHeadroom = _MAX_BALANCE - balancesRaw[tokenIndex];
-        
+
         uint256 lpBalance = tokens[tokenIndex].balanceOf(lp);
         uint256 maxDeposit = poolHeadroom < lpBalance ? poolHeadroom : lpBalance;
 
@@ -353,7 +353,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountOut) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        
+
         if (balancesRaw[tokenIndex] < _MINIMUM_TRADE_AMOUNT) return 0;
 
         boundedAmountOut = bound(tokenAmountOut, _MINIMUM_TRADE_AMOUNT, balancesRaw[tokenIndex]);
