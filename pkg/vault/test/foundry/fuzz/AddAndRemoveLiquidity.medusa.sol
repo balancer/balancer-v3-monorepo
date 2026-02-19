@@ -86,6 +86,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         tokenIndex = boundTokenIndex(tokenIndex);
         tokenAmountOut = boundTokenAmountOut(tokenAmountOut, tokenIndex);
 
+        if (tokenAmountOut == 0) return;
+
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         // withdraw exactly tokenAmountOut to burn bptBurnAmt
@@ -151,6 +153,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     function computeRemoveAndAddLiquidityMultiToken(uint256 exactBptAmountIn) public {
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);
 
+        if (exactBptAmountIn == 0) return;
+
         uint256[] memory minAmountsOut = getMinAmountsOut();
 
         // Burn exactly exactBptAmountIn to withdraw tokenAmountsOut.
@@ -192,6 +196,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function computeProportionalAmountsOut(uint256 bptAmountIn) public returns (uint256[] memory amountsOut) {
         bptAmountIn = boundBptBurn(bptAmountIn);
+
+        if (bptAmountIn == 0) return getMinAmountsOut();
 
         uint256[] memory minAmountsOut = getMinAmountsOut();
         medusa.prank(lp);
@@ -245,6 +251,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactAmountOut = boundTokenAmountOut(exactAmountOut, tokenOutIndex);
 
+        if (exactAmountOut == 0) return 0;
+
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         medusa.prank(lp);
@@ -265,7 +273,15 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 exactBptAmountIn
     ) public returns (uint256 amountOut) {
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
-        exactBptAmountIn = boundBptBurn(exactBptAmountIn);
+
+        // Use a tighter cap than boundBptBurn for single-token exits, which can drive the
+        // pool into extreme imbalance if too much BPT is burned at once.
+        uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
+        uint256 lpBalance = BalancerPoolToken(address(pool)).balanceOf(lp);
+        uint256 maxBurn = totalSupply / 100; // 1% of supply max for single-token exit
+        if (maxBurn > lpBalance) maxBurn = lpBalance;
+        if (maxBurn < _MINIMUM_TRADE_AMOUNT) return 0;
+        exactBptAmountIn = bound(exactBptAmountIn, _MINIMUM_TRADE_AMOUNT, maxBurn);
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
@@ -274,7 +290,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
             address(pool),
             exactBptAmountIn,
             tokens[tokenOutIndex],
-            0,
+            1,
             false,
             bytes("")
         );
@@ -318,10 +334,15 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenAmountIn,
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
-        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        uint256 maxDeposit = _MAX_BALANCE - balancesRaw[tokenIndex];
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        uint256 poolHeadroom = _MAX_BALANCE - balancesRaw[tokenIndex];
+        
+        uint256 lpBalance = tokens[tokenIndex].balanceOf(lp);
+        uint256 maxDeposit = poolHeadroom < lpBalance ? poolHeadroom : lpBalance;
+
+        if (maxDeposit < _MINIMUM_TRADE_AMOUNT) return 0;
+
         boundedAmountIn = bound(tokenAmountIn, 0, maxDeposit);
-        // Snap dead zone: amounts in (0, _MINIMUM_TRADE_AMOUNT) are invalid.
         if (boundedAmountIn != 0 && boundedAmountIn < _MINIMUM_TRADE_AMOUNT) {
             boundedAmountIn = _MINIMUM_TRADE_AMOUNT;
         }
@@ -332,17 +353,39 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountOut) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        
+        if (balancesRaw[tokenIndex] < _MINIMUM_TRADE_AMOUNT) return 0;
+
         boundedAmountOut = bound(tokenAmountOut, _MINIMUM_TRADE_AMOUNT, balancesRaw[tokenIndex]);
     }
 
     function boundBptMint(uint256 bptAmount) internal view returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        boundedAmt = bound(bptAmount, _MINIMUM_TRADE_AMOUNT, _MAX_BALANCE - totalSupply);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+
+        uint256 maxAffordable = _MAX_BALANCE - totalSupply;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (balancesRaw[i] == 0) continue;
+            // Rough estimate: BPT affordable given LP's token balance
+            // Discounted to accommodate single token operations (which have fees and price impact, so the
+            // proportional estimate is less accurate).
+            uint256 lpAffordable = (tokens[i].balanceOf(lp) * totalSupply) / balancesRaw[i] / 4;
+            if (lpAffordable < maxAffordable) maxAffordable = lpAffordable;
+        }
+
+        if (maxAffordable < _MINIMUM_TRADE_AMOUNT) return _MINIMUM_TRADE_AMOUNT;
+        boundedAmt = bound(bptAmount, _MINIMUM_TRADE_AMOUNT, maxAffordable);
     }
 
     function boundBptBurn(uint256 bptAmt) internal view returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        boundedAmt = bound(bptAmt, _MINIMUM_TRADE_AMOUNT, totalSupply);
+        uint256 lpBalance = BalancerPoolToken(address(pool)).balanceOf(lp);
+        uint256 maxBurn = totalSupply - _POOL_MINIMUM_TOTAL_SUPPLY;
+
+        if (maxBurn > lpBalance) maxBurn = lpBalance;
+        if (maxBurn < _MINIMUM_TRADE_AMOUNT) return 0;
+
+        boundedAmt = bound(bptAmt, _MINIMUM_TRADE_AMOUNT, maxBurn);
     }
 
     function boundBalanceLength(uint256[] memory balances) internal view returns (uint256[] memory) {
