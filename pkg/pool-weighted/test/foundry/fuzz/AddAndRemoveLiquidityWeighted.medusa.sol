@@ -16,10 +16,10 @@ import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol"
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 
 contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaTest {
-    uint256 private constant DEFAULT_SWAP_FEE = 1e16;
+    uint256 internal constant DEFAULT_SWAP_FEE = 1e16;
 
-    uint256 private constant _WEIGHT1 = 33e16;
-    uint256 private constant _WEIGHT2 = 33e16;
+    uint256 internal constant _WEIGHT1 = 33e16;
+    uint256 internal constant _WEIGHT2 = 33e16;
 
     constructor() AddAndRemoveLiquidityMedusaTest() {
         // pow() rounding noise is relative to balance magnitude. At small balances the absolute wei error in
@@ -31,7 +31,10 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         maxRateTolerance = initialRate / 1e14;
     }
 
-    function createPool(IERC20[] memory tokens, uint256[] memory initialBalances) internal override returns (address) {
+    function createPool(
+        IERC20[] memory tokens,
+        uint256[] memory initialBalances
+    ) internal virtual override returns (address) {
         uint256[] memory weights = new uint256[](3);
         weights[0] = _WEIGHT1;
         weights[1] = _WEIGHT2;
@@ -72,10 +75,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         return address(newPool);
     }
 
-    function computeRemoveAndAddLiquiditySingleToken(
-        uint256 tokenIndex,
-        uint256 tokenAmountOut
-    ) public override {
+    function computeRemoveAndAddLiquiditySingleToken(uint256 tokenIndex, uint256 tokenAmountOut) public override {
         tokenIndex = boundTokenIndex(tokenIndex);
         tokenAmountOut = boundTokenAmountOut(tokenAmountOut, tokenIndex);
         if (tokenAmountOut == 0) return;
@@ -83,31 +83,33 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         medusa.prank(lp);
-        try router.removeLiquiditySingleTokenExactOut(
-            address(pool),
-            type(uint128).max,
-            tokens[tokenIndex],
-            tokenAmountOut,
-            false,
-            bytes("")
-        ) returns (uint256 bptAmountIn) {
+        try
+            router.removeLiquiditySingleTokenExactOut(
+                address(pool),
+                type(uint128).max,
+                tokens[tokenIndex],
+                tokenAmountOut,
+                false,
+                bytes("")
+            )
+        returns (uint256 bptAmountIn) {
             uint256[] memory exactAmountsIn = new uint256[](vault.getPoolTokens(address(pool)).length);
             exactAmountsIn[tokenIndex] = tokenAmountOut;
 
             medusa.prank(lp);
-            try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 bptAmountOut) {
+            try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (
+                uint256 bptAmountOut
+            ) {
                 bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
             } catch {}
         } catch {}
     }
 
-    function boundTokenDeposit(uint256 tokenAmountIn, uint256 tokenIndex) 
-        internal view override returns (uint256) 
-    {
+    function boundTokenDeposit(uint256 tokenAmountIn, uint256 tokenIndex) internal view override returns (uint256) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         // Cap at 3% of pool balance — well within the ~30% invariant ratio limit for weighted pools
         uint256 maxDeposit = balancesRaw[tokenIndex] / 33;
-        uint256 lpBalance =  BalancerPoolToken(address(pool)).balanceOf(lp);
+        uint256 lpBalance = BalancerPoolToken(address(pool)).balanceOf(lp);
         maxDeposit = maxDeposit < lpBalance ? maxDeposit : lpBalance;
         if (maxDeposit < _MINIMUM_TRADE_AMOUNT) return 0;
         return bound(tokenAmountIn, 0, maxDeposit);
@@ -115,7 +117,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
 
     function boundBptMint(uint256 bptAmount) internal view override returns (uint256) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        // 3% of supply max — proportional adds scale linearly with BPT, 
+        // 3% of supply max — proportional adds scale linearly with BPT,
         // but single-token adds are much more constrained on weighted pools
         uint256 maxMint = totalSupply / 33;
         if (maxMint < _MINIMUM_TRADE_AMOUNT) return _MINIMUM_TRADE_AMOUNT;
@@ -132,9 +134,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         return bound(bptAmt, _MINIMUM_TRADE_AMOUNT, maxBurn);
     }
 
-    function boundTokenAmountOut(uint256 tokenAmountOut, uint256 tokenIndex)
-        internal view override returns (uint256)
-    {
+    function boundTokenAmountOut(uint256 tokenAmountOut, uint256 tokenIndex) internal view override returns (uint256) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         uint256 maxOut = balancesRaw[tokenIndex] / 50; // 2% max for weighted pools
         if (maxOut < _MINIMUM_TRADE_AMOUNT) return 0;

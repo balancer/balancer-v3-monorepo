@@ -7,33 +7,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    AddAndRemoveLiquidityMedusaTest
-} from "@balancer-labs/v3-vault/test/foundry/fuzz/AddAndRemoveLiquidity.medusa.sol";
-
+import { AddAndRemoveLiquidityWeightedMedusaTest } from "./AddAndRemoveLiquidityWeighted.medusa.sol";
 import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 
 /**
  * @notice Donation sequencing fuzz for WeightedPool.
- * @dev Reuses Vault's generic add/remove Medusa suite and adds a donate action; pool is deployed with donations enabled.
+ * @dev Reuses the regular weighted Medusa suite and adds a donate action; pool is deployed with donations enabled.
  */
-contract AddAndRemoveLiquidityWeightedDonationMedusaTest is AddAndRemoveLiquidityMedusaTest {
-    uint256 private constant DEFAULT_SWAP_FEE = 1e16;
-
-    uint256 private constant _WEIGHT1 = 33e16;
-    uint256 private constant _WEIGHT2 = 33e16;
-
-    constructor() AddAndRemoveLiquidityMedusaTest() {
-        // pow() rounding noise is relative to balance magnitude. At small balances the absolute wei error in
-        // getBptRate() can exceed any fixed threshold. Scale tolerance to initial rate.
-        //
-        // A 1e-14 relative tolerance at initialRate=1e18 gives maxRateTolerance=1e4, which accommodates the
-        // observed wobble at any pool size the fuzzer can reach.
-
-        maxRateTolerance = initialRate / 1e14;
-    }
-
+contract AddAndRemoveLiquidityWeightedDonationMedusaTest is AddAndRemoveLiquidityWeightedMedusaTest {
     function createPool(IERC20[] memory tokens, uint256[] memory initialBalances) internal override returns (address) {
         uint256[] memory weights = new uint256[](3);
         weights[0] = _WEIGHT1;
@@ -56,7 +38,7 @@ contract AddAndRemoveLiquidityWeightedDonationMedusaTest is AddAndRemoveLiquidit
                 vault.buildTokenConfig(tokens),
                 weights,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the Medusa base constructor
+                DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the test constructor
                 address(0), // No hooks
                 true, // Enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -125,29 +107,14 @@ contract AddAndRemoveLiquidityWeightedDonationMedusaTest is AddAndRemoveLiquidit
         uint256 bptSupplyAfter = IERC20(address(pool)).totalSupply();
         uint256 bobBptAfter = IERC20(address(pool)).balanceOf(bob);
 
-        assertEq(bptSupplyAfter, bptSupplyBefore, "donation must not change BPT totalSupply");
-        assertEq(bobBptAfter, bobBptBefore, "donor must not receive BPT");
+        assert(bptSupplyAfter == bptSupplyBefore);
+        assert(bobBptAfter == bobBptBefore);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            assertEq(
-                balancesRawAfter[i],
-                balancesRaw[i] + amountsIn[i],
-                "pool raw balance delta must equal donation amount"
-            );
-            assertEq(
-                tokens[i].balanceOf(address(vault)),
-                vaultTokenBalancesBefore[i] + amountsIn[i],
-                "vault token balance delta must equal donation amount"
-            );
-            assertEq(
-                tokens[i].balanceOf(bob),
-                bobTokenBalancesBefore[i] - amountsIn[i],
-                "donor token balance delta must equal donation amount"
-            );
+            assert(balancesRawAfter[i] == balancesRaw[i] + amountsIn[i]);
+            assert(tokens[i].balanceOf(address(vault)) == vaultTokenBalancesBefore[i] + amountsIn[i]);
+            assert(tokens[i].balanceOf(bob) == bobTokenBalancesBefore[i] - amountsIn[i]);
         }
-
-        // Donation changes the pool rate; keep the suite's accounting fresh.
-        updateRateDecrease();
     }
 
     // Helpers copied (with local names) because the base suite uses private helpers.
