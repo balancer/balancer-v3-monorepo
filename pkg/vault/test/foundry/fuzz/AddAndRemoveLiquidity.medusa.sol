@@ -14,16 +14,15 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
-
-import "../utils/BaseMedusaTest.sol";
+import { BaseMedusaTest } from "../utils/BaseMedusaTest.sol";
 
 contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
     // PackedTokenBalance.sol defines a max of 128 bits to store the balance of the pool.
-    uint256 private constant _MAX_BALANCE = type(uint128).max;
-    uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
-    uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant _MAX_BALANCE = type(uint128).max;
+    uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
+    uint256 internal constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
     uint256 internal maxRateTolerance = 0;
 
@@ -89,33 +88,40 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         bptProfit += int256(exactBptAmountOut) - int256(bptAmountIn);
     }
 
-    function computeRemoveAndAddLiquiditySingleToken(uint256 tokenIndex, uint256 tokenAmountOut) public {
+    function computeRemoveAndAddLiquiditySingleToken(uint256 tokenIndex, uint256 tokenAmountOut) public virtual {
         tokenIndex = boundTokenIndex(tokenIndex);
         tokenAmountOut = boundTokenAmountOut(tokenAmountOut, tokenIndex);
 
+        if (tokenAmountOut == 0) return;
+
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
-        // withdraw exactly tokenAmountOut to burn bptBurnAmt
         medusa.prank(lp);
-        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+        uint256 bptAmountIn;
+        try router.removeLiquiditySingleTokenExactOut(
             address(pool),
             type(uint128).max,
             tokens[tokenIndex],
             tokenAmountOut,
             false,
             bytes("")
-        );
+        ) returns (uint256 result) {
+            bptAmountIn = result;
+        } catch {
+            assert(false);
+        }
 
-        // deposit exactly tokenAmountOut to mint bptAmountOut.
         uint256[] memory exactAmountsIn = new uint256[](vault.getPoolTokens(address(pool)).length);
         exactAmountsIn[tokenIndex] = tokenAmountOut;
 
         medusa.prank(lp);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
-
-        emit Debug("BPT burned while removing liquidity:", bptAmountIn);
-        emit Debug("BPT minted while adding the same liquidity:", bptAmountOut);
-        bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
+        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 bptAmountOut) {
+            emit Debug("BPT burned while removing liquidity:", bptAmountIn);
+            emit Debug("BPT minted while adding the same liquidity:", bptAmountOut);
+            bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
+        } catch {
+            assert(false);
+        }
     }
 
     function computeAddAndRemoveLiquidityMultiToken(uint256 exactBptAmountOut) public {
@@ -282,7 +288,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
             address(pool),
             exactBptAmountIn,
             tokens[tokenOutIndex],
-            0,
+            1, // Use 1 to avoid AllZeroInputs
             false,
             bytes("")
         );
@@ -323,7 +329,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     function boundTokenDeposit(
         uint256 tokenAmountIn,
         uint256 tokenIndex
-    ) internal view returns (uint256 boundedAmountIn) {
+    ) internal view virtual returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         boundedAmountIn = bound(tokenAmountIn, 0, _MAX_BALANCE - balancesRaw[tokenIndex]);
     }
@@ -331,17 +337,17 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     function boundTokenAmountOut(
         uint256 tokenAmountOut,
         uint256 tokenIndex
-    ) internal view returns (uint256 boundedAmountOut) {
+    ) internal view virtual returns (uint256 boundedAmountOut) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         boundedAmountOut = bound(tokenAmountOut, 0, balancesRaw[tokenIndex]);
     }
 
-    function boundBptMint(uint256 bptAmount) internal view returns (uint256 boundedAmt) {
+    function boundBptMint(uint256 bptAmount) internal view virtual returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
         boundedAmt = bound(bptAmount, 0, _MAX_BALANCE - totalSupply);
     }
 
-    function boundBptBurn(uint256 bptAmt) internal view returns (uint256 boundedAmt) {
+    function boundBptBurn(uint256 bptAmt) internal view virtual returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
         boundedAmt = bound(bptAmt, 0, totalSupply);
     }
