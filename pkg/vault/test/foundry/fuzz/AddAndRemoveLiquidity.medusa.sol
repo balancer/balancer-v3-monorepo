@@ -59,30 +59,34 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         medusa.prank(lp);
         uint256 tokenAmountIn;
 
-        try router.addLiquiditySingleTokenExactOut(
-            address(pool),
-            tokens[tokenIndex],
-            type(uint128).max,
-            exactBptAmountOut,
-            false,
-            bytes("")
-        ) returns (uint256 result) {
+        try
+            router.addLiquiditySingleTokenExactOut(
+                address(pool),
+                tokens[tokenIndex],
+                type(uint128).max,
+                exactBptAmountOut,
+                false,
+                bytes("")
+            )
+        returns (uint256 result) {
             tokenAmountIn = result;
-        } catch  {
+        } catch {
             return; // lp lacks sufficient tokens — skip, not a bug
         }
 
         // withdraw exactly tokenAmountIn to burn bptAmountIn
         medusa.prank(lp);
         uint256 bptAmountIn;
-        try router.removeLiquiditySingleTokenExactOut(
-            address(pool),
-            type(uint128).max,
-            tokens[tokenIndex],
-            tokenAmountIn,
-            false,
-            bytes("")
-        ) returns (uint256 result) {
+        try
+            router.removeLiquiditySingleTokenExactOut(
+                address(pool),
+                type(uint128).max,
+                tokens[tokenIndex],
+                tokenAmountIn,
+                false,
+                bytes("")
+            )
+        returns (uint256 result) {
             bptAmountIn = result;
         } catch {
             return; // lp lacks sufficient BPT — skip, not a bug
@@ -150,14 +154,16 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 bptAmountIn = 0;
         for (uint256 i = 0; i < tokenAmountsIn.length; i++) {
             medusa.prank(lp);
-            try router.removeLiquiditySingleTokenExactOut(
-                address(pool),
-                type(uint128).max,
-                tokens[i],
-                tokenAmountsIn[i],
-                false,
-                bytes("")
-            ) returns (uint256 result) {
+            try
+                router.removeLiquiditySingleTokenExactOut(
+                    address(pool),
+                    type(uint128).max,
+                    tokens[i],
+                    tokenAmountsIn[i],
+                    false,
+                    bytes("")
+                )
+            returns (uint256 result) {
                 bptAmountIn += result;
             } catch {
                 return;
@@ -243,7 +249,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         medusa.prank(lp);
         try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 result) {
             bptAmountOut = result;
-            
+
             updateRateDecrease();
         } catch {
             return 0; // lp lacks sufficient tokens — skip, not a bug
