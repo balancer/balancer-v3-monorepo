@@ -69,7 +69,7 @@ contract SwapWeightedMixedDecimalsMedusaTest is SwapMedusaTest {
         }
 
         uint256 maxAIn = balancesRaw[tokenIndexAIn].mulDown(MAX_IN_RATIO);
-        if (maxAIn < minAIn) revert();
+        if (maxAIn < minAIn) return;
         uint256 amountAIn = bound(amountAInRaw, minAIn, maxAIn);
 
         IERC20 tokenA = tokens[tokenIndexAIn];
@@ -86,12 +86,12 @@ contract SwapWeightedMixedDecimalsMedusaTest is SwapMedusaTest {
         uint256 bReceived = bAfterFirst - bBefore;
 
         // If the first leg yielded dust, skip the second leg (otherwise it degenerates into a "no-op" test).
-        if (bReceived < MIN_SWAP_AMOUNT) revert();
+        if (bReceived < MIN_SWAP_AMOUNT) return;
 
         // Ensure the second-leg input is also within MAX_IN_RATIO to avoid systematic reverts.
         (, , balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         uint256 maxBIn = balancesRaw[tokenIndexBOut].mulDown(MAX_IN_RATIO);
-        if (maxBIn < bReceived) revert();
+        if (maxBIn < bReceived) return;
 
         // Swap B -> A (ExactIn) using all B received.
         medusa.prank(alice);

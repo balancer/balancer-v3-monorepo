@@ -194,7 +194,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     *******************************************************************************/
 
     function computeProportionalAmountsIn(uint256 bptAmountOut) public returns (uint256[] memory amountsIn) {
-        assumeValidTradeAmount(bptAmountOut);
+        if (!assumeValidTradeAmount(bptAmountOut)) return new uint256[](amountsIn.length);
         bptAmountOut = boundBptMint(bptAmountOut);
 
         uint256[] memory maxAmountsIn = getMaxAmountsIn();
@@ -205,7 +205,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     }
 
     function computeProportionalAmountsOut(uint256 bptAmountIn) public returns (uint256[] memory amountsOut) {
-        assumeValidTradeAmount(bptAmountIn);
+        if (!assumeValidTradeAmount(bptAmountIn)) return new uint256[](amountsOut.length);
         bptAmountIn = boundBptBurn(bptAmountIn);
 
         uint256[] memory minAmountsOut = getMinAmountsOut();
@@ -231,7 +231,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenInIndex,
         uint256 exactBptAmountOut
     ) public returns (uint256 amountIn) {
-        assumeValidTradeAmount(exactBptAmountOut);
+        if (!assumeValidTradeAmount(exactBptAmountOut)) return 0;
         tokenInIndex = boundTokenIndex(tokenInIndex);
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
 
@@ -254,7 +254,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenOutIndex,
         uint256 exactAmountOut
     ) public returns (uint256 bptAmountIn) {
-        assumeValidTradeAmount(exactAmountOut);
+        if (!assumeValidTradeAmount(exactAmountOut)) return 0;
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactAmountOut = boundTokenAmountOut(exactAmountOut, tokenOutIndex);
 
@@ -277,7 +277,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn
     ) public returns (uint256 amountOut) {
-        assumeValidTradeAmount(exactBptAmountIn);
+        if (!assumeValidTradeAmount(exactBptAmountIn)) return 0;
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);
 
@@ -361,10 +361,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return balances;
     }
 
-    function assumeValidTradeAmount(uint256 tradeAmount) internal pure {
-        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
-            revert();
-        }
+    function assumeValidTradeAmount(uint256 tradeAmount) internal pure returns (bool) {
+        return tradeAmount == 0 || tradeAmount >= _MINIMUM_TRADE_AMOUNT;
     }
 
     function getMinAmountsOut() internal view returns (uint256[] memory minAmountsOut) {
