@@ -14,9 +14,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
     // PackedTokenBalance.sol defines a max of 128 bits to store the balance of the pool.
-    uint256 private constant _MAX_BALANCE = type(uint128).max;
-    uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
-    uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant _MAX_BALANCE = type(uint128).max;
+    uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
+    uint256 internal constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
     uint256 internal maxRateTolerance = 0;
 
@@ -362,7 +362,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function assertRate() internal returns (bool) {
         updateRateDecrease();
-        return rateDecrease <= int256(0);
+        return rateDecrease <= int256(maxRateTolerance);
     }
 
     function updateRateDecrease() internal {
