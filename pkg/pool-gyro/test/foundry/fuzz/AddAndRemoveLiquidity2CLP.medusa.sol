@@ -142,7 +142,8 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
 
         // Verify some input was actually taken.
         if (amountsIn.length != 2) revert("INVALID_AMOUNTS_IN_LENGTH");
-        if (amountsIn[0] == 0 && amountsIn[1] == 0) return; // Zero amounts in are valid; just skip the rest of the checks
+        // Zero amounts in are valid; just skip the rest of the checks
+        if (amountsIn[0] == 0 && amountsIn[1] == 0) return;
 
         // Verify BPT was minted (indirectly via totalSupply increase).
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
@@ -199,9 +200,7 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         medusa.prank(alice);
         uint256 bptOut;
 
-        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (
-            uint256 result
-        ) {
+        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 result) {
             bptOut = result;
         } catch (bytes memory) {
             // If the transaction reverts, we can't make any assertions about state changes, so just return.
