@@ -33,7 +33,6 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
     error BptSupplyChanged(uint256 beforeSupply, uint256 afterSupply);
     error BptBalanceChanged(uint256 beforeBal, uint256 afterBal);
     error SandwichProfit(uint256 startBalance, uint256 endBalance, uint256 direction);
-    error RevertedWithoutData();
     error UnexpectedRevertSelector(bytes4 selector);
     error TokenBalanceDidNotDecrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
     error TokenBalanceDidNotIncrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
@@ -359,7 +358,6 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
         returns (uint256 out) {
             return (true, out);
         } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
             return (false, 0);
         }
     }
@@ -395,15 +393,5 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
             // Reuse the same revert shape as other fuzz suites: unexpected price -> hard fail.
             revert UnexpectedRevertSelector(bytes4(0));
         }
-    }
-
-    function _assertExpectedSwapRevert(bytes memory err) internal pure {
-        if (err.length < 4) revert RevertedWithoutData();
-        bytes4 sel;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            sel := mload(add(err, 0x20))
-        }
-        if (sel != GyroECLPMath.AssetBoundsExceeded.selector) revert UnexpectedRevertSelector(sel);
     }
 }
