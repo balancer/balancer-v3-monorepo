@@ -110,6 +110,9 @@ contract SwapMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, balancesRaw[tokenIndex].mulDown(MAX_IN_RATIO));
+        uint256 maxIn = balancesRaw[tokenIndex].mulDown(MAX_IN_RATIO);
+        if (maxIn < MIN_SWAP_AMOUNT) return MIN_SWAP_AMOUNT;
+
+        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, maxIn);
     }
 }
