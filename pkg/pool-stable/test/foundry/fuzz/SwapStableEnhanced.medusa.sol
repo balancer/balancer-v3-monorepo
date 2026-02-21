@@ -102,7 +102,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
                 balancesAfter
             );
 
-            assertGe(invariantAfter, invariantBefore, "Invariant decreased after swap (ExactIn)");
+            assert(invariantAfter >= invariantBefore);
 
             if (invariantAfter > lastKnownInvariant) {
                 lastKnownInvariant = invariantAfter;
@@ -163,12 +163,8 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
 
     function property_invariantNonDecreasing() external view returns (bool) {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        try this.externalComputeInvariant(balances) returns (uint256 currentInvariant) {
-            return currentInvariant >= lastKnownInvariant;
-        } catch {
-            return true;
-        }
+        uint256 currentInvariant = StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balances);
+        return currentInvariant >= lastKnownInvariant;
     }
 
     function property_noRoundTripProfit() external view returns (bool) {
@@ -210,9 +206,5 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     function _boundValue(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
         if (max <= min) return min;
         return min + (x % (max - min + 1));
-    }
-
-    function externalComputeInvariant(uint256[] memory balances) external pure returns (uint256) {
-        return StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balances);
     }
 }
