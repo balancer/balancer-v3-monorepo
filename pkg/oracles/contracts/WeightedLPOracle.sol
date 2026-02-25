@@ -142,7 +142,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
             tvl = tvl.mulDown(prices[i].toUint256().divDown(weights[i]).powDown(weights[i]));
         }
 
-        uint256 k = pool.computeInvariant(currentBalancesLiveScaled18, Rounding.ROUND_UP);
+        uint256 k = pool.computeInvariant(currentBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         tvl = tvl.mulDown(k);
     }
