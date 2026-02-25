@@ -15,6 +15,9 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
 
 /**
  * @notice Factory for deploying and managing Weighted Pool oracles.
+ * @dev IMPORTANT: WeightedLPOracles store weights immutably, so this factory can only be used for pools with fixed
+ * weights, such as those created with the standard Balancer `WeightedPoolFactory`. It cannot be used for LBPs or other
+ * pools with variable weights.
  */
 contract WeightedLPOracleFactory is LPOracleFactoryBase {
     /**
