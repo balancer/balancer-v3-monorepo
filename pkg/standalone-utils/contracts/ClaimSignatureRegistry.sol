@@ -32,12 +32,10 @@ contract ClaimSignatureRegistry {
     constructor() {
         // solhint-disable max-line-length
         string
-            memory terms = "I accept the T&Cs applicable to this claim, incl. all provisions of the Balancer ToU & all relevant Balancer governance resolutions.\n\n"
-            "I acknowledge & agree that my acceptance constitutes a full & final settlement & release of any & all past, present, & future claims, liabilities, demands, actions, causes of action, damages, or losses of any kind -whether known or unknown- arising out of or related to the Balancer V2 exploit.\n\n"
-            'This waiver expressly incl. claims against the Balancer Foundation, Balancer OpCo Ltd., Balancer Onchain Ltd. & all affiliated entities, as well as their respective officers, directors, contributors, service providers, employees, contractors, advisors, agents, successors, & assigns (collectively, the "Released Parties").\n\n'
-            "I acknowledge the limitation of liability, mandatory arbitration & all risk disclosures set forth in the Balancer ToU.\n\n"
-            "I waive & relinquish any right to participate in any class or collective action related to the V2 exploit or the Balancer Protocol.\n\n"
-            "I acknowledge & agree to the SEAL Safe Harbor Agreement (approved by governance resolution) which can offer legal protection to whitehats who aid in the recovery of assets during an active exploit.\n\n"
+            memory terms = "I ACCEPT BALANCER'S T&C APPLICABLE TO THIS CLAIM, INCL. ALL PROVISIONS OF THE ToU AND RELEVANT GOV RESOLUTIONS, INCL. LIMITATION OF LIABILITY, MANDATORY ARBITRATION AND RISK DISCLOSURES. I HEREBY CONFIRM & AGREE TO THE FOLLOWING:\n\n"
+            "My acceptance constitutes full final settlement & release of any past, present, & future claims, liabilities, demands, actions, causes of action, damages, or losses of any kind, known or unknown, arising out of or related to the Balancer exploit.\n"
+            "This waiver incl. claims and any right to participate in any class or collective action against the Balancer Foundation & all affiliated entities, as well as their respective officers, directors, contributors, service providers, employees, contractors, advisors, agents, successors, & assigns.\n"
+            "I acknowledge & agree to the Safe Harbor Agreement in all its terms (as approved by Balancer governance resolution).\n"
             "I understand that my claim will not be processed unless I accept these terms in full & without modification.";
 
         TERMS_DIGEST = bytes(terms).toEthSignedMessageHash();
