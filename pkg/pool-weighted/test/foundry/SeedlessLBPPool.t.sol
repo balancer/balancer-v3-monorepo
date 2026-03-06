@@ -2,14 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import { PoolConfig, Rounding, TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfig, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -17,8 +14,6 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
-import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
-import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract SeedlessLBPTest is WeightedLBPTest {
     using FixedPoint for uint256;
