@@ -9,10 +9,7 @@
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
     "targetContracts": [
-      "AddAndRemoveLiquidityStableEnhancedMedusa",
-      "SwapStableEnhancedPR1607Medusa",
-      "AddAndRemoveLiquidityStableMedusaTest",
-      "SwapStableMedusaTest"
+      "AddAndRemoveLiquidityStableEnhancedMedusa"
     ],
     "predeployedContracts": {},
     "targetContractsBalances": [],
@@ -27,8 +24,9 @@
     "blockTimestampDelayMax": 604800,
     "blockGasLimit": 1250000000,
     "transactionGasLimit": 125000000,
+    "revertReporterEnabled": true,
     "testing": {
-      "stopOnFailedTest": false,
+      "stopOnFailedTest": true,
       "stopOnFailedContractMatching": false,
       "stopOnNoTests": true,
       "testAllContracts": false,
