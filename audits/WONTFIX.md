@@ -23,7 +23,7 @@ When the aggregate fees are split between protocol and pool creator, rounding ef
 
 These typically happen when the pool creator fee is low, and low amount of fees are collected.
 
-It is simply **not** worth fixing and migrating the fee controller over this. In practice:
+In this case, the cost of fixing an obscure edge case and migrating the fee controller is not justified by the potential impact. In practice:
 - Most pools do not use pool creator fees
 - While the fee split to trigger the problem is technically valid, fee splits in practice tend to use larger numbers
 - Fees are collected after they reach certain threshold, not right after each operation generates any amount of fees
