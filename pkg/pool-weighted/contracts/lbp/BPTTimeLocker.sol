@@ -9,6 +9,10 @@ import { ERC6909 } from "@openzeppelin/contracts/token/ERC6909/draft-ERC6909.sol
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+
 /**
  * @notice Timelock for WeightedPool BPT created during an LBP migration.
  * @dev The migration router creates and initializes a new weighted pool upon completion of an LBP sale, sending the
@@ -21,7 +25,7 @@ import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
  * non-fungible tokens efficiently. ERC6909Metadata is an extension similar to ERC20Metadata that supports name,
  * symbol, and decimals.
  */
-contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
+contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /**
@@ -50,7 +54,7 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
      * @notice Withdraw the locked tokens for the caller, and return the underlying BPT.
      * @param bptAddress The address of the BPT to withdraw
      */
-    function withdrawBPT(address bptAddress) public {
+    function withdrawBPT(address bptAddress) public nonReentrant {
         uint256 id = getId(bptAddress);
         uint256 amount = balanceOf(msg.sender, id);
         if (amount == 0) {
@@ -63,8 +67,9 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
             revert BPTStillLocked(unlockTimestamp);
         }
 
-        delete _unlockTimestamps[id];
         _burn(msg.sender, id, amount);
+
+        delete _unlockTimestamps[id];
 
         IERC20(bptAddress).safeTransfer(msg.sender, amount);
     }
