@@ -951,4 +951,66 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             DEFAULT_RATE
         );
     }
+
+    // Salt collision tests for BPTTimeLocker
+
+    function testLockBPTAlreadyLocked() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        uint256 id = migrationRouter.getId(address(bpt));
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+    }
+
+    function testLockBPTTimestampUnchangedAfterCollision() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+        uint256 id = migrationRouter.getId(address(bpt));
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+        uint256 originalTimestamp = migrationRouter.getUnlockTimestamp(id);
+
+        // Warp forward so a second lock would write a different timestamp if the guard were absent.
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        assertEq(
+            migrationRouter.getUnlockTimestamp(id),
+            originalTimestamp,
+            "First lockee's unlock timestamp must not be modified by a failed second lock"
+        );
+    }
+
+    function testLockBPTBalanceUnchangedAfterCollision() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+        uint256 id = migrationRouter.getId(address(bpt));
+        uint256 amount = 100e18;
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, amount, DEFAULT_BPT_LOCK_DURATION);
+
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, amount, DEFAULT_BPT_LOCK_DURATION);
+
+        assertEq(
+            migrationRouter.balanceOf(alice, id),
+            amount,
+            "First lockee's ERC-6909 balance must not change after failed second lock"
+        );
+        assertEq(migrationRouter.balanceOf(bob, id), 0, "Second owner must not receive any ERC-6909 tokens");
+    }
+
+    function testLockBPTDifferentTokensLockIndependently() external {
+        ERC20TestToken bpt1 = new ERC20TestToken("Pool Token 1", "PT1", 18);
+        ERC20TestToken bpt2 = new ERC20TestToken("Pool Token 2", "PT2", 18);
+
+        // Both should succeed -- different IDs derived from different addresses.
+        migrationRouter.manualLockBPT(IERC20(bpt1), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+        migrationRouter.manualLockBPT(IERC20(bpt2), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        assertGt(migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(bpt1))), 0, "bpt1 should be locked");
+        assertGt(migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(bpt2))), 0, "bpt2 should be locked");
+    }
 }
