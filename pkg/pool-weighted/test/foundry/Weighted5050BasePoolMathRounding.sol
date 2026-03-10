@@ -6,7 +6,6 @@ import { BasePoolMathRoundingTest } from "@balancer-labs/v3-vault/test/foundry/B
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BasePoolMathMock } from "@balancer-labs/v3-vault/contracts/test/BasePoolMathMock.sol";
 
-import { WeightedBasePoolMathMock } from "../../contracts/test/WeightedBasePoolMathMock.sol";
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract Weighted5050BasePoolMathRounding is BasePoolMathRoundingTest, WeightedPoolContractsDeployer {
