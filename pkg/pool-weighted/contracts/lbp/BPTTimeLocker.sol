@@ -40,6 +40,9 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     /// @notice The caller has no balance of the locked BPT.
     error NoLockedBPT();
 
+    /// @notice The BPT address has already been locked; use withdrawBPT before locking again.
+    error AlreadyLocked(uint256 id);
+
     // The bptId is the numeric equivalent of the BPT address.
     mapping(uint256 bptId => uint256 unlockTimestamp) internal _unlockTimestamps;
 
@@ -85,9 +88,17 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
         return _unlockTimestamps[id];
     }
 
-    /// @dev Locks an amount of tokens, locked amount is represented as an ERC6909 token.
+    /**
+     * @notice Locks an amount of tokens; locked amount is represented as an ERC6909 token.
+     * @param bptAddress The address of the BPT being locked, which determines the ID of the lock token
+     * @param owner The address of the owner of the locked tokens
+     * @param amount The amount of tokens to lock
+     * @param duration The duration for which the tokens are locked, in seconds
+     */
     function _lockBPT(IERC20 bptAddress, address owner, uint256 amount, uint256 duration) internal {
         uint256 id = getId(address(bptAddress));
+
+        require(_unlockTimestamps[id] == 0, AlreadyLocked(id));
 
         // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + duration;
