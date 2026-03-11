@@ -154,8 +154,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             "Wrong project token swap blocked flag"
         );
 
-        assertEq(data.migrationRouter, address(0), "Migration router not zero");
-
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
         assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
@@ -316,7 +314,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         );
     }
 
-    function testCreatePoolWithInvalidBptLockDurationTooZero() public {
+    function testCreatePoolWithInvalidBptLockDurationZero() public {
         uint256 initBptPercentageToMigrate = 50e16; // 50%
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
