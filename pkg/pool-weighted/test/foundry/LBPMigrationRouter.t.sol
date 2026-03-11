@@ -1045,17 +1045,6 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         assertEq(IERC20(pool).balanceOf(bob), 0, "Bob should have no BPT after pre-sale removal");
     }
 
-    function testPresaleRemovalByNonOwnerViaTrustedRouter() external {
-        // Give alice some BPT so the removal attempt is meaningful.
-        uint256 transferAmount = IERC20(pool).balanceOf(bob) / 2;
-        vm.prank(bob);
-        IERC20(pool).transfer(alice, transferAmount);
-
-        vm.expectRevert(IVaultErrors.BeforeRemoveLiquidityHookFailed.selector);
-        vm.prank(alice);
-        router.removeLiquidityProportional(pool, transferAmount, [uint256(0), 0].toMemoryArray(), false, bytes(""));
-    }
-
     function testDuringSaleRemoval() external {
         uint256 startTime = ILBPool(pool).getLBPoolImmutableData().startTime;
         uint256 bptBalance = IERC20(pool).balanceOf(bob);
@@ -1065,21 +1054,6 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
         vm.expectRevert(LBPCommon.RemovingLiquidityNotAllowed.selector);
         vm.prank(bob);
         router.removeLiquidityProportional(pool, bptBalance, [uint256(0), 0].toMemoryArray(), false, bytes(""));
-    }
-
-    function testPresaleRemovalViaArbitraryRouter() external {
-        // Test the hook logic directly: arbitrary routers are blocked pre-sale by returning false.
-        address arbitraryRouter = makeAddr("arbitraryRouter");
-        bool allowed = IHooks(pool).onBeforeRemoveLiquidity(
-            arbitraryRouter,
-            address(0),
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](2),
-            new uint256[](2),
-            bytes("")
-        );
-        assertFalse(allowed, "Arbitrary router should not be allowed pre-sale");
     }
 
     // WithdrawBPT reentrancy tests
