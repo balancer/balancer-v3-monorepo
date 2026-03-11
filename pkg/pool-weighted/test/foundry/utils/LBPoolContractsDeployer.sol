@@ -29,19 +29,18 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address router,
-        address migrationRouter
+        address router
     ) internal returns (LBPoolFactory) {
         if (reusingArtifacts) {
             return
                 LBPoolFactory(
                     deployCode(
                         _computeLBPoolPath(type(LBPoolFactory).name),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router, migrationRouter)
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router)
                     )
                 );
         } else {
-            return new LBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router, migrationRouter);
+            return new LBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router);
         }
     }
 
