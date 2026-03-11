@@ -49,9 +49,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             factoryVersion,
             poolVersion,
             trustedRouter,
-            address(0),
             type(FixedPriceLBPool).creationCode
-        ) // no migration router
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -113,17 +112,8 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             projectTokenRate
         );
 
-        // Only needed for the event.
-        MigrationParams memory migrationParams;
-
         // Emit common events via base helper
-        _emitPoolCreatedEvents(
-            pool,
-            lbpCommonParams.projectToken,
-            lbpCommonParams.reserveToken,
-            migrationParams,
-            false // Migration unsupported for fixed price LBPs
-        );
+        _emitPoolCreatedEvents(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
 
         _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
     }

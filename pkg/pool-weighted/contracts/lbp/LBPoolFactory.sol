@@ -26,14 +26,12 @@ contract LBPoolFactory is BaseLBPFactory {
      * @param pool Address of the pool
      * @param owner Address of the pool's owner
      * @param blockProjectTokenSwapsIn If true, this is a "buy-only" sale
-     * @param hasMigration True if the pool will be migrated after the sale
      * @param isSeedless True if this is a seedless LBP (i.e., no reserve token supplied on initialization)
      */
     event WeightedLBPoolCreated(
         address indexed pool,
         address indexed owner,
         bool blockProjectTokenSwapsIn,
-        bool hasMigration,
         bool isSeedless
     );
 
@@ -42,8 +40,7 @@ contract LBPoolFactory is BaseLBPFactory {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRouter,
-        address migrationRouter
+        address trustedRouter
     )
         BaseLBPFactory(
             vault,
@@ -51,7 +48,6 @@ contract LBPoolFactory is BaseLBPFactory {
             factoryVersion,
             poolVersion,
             trustedRouter,
-            migrationRouter,
             type(LBPool).creationCode
         )
     {
@@ -74,38 +70,6 @@ contract LBPoolFactory is BaseLBPFactory {
         bytes32 salt,
         address poolCreator
     ) public nonReentrant returns (address pool) {
-        MigrationParams memory migrationParams;
-
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
-    }
-
-    /**
-     * @notice Deploys a new `LBPool` with migration.
-     * @dev This method does not support native ETH management; WETH needs to be used instead.
-     * @param lbpCommonParams The LBP configuration (see ILBPool for the struct definition)
-     * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
-     * @param salt The salt value that will be passed to create3 deployment
-     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
-     */
-    function createWithMigration(
-        LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
-        LBPParams memory lbpParams,
-        uint256 swapFeePercentage,
-        bytes32 salt,
-        address poolCreator
-    ) public nonReentrant returns (address pool) {
-        pool = _createPool(lbpCommonParams, migrationParams, lbpParams, swapFeePercentage, salt, poolCreator);
-    }
-
-    function _createPool(
-        LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
-        LBPParams memory lbpParams,
-        uint256 swapFeePercentage,
-        bytes32 salt,
-        address poolCreator
-    ) internal returns (address pool) {
         // These validations are duplicated in the pool contract but performed here to surface precise error messages,
         // as create2 would otherwise mask the underlying revert reason.
         LBPValidation.validateCommonParams(lbpCommonParams);
@@ -117,7 +81,6 @@ contract LBPoolFactory is BaseLBPFactory {
             lbpParams.reserveTokenEndWeight
         );
 
-        bool hasMigration = LBPValidation.validateMigrationParams(migrationParams, _migrationRouter);
         bool isSeedless = lbpParams.reserveTokenVirtualBalance > 0;
 
         FactoryParams memory factoryParams = FactoryParams({
@@ -126,26 +89,14 @@ contract LBPoolFactory is BaseLBPFactory {
             poolVersion: _poolVersion
         });
 
-        pool = _create(abi.encode(lbpCommonParams, migrationParams, lbpParams, factoryParams), salt);
+        pool = _create(abi.encode(lbpCommonParams, lbpParams, factoryParams), salt);
 
         _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
 
         // Emit type-specific event first.
-        emit WeightedLBPoolCreated(
-            pool,
-            lbpCommonParams.owner,
-            lbpCommonParams.blockProjectTokenSwapsIn,
-            hasMigration,
-            isSeedless
-        );
+        emit WeightedLBPoolCreated(pool, lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, isSeedless);
 
         // Emit common events via base contract helper.
-        _emitPoolCreatedEvents(
-            pool,
-            lbpCommonParams.projectToken,
-            lbpCommonParams.reserveToken,
-            migrationParams,
-            hasMigration
-        );
+        _emitPoolCreatedEvents(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
     }
 }
