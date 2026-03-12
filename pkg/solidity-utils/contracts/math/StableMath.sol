@@ -36,7 +36,7 @@ library StableMath {
     /**
      * @notice MIN_AMP and MAX_AMP are the "raw" human-readable amplification factor bounds.
      * @dev The `amplificationParameter` passed to computation functions is scaled up for precision, and must be in
-     * [MIN_AMP * AMP_PRECISION, MAX_AMP * AMP_PRECISION].
+     * the range [MIN_AMP * AMP_PRECISION, MAX_AMP * AMP_PRECISION].
      */
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 50000;
