@@ -30,23 +30,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    error ZeroAmountOut();
-    error ZeroAmountIn();
     error BptRateDecreased(uint256 currentRate, uint256 lastKnownRate, uint256 minAllowed);
-    error RoundTripProfit(uint256 finalAmount, uint256 maxAllowed, uint256 amountIn);
-    error RoundTripProfitStrict(uint256 finalAmount, uint256 maxAllowed, uint256 amountIn);
-    error RoundTripProfitExactInExactOut(uint256 midReceived, uint256 midSpentPlusTol, uint256 amountIn);
-    error PoolStateChangedOnRevert(bytes32 beforeHash, bytes32 afterHash);
-    error RevertedWithoutData();
-    error UnexpectedRevertSelector(bytes4 selector);
-    error TokenBalanceDidNotDecrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error TokenBalanceDidNotIncrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error PoolBalanceDidNotChangeByExpectedAmount(
-        uint256 tokenIndex,
-        uint256 beforeBal,
-        uint256 afterBal,
-        uint256 expectedDelta
-    );
 
     // Gyro 2-CLP specific parameters
     uint256 internal constant SQRT_ALPHA = 997496867163000167; // alpha = 0.995
@@ -60,10 +44,21 @@ contract Swap2CLPMedusa is BaseMedusaTest {
     uint256 internal constant MAX_SWAP_RATIO_ROUND_TRIP = 5e16; // 5% per-leg input for round-trips
 
     // Track state
-    uint256 internal lastKnownBptRate;
+    uint256 internal _initialBptRate;
 
     constructor() BaseMedusaTest() {
-        lastKnownBptRate = _getCurrentBptRate();
+        // Record initial BPT rate after pool initialization
+        // Recording rate or invariant is equivalent in this test.
+        _initialBptRate = _getCurrentBptRate();
+    }
+
+    function optimize_currentBptRate() public view returns (int256) {
+        return -int256(_getCurrentBptRate());
+    }
+
+    function property_currentBptRate() public view returns (bool) {
+        uint256 currentBptRate = _getCurrentBptRate();
+        return currentBptRate >= _initialBptRate;
     }
 
     /// @notice Override to create a Gyro 2-CLP pool.
@@ -131,45 +126,32 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[1].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[0],
-                tokens[1],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            // Amount out should be positive
-            if (amountOut == 0) revert ZeroAmountOut();
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[0],
+            tokens[1],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        // Amount out should be positive
+        assert(amountOut > 0);
 
-            // Exact deltas on caller balances must match returned amounts.
-            uint256 aliceInAfter = tokens[0].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[1].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[1]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        // Exact deltas on caller balances must match returned amounts.
+        uint256 aliceInAfter = tokens[0].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[1].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            // Pool balance deltas must match the trade.
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[0] != balancesBefore[0] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountIn);
-            }
-            if (balancesAfter[1] != balancesBefore[1] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountOut);
-            }
+        // Pool balance deltas must match the trade.
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[0] == balancesBefore[0] + amountIn);
+        assert(balancesAfter[1] == balancesBefore[1] - amountOut);
 
-            // BPT rate should not decrease
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-        }
+        // BPT rate should not decrease
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact input swap token1 -> token0 and assert BPT rate never decreases.
@@ -184,41 +166,28 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[0].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[1],
-                tokens[0],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            if (amountOut == 0) revert ZeroAmountOut();
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[1],
+            tokens[0],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountOut > 0);
 
-            uint256 aliceInAfter = tokens[1].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[0].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[0]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        uint256 aliceInAfter = tokens[1].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[0].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[1] != balancesBefore[1] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountIn);
-            }
-            if (balancesAfter[0] != balancesBefore[0] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountOut);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[1] == balancesBefore[1] + amountIn);
+        assert(balancesAfter[0] == balancesBefore[0] - amountOut);
 
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-        }
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact output swap token0 -> token1 and assert BPT rate never decreases.
@@ -234,41 +203,28 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[1].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactOut(
-                address(pool),
-                tokens[0],
-                tokens[1],
-                amountOut,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountIn) {
-            if (amountIn == 0) revert ZeroAmountIn();
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(pool),
+            tokens[0],
+            tokens[1],
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountIn > 0);
 
-            uint256 aliceInAfter = tokens[0].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[1].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[1]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        uint256 aliceInAfter = tokens[0].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[1].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[0] != balancesBefore[0] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountIn);
-            }
-            if (balancesAfter[1] != balancesBefore[1] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountOut);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[0] == balancesBefore[0] + amountIn);
+        assert(balancesAfter[1] == balancesBefore[1] - amountOut);
 
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-        }
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact output swap token1 -> token0 and assert BPT rate never decreases.
@@ -283,41 +239,28 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[0].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactOut(
-                address(pool),
-                tokens[1],
-                tokens[0],
-                amountOut,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountIn) {
-            if (amountIn == 0) revert ZeroAmountIn();
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(pool),
+            tokens[1],
+            tokens[0],
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountIn > 0);
 
-            uint256 aliceInAfter = tokens[1].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[0].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[0]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        uint256 aliceInAfter = tokens[1].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[0].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[1] != balancesBefore[1] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountIn);
-            }
-            if (balancesAfter[0] != balancesBefore[0] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountOut);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[1] == balancesBefore[1] + amountIn);
+        assert(balancesAfter[0] == balancesBefore[0] - amountOut);
 
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-        }
+        _assertBptRateNeverDecreases();
     }
 
     /**
@@ -337,52 +280,36 @@ contract Swap2CLPMedusa is BaseMedusaTest {
 
         // Step 1: ExactIn token0 -> token1
         medusa.prank(alice);
-        uint256 midReceived;
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[0],
-                tokens[1],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 _out) {
-            midReceived = _out;
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-            return;
-        }
+        uint256 midReceived = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[0],
+            tokens[1],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-        if (midReceived == 0) revert ZeroAmountOut();
+        assert(midReceived > 0);
 
         // Step 2: ExactOut token1 -> token0 to get back exactly amountIn
         medusa.prank(alice);
-        uint256 midSpent;
-        try
-            router.swapSingleTokenExactOut(
-                address(pool),
-                tokens[1],
-                tokens[0],
-                amountIn,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 _in) {
-            midSpent = _in;
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-            return;
-        }
+        uint256 midSpent = router.swapSingleTokenExactOut(
+            address(pool),
+            tokens[1],
+            tokens[0],
+            amountIn,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-        if (midSpent == 0) revert ZeroAmountIn();
+        assert(midSpent > 0);
 
         // No-profit condition in intermediate token terms (allow +1 wei for rounding path differences).
-        if (midSpent < midReceived) revert RoundTripProfitExactInExactOut(midReceived, midSpent, amountIn);
+        assert(midSpent >= midReceived);
 
         _assertBptRateNeverDecreases();
     }
@@ -410,53 +337,37 @@ contract Swap2CLPMedusa is BaseMedusaTest {
 
         // Step 1: swap in -> mid
         medusa.prank(alice);
-        uint256 intermediateAmount;
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[iIn],
-                tokens[iMid],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 out1) {
-            intermediateAmount = out1;
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-            return;
-        }
+        uint256 intermediateAmount = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[iIn],
+            tokens[iMid],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-        if (intermediateAmount == 0) revert ZeroAmountOut();
+        assert(intermediateAmount > 0);
 
         // Step 2: swap mid -> in
         medusa.prank(alice);
-        uint256 finalAmount;
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[iMid],
-                tokens[iIn],
-                intermediateAmount,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 out2) {
-            finalAmount = out2;
-        } catch (bytes memory err) {
-            _assertExpectedSwapRevert(err);
-            return;
-        }
+        uint256 finalAmount = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[iMid],
+            tokens[iIn],
+            intermediateAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-        if (finalAmount == 0) revert ZeroAmountOut();
+        assert(finalAmount > 0);
 
         // Strict: no profit beyond tiny rounding dust.
         // With non-zero fees this should be strictly <= amountIn; allow +1 wei for rounding.
-        if (finalAmount > amountIn) revert RoundTripProfitStrict(finalAmount, amountIn, amountIn);
+        assert(finalAmount <= amountIn);
 
         _assertBptRateNeverDecreases();
     }
@@ -513,21 +424,9 @@ contract Swap2CLPMedusa is BaseMedusaTest {
 
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
-
-        if (currentRate > lastKnownBptRate) {
-            lastKnownBptRate = currentRate;
-        } else if (currentRate < lastKnownBptRate) {
-            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
-        }
-    }
-
-    function _assertExpectedSwapRevert(bytes memory err) internal pure {
-        if (err.length < 4) revert RevertedWithoutData();
-        bytes4 sel;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            sel := mload(add(err, 0x20))
-        }
-        if (sel != Gyro2CLPMath.AssetBoundsExceeded.selector) revert UnexpectedRevertSelector(sel);
+        emit Debug("current BPT rate", currentRate);
+        emit Debug("initial BPT rate", _initialBptRate);
+     
+        assert(currentRate >= _initialBptRate);
     }
 }

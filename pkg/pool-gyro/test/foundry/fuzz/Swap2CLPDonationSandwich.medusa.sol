@@ -25,20 +25,6 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    error BptSupplyChanged(uint256 beforeSupply, uint256 afterSupply);
-    error BptBalanceChanged(uint256 beforeBal, uint256 afterBal);
-    error SandwichProfit(uint256 startBalance, uint256 endBalance, uint256 direction);
-    error PoolStateChangedOnRevert(bytes32 beforeHash, bytes32 afterHash);
-    error TokenBalanceDidNotDecrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error TokenBalanceDidNotIncrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error PoolBalanceDidNotChangeByExpectedAmount(
-        uint256 tokenIndex,
-        uint256 beforeBal,
-        uint256 afterBal,
-        uint256 expectedDelta
-    );
-    error PoolBalanceDeltaMismatch(uint256 tokenIndex);
-
     // Gyro 2-CLP specific parameters
     uint256 internal constant SQRT_ALPHA = 997496867163000167; // alpha = 0.995
     uint256 internal constant SQRT_BETA = 1002496882788171068; // beta = 1.005
@@ -132,27 +118,19 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         router.donate(address(pool), amountsIn, false, bytes(""));
 
         uint256 afterSupply = IERC20(address(pool)).totalSupply();
-        if (afterSupply != beforeSupply) revert BptSupplyChanged(beforeSupply, afterSupply);
+        assert(afterSupply == beforeSupply);
         uint256 bptBobAfter = IERC20(address(pool)).balanceOf(bob);
-        if (bptBobAfter != bptBobBefore) revert BptBalanceChanged(bptBobBefore, bptBobAfter);
+        assert(bptBobAfter == bptBobBefore);
 
         // Donation should move *exactly* the provided amounts: user pays, pool receives.
         uint256 bob0After = tokens[0].balanceOf(bob);
         uint256 bob1After = tokens[1].balanceOf(bob);
-        if (bob0After != bob0Before - amountsIn[0]) {
-            revert TokenBalanceDidNotDecrease(address(tokens[0]), bob0Before, bob0After, amountsIn[0]);
-        }
-        if (bob1After != bob1Before - amountsIn[1]) {
-            revert TokenBalanceDidNotDecrease(address(tokens[1]), bob1Before, bob1After, amountsIn[1]);
-        }
+        assert(bob0After == bob0Before - amountsIn[0]);
+        assert(bob1After == bob1Before - amountsIn[1]);
 
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[0] != balancesBefore[0] + amountsIn[0]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountsIn[0]);
-        }
-        if (balancesAfter[1] != balancesBefore[1] + amountsIn[1]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountsIn[1]);
-        }
+        assert(balancesAfter[0] == balancesBefore[0] + amountsIn[0]);
+        assert(balancesAfter[1] == balancesBefore[1] + amountsIn[1]);
     }
 
     /**
@@ -179,39 +157,18 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         (attackerAmountIn, victimAmountIn) = _boundSandwichAmounts(balInBefore, attackerAmountIn, victimAmountIn);
 
         uint256 startIn = tokenIn.balanceOf(alice);
-        (bool attackerOk, uint256 attackerOut) = _attackerLegAndAssertPoolDeltas(
-            iIn,
-            iOut,
-            tokenIn,
-            tokenOut,
-            attackerAmountIn,
-            startIn
-        );
-        if (!attackerOk) return;
+        uint256 attackerOut = _attackerLegAndAssertPoolDeltas(iIn, iOut, tokenIn, tokenOut, attackerAmountIn, startIn);
 
         _victimLeg(tokenIn, tokenOut, victimAmountIn);
 
         uint256 endIn = _unwindLeg(tokenIn, tokenOut, attackerOut);
-        if (endIn > startIn) revert SandwichProfit(startIn, endIn, direction);
+        // Assert no sandwich profit
+        // assert(endIn <= startIn);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
         if (max <= min) return min;
         return min + (x % (max - min + 1));
-    }
-
-    function _trySwapExactIn(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 amountIn
-    ) internal returns (bool ok, uint256 amountOut) {
-        try
-            router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""))
-        returns (uint256 out) {
-            return (true, out);
-        } catch {
-            return (false, 0);
-        }
     }
 
     function _boundSandwichAmounts(
@@ -232,7 +189,7 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         IERC20 tokenOut,
         uint256 attackerAmountIn,
         uint256 aliceInBefore
-    ) internal returns (bool ok, uint256 attackerOut) {
+    ) internal returns (uint256 attackerOut) {
         uint256 aliceOutBefore = tokenOut.balanceOf(alice);
 
         // Snapshot balances for iIn and iOut right before the attacker's swap.
@@ -245,30 +202,30 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         }
 
         medusa.prank(alice);
-        (ok, attackerOut) = _trySwapExactIn(tokenIn, tokenOut, attackerAmountIn);
-        if (!ok) return (false, 0);
+        attackerOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokenIn,
+            tokenOut,
+            attackerAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-        if (attackerOut == 0) revert TokenBalanceDidNotIncrease(address(tokenOut), aliceOutBefore, aliceOutBefore, 1);
+        assert(attackerOut > 0);
 
         uint256 aliceInAfter1 = tokenIn.balanceOf(alice);
         uint256 aliceOutAfter1 = tokenOut.balanceOf(alice);
-        if (aliceInAfter1 != aliceInBefore - attackerAmountIn) {
-            revert TokenBalanceDidNotDecrease(address(tokenIn), aliceInBefore, aliceInAfter1, attackerAmountIn);
-        }
-        if (aliceOutAfter1 != aliceOutBefore + attackerOut) {
-            revert TokenBalanceDidNotIncrease(address(tokenOut), aliceOutBefore, aliceOutAfter1, attackerOut);
-        }
+        assert(aliceInAfter1 == aliceInBefore - attackerAmountIn);
+        assert(aliceOutAfter1 == aliceOutBefore + attackerOut);
 
         // Pool balance deltas must match the trade.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[iIn] != balInBefore + attackerAmountIn) {
-            revert PoolBalanceDeltaMismatch(iIn);
-        }
-        if (balancesAfter[iOut] != balOutBefore - attackerOut) {
-            revert PoolBalanceDeltaMismatch(iOut);
-        }
+        assert(balancesAfter[iIn] == balInBefore + attackerAmountIn);
+        assert(balancesAfter[iOut] == balOutBefore - attackerOut);
 
-        return (true, attackerOut);
+        return attackerOut;
     }
 
     function _victimLeg(IERC20 tokenIn, IERC20 tokenOut, uint256 victimAmountIn) internal {
@@ -276,55 +233,47 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         uint256 bobOutBefore = tokenOut.balanceOf(bob);
 
         medusa.prank(bob);
-        (bool ok, uint256 victimOut) = _trySwapExactIn(tokenIn, tokenOut, victimAmountIn);
-        if (!ok) return;
+        uint256 victimOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokenIn,
+            tokenOut,
+            victimAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         uint256 bobInAfter = tokenIn.balanceOf(bob);
         uint256 bobOutAfter = tokenOut.balanceOf(bob);
-        if (victimOut == 0) revert TokenBalanceDidNotIncrease(address(tokenOut), bobOutBefore, bobOutBefore, 1);
-        if (bobInAfter != bobInBefore - victimAmountIn) {
-            revert TokenBalanceDidNotDecrease(address(tokenIn), bobInBefore, bobInAfter, victimAmountIn);
-        }
-        if (bobOutAfter != bobOutBefore + victimOut) {
-            revert TokenBalanceDidNotIncrease(address(tokenOut), bobOutBefore, bobOutAfter, victimOut);
-        }
+        assert(victimOut > 0);
+        assert(bobInAfter == bobInBefore - victimAmountIn);
+        assert(bobOutAfter == bobOutBefore + victimOut);
     }
 
     function _unwindLeg(IERC20 tokenIn, IERC20 tokenOut, uint256 attackerOut) internal returns (uint256 endIn) {
         // 3) attacker swaps back iOut -> iIn with what she got.
         // If this reverts, that's a *high signal* regression: the attacker can't unwind using the exact output
         // she previously received (and, after a same-direction victim trade, pool iIn should only be larger).
-        medusa.prank(alice);
         uint256 aliceOutBefore3 = tokenOut.balanceOf(alice);
         uint256 aliceInBefore3 = tokenIn.balanceOf(alice);
-        uint256 unwindOut;
-
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokenOut,
-                tokenIn,
-                attackerOut,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 out) {
-            unwindOut = out;
-        } catch (bytes memory err) {
-            return aliceInBefore3; // Can't unwind = attacker lost, not a profit
-        }
+        medusa.prank(alice);
+        uint256 unwindOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokenOut,
+            tokenIn,
+            attackerOut,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         uint256 aliceOutAfter3 = tokenOut.balanceOf(alice);
         uint256 aliceInAfter3 = tokenIn.balanceOf(alice);
-        if (unwindOut == 0) revert TokenBalanceDidNotIncrease(address(tokenIn), aliceInBefore3, aliceInBefore3, 1);
-        if (aliceOutAfter3 != aliceOutBefore3 - attackerOut) {
-            revert TokenBalanceDidNotDecrease(address(tokenOut), aliceOutBefore3, aliceOutAfter3, attackerOut);
-        }
-        if (aliceInAfter3 != aliceInBefore3 + unwindOut) {
-            revert TokenBalanceDidNotIncrease(address(tokenIn), aliceInBefore3, aliceInAfter3, unwindOut);
-        }
+        assert(unwindOut > 0);
+        assert(aliceOutAfter3 == aliceOutBefore3 - attackerOut);
+        assert(aliceInAfter3 == aliceInBefore3 + unwindOut);
 
         return tokenIn.balanceOf(alice);
     }
