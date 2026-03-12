@@ -157,11 +157,18 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         (attackerAmountIn, victimAmountIn) = _boundSandwichAmounts(balInBefore, attackerAmountIn, victimAmountIn);
 
         uint256 startIn = tokenIn.balanceOf(alice);
+        uint256 startOut = tokenOut.balanceOf(alice);
         uint256 attackerOut = _attackerLegAndAssertPoolDeltas(iIn, iOut, tokenIn, tokenOut, attackerAmountIn, startIn);
 
         _victimLeg(tokenIn, tokenOut, victimAmountIn);
 
         uint256 endIn = _unwindLeg(tokenIn, tokenOut, attackerOut);
+        uint256 endOut = tokenOut.balanceOf(alice);
+
+        emit Debug("startIn", startIn);
+        emit Debug("endIn", endIn);
+        emit Debug("startOut", startOut);
+        emit Debug("endOut", endOut);
         // Assert no sandwich profit
         assert(endIn <= startIn);
     }
@@ -272,8 +279,9 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         uint256 aliceOutAfter3 = tokenOut.balanceOf(alice);
         uint256 aliceInAfter3 = tokenIn.balanceOf(alice);
         assert(unwindOut > 0);
-        assert(aliceOutAfter3 == aliceOutBefore3 + unwindOut);
-        assert(aliceInAfter3 == aliceInBefore3 - attackerOut);
+        // We are using token in and token out upside down.
+        assert(aliceOutAfter3 == aliceOutBefore3 - attackerOut);
+        assert(aliceInAfter3 == aliceInBefore3 + unwindOut);
 
         return tokenIn.balanceOf(alice);
     }

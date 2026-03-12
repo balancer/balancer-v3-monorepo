@@ -308,8 +308,8 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
         medusa.prank(alice);
         uint256 unwindOut = router.swapSingleTokenExactIn(
             address(pool),
-            ctx.tokenIn,
             ctx.tokenOut,
+            ctx.tokenIn,
             attackerOut,
             0,
             MAX_UINT256,
@@ -320,8 +320,9 @@ contract SwapECLPDonationSandwichMedusa is BaseMedusaTest {
         uint256 aliceOutAfter3 = ctx.tokenOut.balanceOf(alice);
         uint256 aliceInAfter3 = ctx.tokenIn.balanceOf(alice);
         assert(unwindOut > 0);
-        assert(aliceOutAfter3 == aliceOutBefore3 + unwindOut);
-        assert(aliceInAfter3 == aliceInBefore3 - attackerOut);
+        // We are using token in and token out upside down.
+        assert(aliceOutAfter3 == aliceOutBefore3 - attackerOut);
+        assert(aliceInAfter3 == aliceInBefore3 + unwindOut);
 
         return ctx.tokenIn.balanceOf(alice);
     }
