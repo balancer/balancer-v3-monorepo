@@ -426,7 +426,7 @@ contract Swap2CLPMedusa is BaseMedusaTest {
         uint256 currentRate = _getCurrentBptRate();
         emit Debug("current BPT rate", currentRate);
         emit Debug("initial BPT rate", _initialBptRate);
-     
+
         assert(currentRate >= _initialBptRate);
     }
 }

@@ -211,10 +211,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
 
         // Proportional adds should not violate invariant-ratio bounds either (allow tiny rounding slack).
         if (invBefore != 0) {
-            uint256 invAfter = IBasePool(address(pool)).computeInvariant(
-                balancesScaled18After,
-                Rounding.ROUND_DOWN
-            );
+            uint256 invAfter = IBasePool(address(pool)).computeInvariant(balancesScaled18After, Rounding.ROUND_DOWN);
             uint256 ratio = invAfter.divDown(invBefore);
             uint256 maxRatio = IBasePool(address(pool)).getMaximumInvariantRatio();
             assert(ratio <= maxRatio);
@@ -289,7 +286,13 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 totalSupplyBefore = IERC20(address(pool)).totalSupply();
 
         medusa.prank(lp);
-        uint256[] memory amountsOut = router.removeLiquidityProportional(address(pool), bptIn, minAmountsOut, false, bytes(""));
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(pool),
+            bptIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
         for (uint256 i = 0; i < amountsOut.length; i++) {
             assert(amountsOut[i] > 0);
         }
@@ -342,7 +345,14 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 totalSupplyBefore = IERC20(address(pool)).totalSupply();
 
         medusa.prank(lp);
-        uint256 bptIn = router.removeLiquiditySingleTokenExactOut(address(pool), lpBalance, token, amountOut, false, bytes(""));
+        uint256 bptIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            lpBalance,
+            token,
+            amountOut,
+            false,
+            bytes("")
+        );
         assert(bptIn > 0 && bptIn <= lpBalance);
         _assertBptRateNeverDecreases();
 
@@ -378,7 +388,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 currentRate = _getCurrentBptRate();
         emit Debug("current BPT rate", currentRate);
         emit Debug("initial BPT rate", initialBptRate);
-     
+
         assert(currentRate + 1 >= lastKnownBptRate);
     }
 

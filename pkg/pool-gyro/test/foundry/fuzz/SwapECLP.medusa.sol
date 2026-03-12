@@ -439,7 +439,16 @@ contract SwapECLPMedusa is BaseMedusaTest {
         uint256 userOutBefore = tokenOut.balanceOf(alice);
 
         medusa.prank(alice);
-        amountOut = router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
+        amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokenIn,
+            tokenOut,
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
         assert(amountOut > 0);
         uint256 userInAfter = tokenIn.balanceOf(alice);
         uint256 userOutAfter = tokenOut.balanceOf(alice);
