@@ -32,21 +32,6 @@ contract SwapECLPMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    error ZeroAmountOut();
-    error ZeroAmountIn();
-    error BptRateDecreased(uint256 currentRate, uint256 lastKnownRate, uint256 minAllowed);
-    error RoundTripProfitStrict(uint256 finalAmount, uint256 maxAllowed, uint256 amountIn);
-    error TokenBalanceDidNotDecrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error TokenBalanceDidNotIncrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error PoolBalanceDidNotChangeByExpectedAmount(
-        uint256 tokenIndex,
-        uint256 beforeBal,
-        uint256 afterBal,
-        uint256 expectedDelta
-    );
-    error PoolBalanceDeltaMismatch(uint256 tokenIndex);
-    error SpotPriceOutOfBounds(uint256 spotPrice, uint256 alpha, uint256 beta);
-
     // ECLP pools require a consistent (params, derivedParams) pair; derived params are typically computed off-chain.
     // These constants are a known-good mainnet fixture (see `test/foundry/utils/GyroEclpPoolDeployer.sol`).
     int256 internal constant PARAMS_ALPHA = 998502246630054917;
@@ -76,10 +61,21 @@ contract SwapECLPMedusa is BaseMedusaTest {
     uint256 internal constant MAX_SWAP_RATIO_ROUND_TRIP = 5e16; // 5% per-leg input
 
     // Track state
-    uint256 internal lastKnownBptRate;
+    uint256 internal _initialBptRate;
 
     constructor() BaseMedusaTest() {
-        lastKnownBptRate = _getCurrentBptRate();
+        // Record initial BPT rate after pool initialization
+        // Recording rate or invariant is equivalent in this test.
+        _initialBptRate = _getCurrentBptRate();
+    }
+
+    function optimize_currentBptRate() public view returns (int256) {
+        return -int256(_getCurrentBptRate());
+    }
+
+    function property_currentBptRate() public view returns (bool) {
+        uint256 currentBptRate = _getCurrentBptRate();
+        return currentBptRate >= _initialBptRate;
     }
 
     /// @notice Override to create an ECLP pool.
@@ -165,42 +161,29 @@ contract SwapECLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[1].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[0],
-                tokens[1],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            if (amountOut == 0) revert ZeroAmountOut();
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[0],
+            tokens[1],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountOut > 0);
 
-            uint256 aliceInAfter = tokens[0].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[1].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[1]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        uint256 aliceInAfter = tokens[0].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[1].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[0] != balancesBefore[0] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountIn);
-            }
-            if (balancesAfter[1] != balancesBefore[1] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountOut);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[0] == balancesBefore[0] + amountIn);
+        assert(balancesAfter[1] == balancesBefore[1] - amountOut);
 
-            _assertSpotPriceWithinBounds(balancesAfter);
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            return; // Any revert is fine here, we just want to assert that state didn't change
-        }
+        _assertSpotPriceWithinBounds(balancesAfter);
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact input swap token1 -> token0.
@@ -216,42 +199,29 @@ contract SwapECLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[0].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[1],
-                tokens[0],
-                amountIn,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            if (amountOut == 0) revert ZeroAmountOut();
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[1],
+            tokens[0],
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountOut > 0);
 
-            uint256 aliceInAfter = tokens[1].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[0].balanceOf(alice);
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceInBefore, aliceInAfter, amountIn);
-            }
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[0]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
+        uint256 aliceInAfter = tokens[1].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[0].balanceOf(alice);
+        assert(aliceInAfter == aliceInBefore - amountIn);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[1] != balancesBefore[1] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountIn);
-            }
-            if (balancesAfter[0] != balancesBefore[0] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountOut);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[1] == balancesBefore[1] + amountIn);
+        assert(balancesAfter[0] == balancesBefore[0] - amountOut);
 
-            _assertSpotPriceWithinBounds(balancesAfter);
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            return; // Any revert is fine here, we just want to assert that state didn't change
-        }
+        _assertSpotPriceWithinBounds(balancesAfter);
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact output swap token0 -> token1.
@@ -267,42 +237,29 @@ contract SwapECLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[1].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactOut(
-                address(pool),
-                tokens[0],
-                tokens[1],
-                amountOut,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountIn) {
-            if (amountIn == 0) revert ZeroAmountIn();
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(pool),
+            tokens[0],
+            tokens[1],
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountIn > 0);
 
-            uint256 aliceInAfter = tokens[0].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[1].balanceOf(alice);
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[1]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceInBefore, aliceInAfter, amountIn);
-            }
+        uint256 aliceInAfter = tokens[0].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[1].balanceOf(alice);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
+        assert(aliceInAfter == aliceInBefore - amountIn);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[1] != balancesBefore[1] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountOut);
-            }
-            if (balancesAfter[0] != balancesBefore[0] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountIn);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[1] == balancesBefore[1] - amountOut);
+        assert(balancesAfter[0] == balancesBefore[0] + amountIn);
 
-            _assertSpotPriceWithinBounds(balancesAfter);
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            return; // Any revert is fine here, we just want to assert that state didn't change
-        }
+        _assertSpotPriceWithinBounds(balancesAfter);
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Exact output swap token1 -> token0.
@@ -318,42 +275,29 @@ contract SwapECLPMedusa is BaseMedusaTest {
         uint256 aliceOutBefore = tokens[0].balanceOf(alice);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactOut(
-                address(pool),
-                tokens[1],
-                tokens[0],
-                amountOut,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountIn) {
-            if (amountIn == 0) revert ZeroAmountIn();
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(pool),
+            tokens[1],
+            tokens[0],
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        assert(amountIn > 0);
 
-            uint256 aliceInAfter = tokens[1].balanceOf(alice);
-            uint256 aliceOutAfter = tokens[0].balanceOf(alice);
-            if (aliceOutAfter != aliceOutBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(tokens[0]), aliceOutBefore, aliceOutAfter, amountOut);
-            }
-            if (aliceInAfter != aliceInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceInBefore, aliceInAfter, amountIn);
-            }
+        uint256 aliceInAfter = tokens[1].balanceOf(alice);
+        uint256 aliceOutAfter = tokens[0].balanceOf(alice);
+        assert(aliceOutAfter == aliceOutBefore + amountOut);
+        assert(aliceInAfter == aliceInBefore - amountIn);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[0] != balancesBefore[0] - amountOut) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountOut);
-            }
-            if (balancesAfter[1] != balancesBefore[1] + amountIn) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountIn);
-            }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[0] == balancesBefore[0] - amountOut);
+        assert(balancesAfter[1] == balancesBefore[1] + amountIn);
 
-            _assertSpotPriceWithinBounds(balancesAfter);
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            return; // Any revert is fine here, we just want to assert that state didn't change
-        }
+        _assertSpotPriceWithinBounds(balancesAfter);
+        _assertBptRateNeverDecreases();
     }
 
     /**
@@ -384,28 +328,12 @@ contract SwapECLPMedusa is BaseMedusaTest {
 
         uint256 startIn = tokenIn.balanceOf(alice);
 
-        uint256 intermediateAmount;
-        {
-            medusa.prank(alice);
-            (bool ok, uint256 out1) = _trySwapExactInWithUserDeltaAssertions(tokenIn, tokenMid, amountIn);
-            if (!ok) return;
-            intermediateAmount = out1;
-        }
-
-        // If the pool returned zero (should be blocked by ZeroAmountOut), stop.
-        if (intermediateAmount == 0) return;
-
-        uint256 finalAmount;
-        {
-            medusa.prank(alice);
-            (bool ok2, uint256 out2) = _trySwapExactInWithUserDeltaAssertions(tokenMid, tokenIn, intermediateAmount);
-            if (!ok2) return;
-            finalAmount = out2;
-        }
+        uint256 intermediateAmount = _trySwapExactInWithUserDeltaAssertions(tokenIn, tokenMid, amountIn);
+        uint256 finalAmount = _trySwapExactInWithUserDeltaAssertions(tokenMid, tokenIn, intermediateAmount);
 
         // Strict no-profit: end balance in input token must not exceed start balance (+1 unit dust).
         uint256 endIn = tokenIn.balanceOf(alice);
-        if (endIn > startIn) revert RoundTripProfitStrict(endIn, startIn, amountIn);
+        assert(endIn <= startIn);
 
         // Extra integration assertions on the end state.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
@@ -428,87 +356,64 @@ contract SwapECLPMedusa is BaseMedusaTest {
             if (maxSwap < minSwap) continue;
             uint256 amountIn = _boundLocal(amountSeed * 1e15, minSwap, maxSwap);
 
-            medusa.prank(alice);
             if (direction == 0) {
                 uint256 aliceInBefore = tokens[0].balanceOf(alice);
                 uint256 aliceOutBefore = tokens[1].balanceOf(alice);
-                try
-                    router.swapSingleTokenExactIn(
-                        address(pool),
-                        tokens[0],
-                        tokens[1],
-                        amountIn,
-                        0,
-                        MAX_UINT256,
-                        false,
-                        bytes("")
-                    )
-                returns (uint256 amountOut) {
-                    if (amountOut == 0) revert ZeroAmountOut();
+                medusa.prank(alice);
+                uint256 amountOut = router.swapSingleTokenExactIn(
+                    address(pool),
+                    tokens[0],
+                    tokens[1],
+                    amountIn,
+                    0,
+                    MAX_UINT256,
+                    false,
+                    bytes("")
+                );
 
-                    uint256 aliceInAfter = tokens[0].balanceOf(alice);
-                    uint256 aliceOutAfter = tokens[1].balanceOf(alice);
-                    if (aliceInAfter != aliceInBefore - amountIn) {
-                        revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceInBefore, aliceInAfter, amountIn);
-                    }
-                    if (aliceOutAfter != aliceOutBefore + amountOut) {
-                        revert TokenBalanceDidNotIncrease(address(tokens[1]), aliceOutBefore, aliceOutAfter, amountOut);
-                    }
+                assert(amountOut > 0);
 
-                    (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-                    if (balancesAfter[0] != balances[0] + amountIn) {
-                        revert PoolBalanceDidNotChangeByExpectedAmount(0, balances[0], balancesAfter[0], amountIn);
-                    }
-                    if (balancesAfter[1] != balances[1] - amountOut) {
-                        revert PoolBalanceDidNotChangeByExpectedAmount(1, balances[1], balancesAfter[1], amountOut);
-                    }
+                uint256 aliceInAfter = tokens[0].balanceOf(alice);
+                uint256 aliceOutAfter = tokens[1].balanceOf(alice);
+                assert(aliceInAfter == aliceInBefore - amountIn);
+                assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-                    balances = balancesAfter;
-                    _assertSpotPriceWithinBounds(balancesAfter);
-                    _assertBptRateNeverDecreases();
-                } catch (bytes memory err) {
-                    continue; // Any revert is fine here, we just want to assert that state didn't change
-                }
+                (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+                assert(balancesAfter[0] == balances[0] + amountIn);
+                assert(balancesAfter[1] == balances[1] - amountOut);
+
+                balances = balancesAfter;
+                _assertSpotPriceWithinBounds(balancesAfter);
+                _assertBptRateNeverDecreases();
             } else {
                 uint256 aliceInBefore = tokens[1].balanceOf(alice);
                 uint256 aliceOutBefore = tokens[0].balanceOf(alice);
-                try
-                    router.swapSingleTokenExactIn(
-                        address(pool),
-                        tokens[1],
-                        tokens[0],
-                        amountIn,
-                        0,
-                        MAX_UINT256,
-                        false,
-                        bytes("")
-                    )
-                returns (uint256 amountOut) {
-                    if (amountOut == 0) revert ZeroAmountOut();
+                medusa.prank(alice);
+                uint256 amountOut = router.swapSingleTokenExactIn(
+                    address(pool),
+                    tokens[1],
+                    tokens[0],
+                    amountIn,
+                    0,
+                    MAX_UINT256,
+                    false,
+                    bytes("")
+                );
 
-                    uint256 aliceInAfter = tokens[1].balanceOf(alice);
-                    uint256 aliceOutAfter = tokens[0].balanceOf(alice);
-                    if (aliceInAfter != aliceInBefore - amountIn) {
-                        revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceInBefore, aliceInAfter, amountIn);
-                    }
-                    if (aliceOutAfter != aliceOutBefore + amountOut) {
-                        revert TokenBalanceDidNotIncrease(address(tokens[0]), aliceOutBefore, aliceOutAfter, amountOut);
-                    }
+                assert(amountOut > 0);
 
-                    (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-                    if (balancesAfter[1] != balances[1] + amountIn) {
-                        revert PoolBalanceDidNotChangeByExpectedAmount(1, balances[1], balancesAfter[1], amountIn);
-                    }
-                    if (balancesAfter[0] != balances[0] - amountOut) {
-                        revert PoolBalanceDidNotChangeByExpectedAmount(0, balances[0], balancesAfter[0], amountOut);
-                    }
+                uint256 aliceInAfter = tokens[1].balanceOf(alice);
+                uint256 aliceOutAfter = tokens[0].balanceOf(alice);
+                assert(aliceInAfter == aliceInBefore - amountIn);
+                assert(aliceOutAfter == aliceOutBefore + amountOut);
 
-                    balances = balancesAfter;
-                    _assertSpotPriceWithinBounds(balancesAfter);
-                    _assertBptRateNeverDecreases();
-                } catch (bytes memory err) {
-                    continue; // Any revert is fine here, we just want to assert that state didn't change
-                }
+                (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+                assert(balancesAfter[1] == balances[1] + amountIn);
+                assert(balancesAfter[0] == balances[0] - amountOut);
+
+                balances = balancesAfter;
+                _assertSpotPriceWithinBounds(balancesAfter);
+                _assertBptRateNeverDecreases();
             }
         }
 
@@ -529,26 +434,19 @@ contract SwapECLPMedusa is BaseMedusaTest {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountIn
-    ) internal returns (bool ok, uint256 amountOut) {
+    ) internal returns (uint256 amountOut) {
         uint256 userInBefore = tokenIn.balanceOf(alice);
         uint256 userOutBefore = tokenOut.balanceOf(alice);
 
-        try
-            router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""))
-        returns (uint256 out) {
-            if (out == 0) revert ZeroAmountOut();
-            uint256 userInAfter = tokenIn.balanceOf(alice);
-            uint256 userOutAfter = tokenOut.balanceOf(alice);
-            if (userInAfter != userInBefore - amountIn) {
-                revert TokenBalanceDidNotDecrease(address(tokenIn), userInBefore, userInAfter, amountIn);
-            }
-            if (userOutAfter != userOutBefore + out) {
-                revert TokenBalanceDidNotIncrease(address(tokenOut), userOutBefore, userOutAfter, out);
-            }
-            return (true, out);
-        } catch (bytes memory err) {
-            return (false, 0);
-        }
+        medusa.prank(alice);
+        amountOut = router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
+        assert(amountOut > 0);
+        uint256 userInAfter = tokenIn.balanceOf(alice);
+        uint256 userOutAfter = tokenOut.balanceOf(alice);
+        assert(userInAfter == userInBefore - amountIn);
+        assert(userOutAfter == userOutBefore + amountOut);
+
+        return amountOut;
     }
 
     function _minSwap(IERC20 token) internal view returns (uint256) {
@@ -584,9 +482,7 @@ contract SwapECLPMedusa is BaseMedusaTest {
 
     function _assertSpotPriceWithinBounds(uint256[] memory balances) internal pure {
         uint256 spotPrice = _computeSpotPrice(balances);
-        if (spotPrice < uint256(PARAMS_ALPHA) || spotPrice > uint256(PARAMS_BETA)) {
-            revert SpotPriceOutOfBounds(spotPrice, uint256(PARAMS_ALPHA), uint256(PARAMS_BETA));
-        }
+        assert(spotPrice >= uint256(PARAMS_ALPHA) && spotPrice <= uint256(PARAMS_BETA));
     }
 
     function _getCurrentBptRate() internal view returns (uint256) {
@@ -595,11 +491,6 @@ contract SwapECLPMedusa is BaseMedusaTest {
 
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
-
-        if (currentRate < lastKnownBptRate) {
-            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
-        } else if (currentRate > lastKnownBptRate) {
-            lastKnownBptRate = currentRate;
-        }
+        assert(currentRate >= _initialBptRate);
     }
 }
