@@ -9,7 +9,14 @@
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
     "targetContracts": [
-      "SwapECLPMedusa"
+      "SwapECLPMedusa",
+      "SwapECLPDonationSandwichMedusa",
+      "Swap2CLPMedusa",
+      "Swap2CLPDonationSandwichMedusa",
+      "AddAndRemoveLiquidityECLPMedusa",
+      "AddAndRemoveLiquidity2CLPMedusa",
+      "LiquidityECLPSecurityMedusa",
+      "Liquidity2CLPSecurityMedusa"
     ],
     "predeployedContracts": {},
     "targetContractsBalances": [],

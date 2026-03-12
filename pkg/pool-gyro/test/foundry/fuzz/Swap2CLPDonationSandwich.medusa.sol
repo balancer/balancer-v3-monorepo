@@ -34,14 +34,14 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
     uint256 internal constant MAX_SWAP_RATIO = 30e16; // 30% of balance per swap
     uint256 internal constant MAX_DONATION = 1e24;
 
-    uint256 internal initBptSupply;
+    uint256 internal _initBptSupply;
 
     constructor() BaseMedusaTest() {
-        initBptSupply = IERC20(address(pool)).totalSupply();
+        _initBptSupply = IERC20(address(pool)).totalSupply();
     }
 
     function property_bpt_supply_constant() external view returns (bool) {
-        return IERC20(address(pool)).totalSupply() == initBptSupply;
+        return IERC20(address(pool)).totalSupply() == _initBptSupply;
     }
 
     function createPool(
@@ -163,7 +163,7 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
 
         uint256 endIn = _unwindLeg(tokenIn, tokenOut, attackerOut);
         // Assert no sandwich profit
-        // assert(endIn <= startIn);
+        assert(endIn <= startIn);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
@@ -272,8 +272,8 @@ contract Swap2CLPDonationSandwichMedusa is BaseMedusaTest {
         uint256 aliceOutAfter3 = tokenOut.balanceOf(alice);
         uint256 aliceInAfter3 = tokenIn.balanceOf(alice);
         assert(unwindOut > 0);
-        assert(aliceOutAfter3 == aliceOutBefore3 - attackerOut);
-        assert(aliceInAfter3 == aliceInBefore3 + unwindOut);
+        assert(aliceOutAfter3 == aliceOutBefore3 + unwindOut);
+        assert(aliceInAfter3 == aliceInBefore3 - attackerOut);
 
         return tokenIn.balanceOf(alice);
     }
