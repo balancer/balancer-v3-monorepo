@@ -32,6 +32,31 @@ contract Liquidity2CLPSecurityMedusa is BaseMedusaTest {
     uint256 internal constant MIN_AMOUNT = 1e18;
     uint256 internal constant MAX_AMOUNT_IN = 1e24;
 
+    IERC20[] internal _poolTokens;
+    uint256 internal _startToken0;
+    uint256 internal _startToken1;
+
+    constructor() BaseMedusaTest() {
+        (_poolTokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
+        _startToken0 = _poolTokens[0].balanceOf(alice);
+        _startToken1 = _poolTokens[1].balanceOf(alice);
+    }
+
+    function optimize_currentToken0() public view returns (int256) {
+        return -int256(_poolTokens[0].balanceOf(alice));
+    }
+
+    function optimize_currentToken1() public view returns (int256) {
+        return -int256(_poolTokens[1].balanceOf(alice));
+    }
+
+    function property_currentTokens() public view returns (bool) {
+        uint256 currentToken0 = _poolTokens[0].balanceOf(alice);
+        uint256 currentToken1 = _poolTokens[1].balanceOf(alice);
+        return currentToken0 <= _startToken0 && currentToken1 <= _startToken1;
+    }
+
     function createPool(
         IERC20[] memory tokens,
         uint256[] memory initialBalances
@@ -126,7 +151,7 @@ contract Liquidity2CLPSecurityMedusa is BaseMedusaTest {
 
         assert(endToken0 <= startToken0);
         assert(endToken1 <= startToken1);
-        assert(endBpt <= startBpt);
+        assert(endBpt == startBpt);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {

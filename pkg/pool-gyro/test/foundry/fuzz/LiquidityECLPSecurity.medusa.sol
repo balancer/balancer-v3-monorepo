@@ -26,10 +26,6 @@ import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol"
 contract LiquidityECLPSecurityMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
 
-    error LiquidityRoundTripProfit(uint256 tokenIndex, uint256 startBalance, uint256 endBalance);
-    error BptRoundTripProfit(uint256 startBalance, uint256 endBalance);
-    error UnexpectedRevert(bytes4 selector);
-
     // Known-good mainnet fixture (see `test/foundry/utils/GyroEclpPoolDeployer.sol`).
     int256 internal constant PARAMS_ALPHA = 998502246630054917;
     int256 internal constant PARAMS_BETA = 1000200040008001600;
@@ -51,6 +47,31 @@ contract LiquidityECLPSecurityMedusa is BaseMedusaTest {
     // Keep this comfortably above “rounds to zero” domains so the round-trip is non-vacuous.
     uint256 internal constant MIN_AMOUNT = 1e18;
     uint256 internal constant MAX_AMOUNT_IN = 1e24;
+
+    IERC20[] internal _poolTokens;
+    uint256 internal _startToken0;
+    uint256 internal _startToken1;
+
+    constructor() BaseMedusaTest() {
+        (_poolTokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
+        _startToken0 = _poolTokens[0].balanceOf(alice);
+        _startToken1 = _poolTokens[1].balanceOf(alice);
+    }
+
+    function optimize_currentToken0() public view returns (int256) {
+        return -int256(_poolTokens[0].balanceOf(alice));
+    }
+
+    function optimize_currentToken1() public view returns (int256) {
+        return -int256(_poolTokens[1].balanceOf(alice));
+    }
+
+    function property_currentTokens() public view returns (bool) {
+        uint256 currentToken0 = _poolTokens[0].balanceOf(alice);
+        uint256 currentToken1 = _poolTokens[1].balanceOf(alice);
+        return currentToken0 <= _startToken0 && currentToken1 <= _startToken1;
+    }
 
     function createPool(
         IERC20[] memory tokens,
@@ -155,9 +176,9 @@ contract LiquidityECLPSecurityMedusa is BaseMedusaTest {
         uint256 endToken1 = tokens[1].balanceOf(alice);
         uint256 endBpt = IERC20(address(pool)).balanceOf(alice);
 
-        if (endToken0 > startToken0) revert LiquidityRoundTripProfit(0, startToken0, endToken0);
-        if (endToken1 > startToken1) revert LiquidityRoundTripProfit(1, startToken1, endToken1);
-        if (endBpt > startBpt) revert BptRoundTripProfit(startBpt, endBpt);
+        assert(endToken0 <= startToken0);
+        assert(endToken1 <= startToken1);
+        assert(endBpt == startBpt);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
