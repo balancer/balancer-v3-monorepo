@@ -33,6 +33,11 @@ library StableMath {
     // The max token count is limited by the math, and is less than the Vault's maximum.
     uint256 public constant MAX_STABLE_TOKENS = 5;
 
+    /**
+     * @notice Human-readable amplification factor bounds.
+     * @dev The raw `amplificationParameter` passed to computation functions must be in
+     * [MIN_AMP * AMP_PRECISION, MAX_AMP * AMP_PRECISION].
+     */
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 50000;
     uint256 internal constant AMP_PRECISION = 1e3;
@@ -56,12 +61,21 @@ library StableMath {
     // See: https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pool-templates/base/SwapTemplateBase.vy#L206
     // solhint-disable-previous-line max-line-length
 
+    // Note that the amplification parameter is scaled by AMP_PRECISION to allow for fractional values. For example,
+    // to achieve an amplification factor of 50, you would pass `50 * AMP_PRECISION` (i.e., 50,000). The valid range
+    // is from `MIN_AMP * AMP_PRECISION` to `MAX_AMP * AMP_PRECISION` (i.e., 1,000 to 50,000,000). Passing a value
+    // below `AMP_PRECISION` (1,000) with `numTokens >= 2` will either revert with an arithmetic underflow (if below
+    // `AMP_PRECISION / numTokens`) or silently compute with A < 1, which is outside the intended range. All existing
+    // callers do this correctly by passing "high precision" values (e.g., StablePool), but this is not enforced in
+    // the math library, since it is an internal detail of how the amplification parameter is represented, subject to
+    // external constraints, such as the current values of the MIN/MAX_AMP constants.
+
     /**
      * @notice Computes the invariant given the current balances.
      * @dev It uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
      * There is no closed-form solution, so the calculation is iterative and may revert.
      *
-     * @param amplificationParameter The current amplification parameter
+     * @param amplificationParameter The amplification factor scaled by AMP_PRECISION (see note above)
      * @param balances The current balances
      * @return invariant The calculated invariant of the pool
      */
@@ -121,7 +135,7 @@ library StableMath {
     /**
      * @notice Computes the required `amountOut` of tokenOut, for `tokenAmountIn` of tokenIn.
      * @dev The calculation uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
-     * @param amplificationParameter The current amplification factor
+     * @param amplificationParameter The amplification factor scaled by AMP_PRECISION (see note above)
      * @param balances The current pool balances
      * @param tokenIndexIn The index of tokenIn
      * @param tokenIndexOut The index of tokenOut
@@ -167,7 +181,7 @@ library StableMath {
     /**
      * @notice Computes the required `amountIn` of tokenIn, for `tokenAmountOut` of tokenOut.
      * @dev The calculation uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
-     * @param amplificationParameter The current amplification factor
+     * @param amplificationParameter The amplification factor scaled by AMP_PRECISION (see note above)
      * @param balances The current pool balances
      * @param tokenIndexIn The index of tokenIn
      * @param tokenIndexOut The index of tokenOut
@@ -213,7 +227,7 @@ library StableMath {
     /**
      * @notice Calculate the balance of a given token (at tokenIndex), given all other balances and the invariant.
      * @dev Rounds result up overall. There is no closed-form solution, so the calculation is iterative and may revert.
-     * @param amplificationParameter The current amplification factor
+     * @param amplificationParameter The amplification factor scaled by AMP_PRECISION (see note above)
      * @param balances The current pool balances
      * @param invariant The current invariant
      * @param tokenIndex The index of the token balance we are calculating
