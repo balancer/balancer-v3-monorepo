@@ -28,24 +28,9 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    uint256 internal constant BPT_RATE_TOLERANCE = 100; // wei, for sqrt rounding
-
-    error BptOutTooLow(uint256 bptOut, uint256 minBptOut);
     error ZeroAmountOut();
-    error BptRateDecreased(uint256 currentRate, uint256 lastKnownRate, uint256 minAllowed);
-    error TotalSupplyDidNotIncrease(uint256 beforeSupply, uint256 afterSupply);
-    error TotalSupplyDidNotDecrease(uint256 beforeSupply, uint256 afterSupply);
-    error BalanceDidNotIncrease(uint256 tokenIndex, uint256 beforeBal, uint256 afterBal);
-    error BptInInvalid(uint256 bptIn, uint256 lpBalance);
-    error UnexpectedSupplyDelta(uint256 beforeSupply, uint256 afterSupply, uint256 expectedDelta);
-    error TokenBalanceDidNotDecrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error TokenBalanceDidNotIncrease(address token, uint256 beforeBal, uint256 afterBal, uint256 expectedDelta);
-    error PoolBalanceDidNotChangeByExpectedAmount(
-        uint256 tokenIndex,
-        uint256 beforeBal,
-        uint256 afterBal,
-        uint256 expectedDelta
-    );
+
+    uint256 internal constant BPT_RATE_TOLERANCE = 100; // wei, for sqrt rounding
 
     // Gyro 2-CLP specific parameters
     uint256 internal constant SQRT_ALPHA = 997496867163000167; // alpha = 0.995
@@ -57,13 +42,22 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
     uint256 internal constant MIN_BPT_IN = 1e12; // avoid tiny BPT amounts that round to zero outs
 
     // Track invariant state
-    uint256 internal lastKnownBptRate;
-    uint256 internal initialBptRate;
+    uint256 internal _lastKnownBptRate;
+    uint256 internal _initialBptRate;
 
     constructor() BaseMedusaTest() {
         // Record initial BPT rate after pool initialization
-        initialBptRate = _getCurrentBptRate();
-        lastKnownBptRate = initialBptRate;
+        _initialBptRate = _getCurrentBptRate();
+        _lastKnownBptRate = _initialBptRate;
+    }
+
+    function optimize_currentBptRate() public view returns (int256) {
+        return -int256(_getCurrentBptRate());
+    }
+
+    function property_currentBptRate() public view returns (bool) {
+        uint256 currentBptRate = _getCurrentBptRate();
+        return currentBptRate + 1 >= _initialBptRate;
     }
 
     /// @notice Override to create a Gyro 2-CLP pool instead of the default pool.
@@ -141,33 +135,24 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         uint256[] memory amountsIn = router.addLiquidityProportional(address(pool), maxAmountsIn, 0, false, bytes(""));
 
         // Verify some input was actually taken.
-        if (amountsIn.length != 2) revert("INVALID_AMOUNTS_IN_LENGTH");
+        assert(amountsIn.length == 2);
         // Zero amounts in are valid; just skip the rest of the checks
         if (amountsIn[0] == 0 && amountsIn[1] == 0) return;
 
         // Verify BPT was minted (indirectly via totalSupply increase).
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-        if (totalSupplyAfter <= totalSupplyBefore)
-            revert TotalSupplyDidNotIncrease(totalSupplyBefore, totalSupplyAfter);
+        assert(totalSupplyAfter > totalSupplyBefore);
 
         // Verify caller token balances decreased by exactly the reported input.
         uint256 aliceToken0After = tokens[0].balanceOf(alice);
         uint256 aliceToken1After = tokens[1].balanceOf(alice);
-        if (aliceToken0After != aliceToken0Before - amountsIn[0]) {
-            revert TokenBalanceDidNotDecrease(address(tokens[0]), aliceToken0Before, aliceToken0After, amountsIn[0]);
-        }
-        if (aliceToken1After != aliceToken1Before - amountsIn[1]) {
-            revert TokenBalanceDidNotDecrease(address(tokens[1]), aliceToken1Before, aliceToken1After, amountsIn[1]);
-        }
+        assert(aliceToken0After == aliceToken0Before - amountsIn[0]);
+        assert(aliceToken1After == aliceToken1Before - amountsIn[1]);
 
         // Verify pool balances increased by exactly the reported input.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[0] != balancesBefore[0] + amountsIn[0]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountsIn[0]);
-        }
-        if (balancesAfter[1] != balancesBefore[1] + amountsIn[1]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountsIn[1]);
-        }
+        assert(balancesAfter[0] == balancesBefore[0] + amountsIn[0]);
+        assert(balancesAfter[1] == balancesBefore[1] + amountsIn[1]);
 
         // Verify rate invariant
         _assertBptRateNeverDecreases();
@@ -198,52 +183,25 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         uint256 aliceToken1Before = tokens[1].balanceOf(alice);
 
         medusa.prank(alice);
-        uint256 bptOut;
-
-        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 result) {
-            bptOut = result;
-        } catch (bytes memory) {
-            // If the transaction reverts, we can't make any assertions about state changes, so just return.
-            return;
-        }
+        uint256 bptOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
 
         // Verify BPT was minted.
-        if (bptOut == 0) revert BptOutTooLow(bptOut, 1);
+        assert(bptOut > 0);
 
         // Total supply should increase by exactly the minted amount.
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-        if (totalSupplyAfter != totalSupplyBefore + bptOut) {
-            revert UnexpectedSupplyDelta(totalSupplyBefore, totalSupplyAfter, bptOut);
-        }
+        assert(totalSupplyAfter == totalSupplyBefore + bptOut);
 
         // Verify caller token balances decreased by exactly the input.
         uint256 aliceToken0After = tokens[0].balanceOf(alice);
         uint256 aliceToken1After = tokens[1].balanceOf(alice);
-        if (aliceToken0After != aliceToken0Before - exactAmountsIn[0]) {
-            revert TokenBalanceDidNotDecrease(
-                address(tokens[0]),
-                aliceToken0Before,
-                aliceToken0After,
-                exactAmountsIn[0]
-            );
-        }
-        if (aliceToken1After != aliceToken1Before - exactAmountsIn[1]) {
-            revert TokenBalanceDidNotDecrease(
-                address(tokens[1]),
-                aliceToken1Before,
-                aliceToken1After,
-                exactAmountsIn[1]
-            );
-        }
+        assert(aliceToken0After == aliceToken0Before - exactAmountsIn[0]);
+        assert(aliceToken1After == aliceToken1Before - exactAmountsIn[1]);
 
         // Verify pool balances increased by exactly the input.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[0] != balancesBefore[0] + exactAmountsIn[0]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], exactAmountsIn[0]);
-        }
-        if (balancesAfter[1] != balancesBefore[1] + exactAmountsIn[1]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], exactAmountsIn[1]);
-        }
+        assert(balancesAfter[0] == balancesBefore[0] + exactAmountsIn[0]);
+        assert(balancesAfter[1] == balancesBefore[1] + exactAmountsIn[1]);
 
         // Verify rate invariant.
         _assertBptRateNeverDecreases();
@@ -281,33 +239,23 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
             bytes("")
         );
 
-        if (amountsOut.length != 2) revert("INVALID_AMOUNTS_OUT_LENGTH");
+        assert(amountsOut.length == 2);
         if (amountsOut[0] == 0 && amountsOut[1] == 0) revert ZeroAmountOut();
 
         // Total supply should have decreased by exactly bptIn.
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-        if (totalSupplyAfter != totalSupplyBefore - bptIn) {
-            revert UnexpectedSupplyDelta(totalSupplyBefore, totalSupplyAfter, bptIn);
-        }
+        assert(totalSupplyAfter == totalSupplyBefore - bptIn);
 
         // Verify LP received the reported token amounts.
         uint256 lpToken0After = tokens[0].balanceOf(lp);
         uint256 lpToken1After = tokens[1].balanceOf(lp);
-        if (lpToken0After != lpToken0Before + amountsOut[0]) {
-            revert TokenBalanceDidNotIncrease(address(tokens[0]), lpToken0Before, lpToken0After, amountsOut[0]);
-        }
-        if (lpToken1After != lpToken1Before + amountsOut[1]) {
-            revert TokenBalanceDidNotIncrease(address(tokens[1]), lpToken1Before, lpToken1After, amountsOut[1]);
-        }
+        assert(lpToken0After == lpToken0Before + amountsOut[0]);
+        assert(lpToken1After == lpToken1Before + amountsOut[1]);
 
         // Verify pool balances decreased by exactly the reported output.
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[0] != balancesBefore[0] - amountsOut[0]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountsOut[0]);
-        }
-        if (balancesAfter[1] != balancesBefore[1] - amountsOut[1]) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountsOut[1]);
-        }
+        assert(balancesAfter[0] == balancesBefore[0] - amountsOut[0]);
+        assert(balancesAfter[1] == balancesBefore[1] - amountsOut[1]);
 
         // Verify rate invariant.
         _assertBptRateNeverDecreases();
@@ -355,23 +303,17 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         );
 
         // Verify BPT was burned.
-        if (bptIn == 0 || bptIn > lpBalance) revert BptInInvalid(bptIn, lpBalance);
+        assert(bptIn > 0 && bptIn <= lpBalance);
         uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
-        if (lpBptAfter != lpBptBefore - bptIn) {
-            revert TokenBalanceDidNotDecrease(address(pool), lpBptBefore, lpBptAfter, bptIn);
-        }
+        assert(lpBptAfter == lpBptBefore - bptIn);
 
         // Total supply should decrease by exactly bptIn.
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-        if (totalSupplyAfter != totalSupplyBefore - bptIn) {
-            revert UnexpectedSupplyDelta(totalSupplyBefore, totalSupplyAfter, bptIn);
-        }
+        assert(totalSupplyAfter == totalSupplyBefore - bptIn);
 
         // LP must receive the exact amountOut for the selected token.
         uint256 lpTokenAfter = token.balanceOf(lp);
-        if (lpTokenAfter != lpTokenBefore + amountOut) {
-            revert TokenBalanceDidNotIncrease(address(token), lpTokenBefore, lpTokenAfter, amountOut);
-        }
+        assert(lpTokenAfter == lpTokenBefore + amountOut);
 
         _assertPoolBalanceDecreasedByExpectedAmount(tokenIndex, poolTokenBalBefore, amountOut);
 
@@ -398,11 +340,10 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
 
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
-        if (currentRate > lastKnownBptRate) {
-            lastKnownBptRate = currentRate;
-        } else if (currentRate + BPT_RATE_TOLERANCE < lastKnownBptRate) {
-            revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
-        }
+        emit Debug("current BPT rate", currentRate);
+        emit Debug("initial BPT rate", _initialBptRate);
+        assert(currentRate + 1 >= _lastKnownBptRate);
+        _lastKnownBptRate = currentRate;
     }
 
     function _assertPoolBalanceDecreasedByExpectedAmount(
@@ -411,13 +352,6 @@ contract AddAndRemoveLiquidity2CLPMedusa is BaseMedusaTest {
         uint256 amountOut
     ) internal view {
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        if (balancesAfter[tokenIndex] != poolTokenBalBefore - amountOut) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(
-                tokenIndex,
-                poolTokenBalBefore,
-                balancesAfter[tokenIndex],
-                amountOut
-            );
-        }
+        assert(balancesAfter[tokenIndex] == poolTokenBalBefore - amountOut);
     }
 }

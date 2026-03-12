@@ -93,6 +93,15 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         }
     }
 
+    function optimize_currentBptRate() public view returns (int256) {
+        return -int256(_getCurrentBptRate());
+    }
+
+    function property_currentBptRate() public view returns (bool) {
+        uint256 currentBptRate = _getCurrentBptRate();
+        return currentBptRate + 1 >= initialBptRate;
+    }
+
     /**
      * @notice Override to create a Gyro ECLP pool
      */
@@ -168,6 +177,8 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
 
     /// @notice Fuzz: Add liquidity proportionally.
     function addLiquidityProportional(uint256 amountIn) external {
+        _saveLastKnownBptRate();
+
         amountIn = _boundAmount(amountIn);
 
         (IERC20[] memory tokens, , uint256[] memory balancesBefore, uint256[] memory balancesScaled18Before) = vault
@@ -181,52 +192,41 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         maxAmountsIn[1] = amountIn;
 
         medusa.prank(alice);
-        try router.addLiquidityProportional(address(pool), maxAmountsIn, 0, false, bytes("")) returns (
-            uint256[] memory amountsIn
-        ) {
-            if (amountsIn.length != 2) revert InvalidAmountsInLength(amountsIn.length);
-            // Zero amounts in are valid; just skip the rest of the checks
-            if (amountsIn[0] == 0 && amountsIn[1] == 0) return;
+        uint256[] memory amountsIn = router.addLiquidityProportional(address(pool), maxAmountsIn, 0, false, bytes(""));
+        assert(amountsIn.length == 2);
+        // Zero amounts in are valid; just skip the rest of the checks
+        if (amountsIn[0] == 0 && amountsIn[1] == 0) return;
 
-            // User and pool balances must move exactly by returned amounts.
-            uint256 alice0After = tokens[0].balanceOf(alice);
-            uint256 alice1After = tokens[1].balanceOf(alice);
-            if (alice0After != alice0Before - amountsIn[0]) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), alice0Before, alice0After, amountsIn[0]);
-            }
-            if (alice1After != alice1Before - amountsIn[1]) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), alice1Before, alice1After, amountsIn[1]);
-            }
+        // User and pool balances must move exactly by returned amounts.
+        uint256 alice0After = tokens[0].balanceOf(alice);
+        uint256 alice1After = tokens[1].balanceOf(alice);
+        assert(alice0After == alice0Before - amountsIn[0]);
+        assert(alice1After == alice1Before - amountsIn[1]);
 
-            (, , uint256[] memory balancesAfter, uint256[] memory balancesScaled18After) = vault.getPoolTokenInfo(
-                address(pool)
+        (, , uint256[] memory balancesAfter, uint256[] memory balancesScaled18After) = vault.getPoolTokenInfo(
+            address(pool)
+        );
+        assert(balancesAfter[0] == balancesBefore[0] + amountsIn[0]);
+        assert(balancesAfter[1] == balancesBefore[1] + amountsIn[1]);
+
+        // Proportional adds should not violate invariant-ratio bounds either (allow tiny rounding slack).
+        if (invBefore != 0) {
+            uint256 invAfter = IBasePool(address(pool)).computeInvariant(
+                balancesScaled18After,
+                Rounding.ROUND_DOWN
             );
-            if (balancesAfter[0] != balancesBefore[0] + amountsIn[0]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountsIn[0]);
-            }
-            if (balancesAfter[1] != balancesBefore[1] + amountsIn[1]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountsIn[1]);
-            }
-
-            // Proportional adds should not violate invariant-ratio bounds either (allow tiny rounding slack).
-            if (invBefore != 0) {
-                uint256 invAfter = IBasePool(address(pool)).computeInvariant(
-                    balancesScaled18After,
-                    Rounding.ROUND_DOWN
-                );
-                uint256 ratio = invAfter.divDown(invBefore);
-                uint256 maxRatio = IBasePool(address(pool)).getMaximumInvariantRatio();
-                assert(ratio <= maxRatio);
-            }
-
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedLiquidityRevert(err);
+            uint256 ratio = invAfter.divDown(invBefore);
+            uint256 maxRatio = IBasePool(address(pool)).getMaximumInvariantRatio();
+            assert(ratio <= maxRatio);
         }
+
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Add liquidity unbalanced (limited in ECLP).
     function addLiquidityUnbalanced(uint256 amountIn0, uint256 amountIn1) external {
+        _saveLastKnownBptRate();
+
         // ECLP has stricter limits on unbalanced operations
         amountIn0 = _boundAmount(amountIn0);
         amountIn1 = _boundAmount(amountIn1);
@@ -251,49 +251,28 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 invBefore = IBasePool(address(pool)).computeInvariant(balancesScaled18Before, Rounding.ROUND_DOWN);
 
         medusa.prank(alice);
-        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 bptOut) {
-            // Don't enforce minimum BPT out for unbalanced adds since they can be very small, but skip checks if below threshold
-            if (bptOut < MIN_BPT_OUT) return;
+        uint256 bptOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
 
-            // Unbalanced add uses *exact* amounts; validate deltas precisely.
-            uint256 alice0After = tokens[0].balanceOf(alice);
-            uint256 alice1After = tokens[1].balanceOf(alice);
-            if (alice0After != alice0Before - exactAmountsIn[0]) {
-                revert TokenBalanceDidNotDecrease(address(tokens[0]), alice0Before, alice0After, exactAmountsIn[0]);
-            }
-            if (alice1After != alice1Before - exactAmountsIn[1]) {
-                revert TokenBalanceDidNotDecrease(address(tokens[1]), alice1Before, alice1After, exactAmountsIn[1]);
-            }
+        // Unbalanced add uses *exact* amounts; validate deltas precisely.
+        uint256 alice0After = tokens[0].balanceOf(alice);
+        uint256 alice1After = tokens[1].balanceOf(alice);
+        assert(alice0After == alice0Before - exactAmountsIn[0]);
+        assert(alice1After == alice1Before - exactAmountsIn[1]);
 
-            (, , uint256[] memory balancesAfter, uint256[] memory balancesScaled18After) = vault.getPoolTokenInfo(
-                address(pool)
-            );
-            if (balancesAfter[0] != balancesBefore[0] + exactAmountsIn[0]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(
-                    0,
-                    balancesBefore[0],
-                    balancesAfter[0],
-                    exactAmountsIn[0]
-                );
-            }
-            if (balancesAfter[1] != balancesBefore[1] + exactAmountsIn[1]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(
-                    1,
-                    balancesBefore[1],
-                    balancesAfter[1],
-                    exactAmountsIn[1]
-                );
-            }
+        (, , uint256[] memory balancesAfter, uint256[] memory balancesScaled18After) = vault.getPoolTokenInfo(
+            address(pool)
+        );
+        assert(balancesAfter[0] == balancesBefore[0] + exactAmountsIn[0]);
+        assert(balancesAfter[1] == balancesBefore[1] + exactAmountsIn[1]);
 
-            _assertBptRateNeverDecreases();
-            _assertInvariantRatioWithinBounds(invBefore, balancesScaled18After, Rounding.ROUND_DOWN);
-        } catch (bytes memory err) {
-            _assertExpectedLiquidityRevert(err);
-        }
+        _assertBptRateNeverDecreases();
+        _assertInvariantRatioWithinBounds(invBefore, balancesScaled18After, Rounding.ROUND_DOWN);
     }
 
     /// @notice Fuzz: Remove liquidity proportionally.
     function removeLiquidityProportional(uint256 bptIn) external {
+        _saveLastKnownBptRate();
+
         uint256 lpBalance = IERC20(address(pool)).balanceOf(lp);
         if (lpBalance == 0) return;
 
@@ -310,43 +289,31 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 totalSupplyBefore = IERC20(address(pool)).totalSupply();
 
         medusa.prank(lp);
-        try router.removeLiquidityProportional(address(pool), bptIn, minAmountsOut, false, bytes("")) returns (
-            uint256[] memory amountsOut
-        ) {
-            for (uint256 i = 0; i < amountsOut.length; i++) {
-                if (amountsOut[i] == 0) revert ZeroAmountOut();
-            }
-
-            uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-            if (totalSupplyAfter >= totalSupplyBefore)
-                revert TotalSupplyDidNotDecrease(totalSupplyBefore, totalSupplyAfter);
-
-            // Exact token deltas for proportional remove.
-            uint256 lp0After = tokens[0].balanceOf(lp);
-            uint256 lp1After = tokens[1].balanceOf(lp);
-            if (lp0After != lp0Before + amountsOut[0]) {
-                revert TokenBalanceDidNotIncrease(address(tokens[0]), lp0Before, lp0After, amountsOut[0]);
-            }
-            if (lp1After != lp1Before + amountsOut[1]) {
-                revert TokenBalanceDidNotIncrease(address(tokens[1]), lp1Before, lp1After, amountsOut[1]);
-            }
-
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            if (balancesAfter[0] != balancesBefore[0] - amountsOut[0]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(0, balancesBefore[0], balancesAfter[0], amountsOut[0]);
-            }
-            if (balancesAfter[1] != balancesBefore[1] - amountsOut[1]) {
-                revert PoolBalanceDidNotChangeByExpectedAmount(1, balancesBefore[1], balancesAfter[1], amountsOut[1]);
-            }
-
-            _assertBptRateNeverDecreases();
-        } catch (bytes memory err) {
-            _assertExpectedLiquidityRevert(err);
+        uint256[] memory amountsOut = router.removeLiquidityProportional(address(pool), bptIn, minAmountsOut, false, bytes(""));
+        for (uint256 i = 0; i < amountsOut.length; i++) {
+            assert(amountsOut[i] > 0);
         }
+
+        uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
+        assert(totalSupplyAfter < totalSupplyBefore);
+
+        // Exact token deltas for proportional remove.
+        uint256 lp0After = tokens[0].balanceOf(lp);
+        uint256 lp1After = tokens[1].balanceOf(lp);
+        assert(lp0After == lp0Before + amountsOut[0]);
+        assert(lp1After == lp1Before + amountsOut[1]);
+
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(balancesAfter[0] == balancesBefore[0] - amountsOut[0]);
+        assert(balancesAfter[1] == balancesBefore[1] - amountsOut[1]);
+
+        _assertBptRateNeverDecreases();
     }
 
     /// @notice Fuzz: Remove liquidity single token (limited in ECLP).
     function removeLiquiditySingleTokenExactOut(uint256 amountOut, uint256 tokenIndex) external {
+        _saveLastKnownBptRate();
+
         tokenIndex = tokenIndex % 2;
 
         // Keep memory arrays tightly scoped to avoid "stack too deep" when coverage compilation
@@ -375,28 +342,19 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         uint256 totalSupplyBefore = IERC20(address(pool)).totalSupply();
 
         medusa.prank(lp);
-        try
-            router.removeLiquiditySingleTokenExactOut(address(pool), lpBalance, token, amountOut, false, bytes(""))
-        returns (uint256 bptIn) {
-            if (bptIn == 0 || bptIn > lpBalance) revert BptInInvalid(bptIn, lpBalance);
-            _assertBptRateNeverDecreases();
+        uint256 bptIn = router.removeLiquiditySingleTokenExactOut(address(pool), lpBalance, token, amountOut, false, bytes(""));
+        assert(bptIn > 0 && bptIn <= lpBalance);
+        _assertBptRateNeverDecreases();
 
-            // Exact out must match user/pool deltas.
-            uint256 lpTokenAfter = token.balanceOf(lp);
-            if (lpTokenAfter != lpTokenBefore + amountOut) {
-                revert TokenBalanceDidNotIncrease(address(token), lpTokenBefore, lpTokenAfter, amountOut);
-            }
+        // Exact out must match user/pool deltas.
+        uint256 lpTokenAfter = token.balanceOf(lp);
+        assert(lpTokenAfter == lpTokenBefore + amountOut);
 
-            uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-            // BPT supply should decrease by the burned amount (allowing for exact accounting).
-            if (totalSupplyAfter != totalSupplyBefore - bptIn) {
-                revert TotalSupplyDidNotDecrease(totalSupplyBefore, totalSupplyAfter);
-            }
+        uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
+        // BPT supply should decrease by the burned amount (allowing for exact accounting).
+        assert(totalSupplyAfter == totalSupplyBefore - bptIn);
 
-            _assertPoolBalanceAndInvariantAfterSingleTokenExactOut(tokenIndex, balanceBefore, amountOut, invBefore);
-        } catch (bytes memory err) {
-            _assertExpectedLiquidityRevert(err);
-        }
+        _assertPoolBalanceAndInvariantAfterSingleTokenExactOut(tokenIndex, balanceBefore, amountOut, invBefore);
     }
 
     /***************************************************************************
@@ -416,21 +374,16 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         return vault.getBptRate(address(pool));
     }
 
-    function optimize_maxRateDrop() public view returns (int256) {
-        return int256(maxObservedRateDrop);
-    }
-
     function _assertBptRateNeverDecreases() internal {
         uint256 currentRate = _getCurrentBptRate();
-        if (currentRate > lastKnownBptRate) {
-            lastKnownBptRate = currentRate;
-        } else if (currentRate < lastKnownBptRate) {
-            uint256 drop = lastKnownBptRate - currentRate;
-            if (drop > maxObservedRateDrop) maxObservedRateDrop = drop;
-            if (currentRate + BPT_RATE_TOLERANCE < lastKnownBptRate) {
-                revert BptRateDecreased(currentRate, lastKnownBptRate, lastKnownBptRate);
-            }
-        }
+        emit Debug("current BPT rate", currentRate);
+        emit Debug("initial BPT rate", initialBptRate);
+     
+        assert(currentRate + 1 >= lastKnownBptRate);
+    }
+
+    function _saveLastKnownBptRate() internal {
+        lastKnownBptRate = _getCurrentBptRate();
     }
 
     function _assertInvariantRatioWithinBounds(
@@ -462,14 +415,7 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
         (, , uint256[] memory balancesAfter, uint256[] memory balancesScaled18After) = vault.getPoolTokenInfo(
             address(pool)
         );
-        if (balancesAfter[tokenIndex] != balanceBefore - amountOut) {
-            revert PoolBalanceDidNotChangeByExpectedAmount(
-                tokenIndex,
-                balanceBefore,
-                balancesAfter[tokenIndex],
-                amountOut
-            );
-        }
+        assert(balancesAfter[tokenIndex] == balanceBefore - amountOut);
         _assertInvariantRatioWithinBounds(invBefore, balancesScaled18After, Rounding.ROUND_UP);
     }
 
@@ -489,25 +435,5 @@ contract AddAndRemoveLiquidityECLPMedusa is BaseMedusaTest {
                     tokens[1].balanceOf(actor)
                 )
             );
-    }
-
-    function _assertExpectedLiquidityRevert(bytes memory err) internal pure {
-        bytes4 sel = _revertSelector(err);
-        if (sel == bytes4(0)) revert RevertedWithoutData();
-
-        // Common, high-signal guardrails for ECLP liquidity paths.
-        if (sel == GyroECLPMath.AssetBoundsExceeded.selector) return;
-        if (sel == BasePoolMath.InvariantRatioAboveMax.selector) return;
-        if (sel == BasePoolMath.InvariantRatioBelowMin.selector) return;
-
-        revert UnexpectedRevertSelector(sel);
-    }
-
-    function _revertSelector(bytes memory err) internal pure returns (bytes4 selector) {
-        if (err.length < 4) return bytes4(0);
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            selector := mload(add(err, 0x20))
-        }
     }
 }

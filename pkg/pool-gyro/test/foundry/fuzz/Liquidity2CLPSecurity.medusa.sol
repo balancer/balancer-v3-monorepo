@@ -23,11 +23,6 @@ contract Liquidity2CLPSecurityMedusa is BaseMedusaTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    error LiquidityRoundTripProfit(uint256 tokenIndex, uint256 startBalance, uint256 endBalance);
-    error BptRoundTripProfit(uint256 startBalance, uint256 endBalance);
-    error TokenBalanceIncreasedOnJoin(uint256 tokenIndex, uint256 beforeBal, uint256 afterBal);
-    error MintedBptWithoutPayingTokens(uint256 mintedBpt, uint256 spent0, uint256 spent1);
-
     // Gyro 2-CLP specific parameters
     uint256 internal constant SQRT_ALPHA = 997496867163000167; // alpha = 0.995
     uint256 internal constant SQRT_BETA = 1002496882788171068; // beta = 1.005
@@ -110,11 +105,11 @@ contract Liquidity2CLPSecurityMedusa is BaseMedusaTest {
         // If BPT was minted, Alice must have paid (and never gained) tokens.
         uint256 midToken0 = tokens[0].balanceOf(alice);
         uint256 midToken1 = tokens[1].balanceOf(alice);
-        if (midToken0 > startToken0) revert TokenBalanceIncreasedOnJoin(0, startToken0, midToken0);
-        if (midToken1 > startToken1) revert TokenBalanceIncreasedOnJoin(1, startToken1, midToken1);
+        assert(midToken0 <= startToken0);
+        assert(midToken1 <= startToken1);
         uint256 spent0 = startToken0 - midToken0;
         uint256 spent1 = startToken1 - midToken1;
-        if (spent0 == 0 && spent1 == 0) revert MintedBptWithoutPayingTokens(mintedBpt, spent0, spent1);
+        assert(spent0 > 0 && spent1 > 0);
 
         // --- Remove proportional ---
         uint256[] memory minAmountsOut = new uint256[](2);
@@ -129,9 +124,9 @@ contract Liquidity2CLPSecurityMedusa is BaseMedusaTest {
         uint256 endToken1 = tokens[1].balanceOf(alice);
         uint256 endBpt = IERC20(address(pool)).balanceOf(alice);
 
-        if (endToken0 > startToken0) revert LiquidityRoundTripProfit(0, startToken0, endToken0);
-        if (endToken1 > startToken1) revert LiquidityRoundTripProfit(1, startToken1, endToken1);
-        if (endBpt > startBpt) revert BptRoundTripProfit(startBpt, endBpt);
+        assert(endToken0 <= startToken0);
+        assert(endToken1 <= startToken1);
+        assert(endBpt <= startBpt);
     }
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {

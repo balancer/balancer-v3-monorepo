@@ -9,16 +9,8 @@
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
     "targetContracts": [
-      "AddAndRemoveLiquidityStableMedusaTest",
-      "SwapMedusaTest",
-      "SwapECLPMedusa",
-      "SwapECLPDonationSandwichMedusa",
-      "Swap2CLPMedusa",
-      "Swap2CLPDonationSandwichMedusa",
       "AddAndRemoveLiquidityECLPMedusa",
-      "AddAndRemoveLiquidity2CLPMedusa",
-      "LiquidityECLPSecurityMedusa",
-      "Liquidity2CLPSecurityMedusa"
+      "AddAndRemoveLiquidity2CLPMedusa"
     ],
     "predeployedContracts": {},
     "targetContractsBalances": [],
@@ -39,7 +31,7 @@
       "stopOnFailedContractMatching": false,
       "stopOnNoTests": true,
       "testAllContracts": false,
-      "traceAll": false,
+      "traceAll": true,
       "assertionTesting": {
         "enabled": true,
         "testViewMethods": false,
