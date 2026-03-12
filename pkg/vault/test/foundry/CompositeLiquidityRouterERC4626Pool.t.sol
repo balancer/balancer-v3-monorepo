@@ -122,7 +122,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         vm.startPrank(alice);
         uint256 bptOut = _addLiquidityUnbalancedToERC4626Pool(
@@ -224,7 +224,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         vm.startPrank(alice);
 
@@ -278,7 +278,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         vm.startPrank(alice);
         uint256 bptOut = _addLiquidityUnbalancedToERC4626Pool(
@@ -413,7 +413,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         _prankStaticCall();
         queryClrRouter.queryAddLiquidityUnbalancedToERC4626Pool(
@@ -429,7 +429,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
@@ -461,7 +461,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [0, operationAmount].toMemoryArray();
 
-        bool[] memory wrapUnderlying = _getDefaultWrapUnderlying(exactUnderlyingAmountsIn.length);
+        bool[] memory wrapUnderlying = _getAllTrue(exactUnderlyingAmountsIn.length);
 
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
@@ -948,7 +948,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        bool[] memory unwrapWrapped = _getDefaultUnwrapWrapped(minAmountsOut.length);
+        bool[] memory unwrapWrapped = _getAllTrue(minAmountsOut.length);
 
         vm.startPrank(bob);
         uint256[] memory actualUnderlyingAmountsOut = _removeLiquidityProportionalFromERC4626Pool(
@@ -1097,7 +1097,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        bool[] memory unwrapWrapped = _getDefaultUnwrapWrapped(minAmountsOut.length);
+        bool[] memory unwrapWrapped = _getAllTrue(minAmountsOut.length);
 
         vm.startPrank(bob);
         uint256[] memory actualUnderlyingAmountsOut = _removeLiquidityProportionalFromERC4626Pool(
@@ -1263,7 +1263,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     function testRemoveLiquidityProportionalFromERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
         uint256 exactBptAmountIn = bufferInitialAmount / 2;
 
-        bool[] memory unwrapWrapped = _getDefaultUnwrapWrapped(2);
+        bool[] memory unwrapWrapped = _getAllTrue(2);
 
         _prankStaticCall();
         queryClrRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
@@ -1838,12 +1838,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.stopPrank();
     }
 
-    function _getDefaultUnwrapWrapped(uint256 length) private pure returns (bool[] memory) {
-        return _setupTrueBoolArray(length);
-    }
-
-    function _getDefaultWrapUnderlying(uint256 length) private pure returns (bool[] memory) {
-        return _setupTrueBoolArray(length);
+    function _getAllTrue(uint256 length) internal pure returns (bool[] memory arr) {
+        arr = new bool[](length);
+        for (uint256 i = 0; i < length; ++i) arr[i] = true;
     }
 
     function _setupTrueBoolArray(uint256 length) private pure returns (bool[] memory) {
