@@ -43,6 +43,7 @@ contract BaseMedusaTest is Test {
     // messages and values.
     event Debug(string, uint256);
     event Debug(string, int256);
+    event Debug(string);
 
     IPermit2 internal permit2;
 
