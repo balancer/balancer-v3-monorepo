@@ -7,7 +7,8 @@ import { Test } from "forge-std/Test.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
+
+import { GyroECLPMath } from "../../contracts/lib/GyroECLPMath.sol";
 
 contract GyroECLPMathTest is Test {
     using ArrayHelpers for *;
