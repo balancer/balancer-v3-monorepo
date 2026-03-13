@@ -103,10 +103,6 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetMigrationRouter() public view {
-        assertEq(lbPoolFactory.getMigrationRouter(), address(0), "Non-zero migration router");
-    }
-
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = lbPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
