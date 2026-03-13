@@ -23,7 +23,7 @@ contract CompositeLiquidityRouterEthTest is CompositeLiquidityRouterERC4626PoolT
         uint256 exactBptAmountIn = IERC20(pool).balanceOf(bob) / 4;
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        bool[] memory unwrapWrapped = _getAllTrue(minAmountsOut.length);
+        bool[] memory unwrapWrapped = _setupTrueBoolArray(minAmountsOut.length);
 
         vm.prank(bob);
         compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool{ value: EXCESS_ETH }(
