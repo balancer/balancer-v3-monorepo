@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -24,7 +25,11 @@ library StableSurgeMedianMath {
     }
 
     function findMedian(uint256[] memory balances) internal pure returns (uint256) {
-        uint256[] memory sortedBalances = balances.sort();
+        // We do not want to mutate the original balances array, so we copy it to a new array for sorting.
+        uint256[] memory sortedBalances = new uint256[](balances.length);
+        ScalingHelpers.copyToArray(balances, sortedBalances);
+
+        sortedBalances.sort();
         uint256 mid = sortedBalances.length / 2;
 
         if (sortedBalances.length % 2 == 0) {
