@@ -98,10 +98,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
      */
     event AmpUpdateStopped(uint256 currentValue);
 
-    /// @notice The amplification factor is below the minimum of the range (1 - 5000).
+    /// @notice The amplification factor is below the minimum of the range (1 - 50,000).
     error AmplificationFactorTooLow();
 
-    /// @notice The amplification factor is above the maximum of the range (1 - 5000).
+    /// @notice The amplification factor is above the maximum of the range (1 - 50,000).
     error AmplificationFactorTooHigh();
 
     /// @notice The amplification change duration is too short.
