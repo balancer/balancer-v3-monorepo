@@ -31,7 +31,6 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
 
     /**
      * @notice Data for the burn hook.
-     * @param pool The pool the fees came from (only used for documentation in the event)
      * @param sender The sender of the call. In most cases, this is the sweeper.
      * @param feeToken The token collected from the pool
      * @param feeTokenAmount The number of fee tokens collected
@@ -41,7 +40,6 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
     struct BurnHookParams {
-        address pool;
         address sender;
         IERC20 feeToken;
         uint256 feeTokenAmount;
