@@ -6,8 +6,6 @@ import "forge-std/Test.sol";
 
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { BasePoolMathMock } from "../../contracts/test/BasePoolMathMock.sol";
 
 abstract contract BasePoolMathRoundingTest is Test {

@@ -2,28 +2,18 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenInfo, SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenConfig,
-    TokenType,
-    LiquidityManagement,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultTokenTest is BaseVaultTest {

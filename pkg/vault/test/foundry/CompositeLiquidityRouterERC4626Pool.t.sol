@@ -2,15 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
-import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -21,12 +16,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { MOCK_CL_ROUTER_VERSION } from "../../contracts/test/CompositeLiquidityRouterMock.sol";
-import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
-import { CompositeLiquidityRouter } from "../../contracts/CompositeLiquidityRouter.sol";
 
 contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     using CastingHelpers for *;
