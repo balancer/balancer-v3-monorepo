@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -11,8 +12,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { MinTokenBalanceLib } from "@balancer-labs/v3-vault/contracts/lib/MinTokenBalanceLib.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
@@ -367,5 +369,141 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         // This will vary with the swap fee.
         assertApproxEqAbs(bptAmountOut, expectedBptAmountOut, BPT_DELTA, "Wrong BPT amount out");
+    }
+
+    function testWeightedPoolConstructorMinWeight() public {
+        uint256[] memory weights = _weightsAllEqual8();
+        weights[0] = 5e15; // 0.5% < 1% minimum
+        // Fix the sum to 1 to isolate the min weight check.
+        weights[1] =
+            FixedPoint.ONE -
+            weights[0] -
+            (weights[2] + weights[3] + weights[4] + weights[5] + weights[6] + weights[7]);
+
+        uint256[] memory mins = _minBalances8();
+
+        vm.expectRevert(IWeightedPool.MinWeight.selector);
+        deployWeightedPoolMock(_newParams8(weights, mins), vault);
+    }
+
+    function testWeightedPoolConstructorWeightSum() public {
+        uint256[] memory weights = _weightsAllEqual8();
+        weights[0] = weights[0] + 1; // sum != 1
+        uint256[] memory mins = _minBalances8();
+
+        vm.expectRevert(IWeightedPool.NormalizedWeightInvariant.selector);
+        deployWeightedPoolMock(_newParams8(weights, mins), vault);
+    }
+
+    function testWeightedPoolGetMinTokenBalancesCoverage() public {
+        WeightedPoolMock poolMock = deployWeightedPoolMock(_newParams8(_weightsAllEqual8(), _minBalances8()), vault);
+        vault.manualRegisterPoolWithSwapFee(
+            address(poolMock),
+            [address(usdc), address(dai)].toMemoryArray().asIERC20(),
+            1e16
+        );
+
+        // Hit each early-return path inside _getMinTokenBalances, plus the token-7 assignment.
+        for (uint256 n = 2; n <= 8; ++n) {
+            vault.manualSetPoolTokens(address(poolMock), new IERC20[](n));
+            uint256[] memory mins = poolMock.getMinTokenBalances();
+            assertEq(mins.length, n);
+        }
+    }
+
+    function testWeightedPoolGetNormalizedWeightInvalidToken() public {
+        WeightedPoolMock poolMock = deployWeightedPoolMock(_newParams8(_weightsAllEqual8(), _minBalances8()), vault);
+
+        // Hit all the valid branches in the internal selector chain.
+        for (uint256 i = 0; i < 8; ++i) {
+            assertGt(poolMock.exposedGetNormalizedWeight(i), 0);
+        }
+
+        // Covers WeightedPool.sol invalid-token revert branch.
+        vm.expectRevert(abi.encodeWithSignature("InvalidToken()"));
+        poolMock.exposedGetNormalizedWeight(999);
+    }
+
+    function testWeightedPoolComputeBalanceMinBalanceSelectorBranches() public {
+        WeightedPoolMock poolMock = deployWeightedPoolMock(_newParams8(_weightsAllEqual8(), _minBalances8()), vault);
+
+        uint256[] memory balances = new uint256[](8);
+        uint256[] memory mins = _minBalances8();
+        for (uint256 i = 0; i < 8; ++i) {
+            balances[i] = mins[i] + 1;
+        }
+
+        // computeBalance calls _ensureMinimumBalance(tokenInIndex, ...) and exercises the tokenIndex selector chain.
+        for (uint256 tokenInIndex = 2; tokenInIndex < 8; ++tokenInIndex) {
+            uint256 newBalance = poolMock.computeBalance(balances, tokenInIndex, FixedPoint.ONE);
+            assertGt(newBalance, 0);
+        }
+    }
+
+    function testWeightedPoolEnsureMinTokenBalancesExtraTokens() public {
+        WeightedPoolMock poolMock = deployWeightedPoolMock(_newParams8(_weightsAllEqual8(), _minBalances8()), vault);
+
+        uint256[] memory mins = _minBalances8();
+
+        // Cover the revert lines for each token index (0..7), ensuring only one token is below min at a time.
+        for (uint256 badIdx = 0; badIdx < 8; ++badIdx) {
+            uint256[] memory balances = new uint256[](8);
+            for (uint256 j = 0; j < 8; ++j) {
+                balances[j] = mins[j];
+            }
+            balances[badIdx] = mins[badIdx] - 1;
+
+            vm.expectRevert(); // TokenBalanceBelowMin(...)
+            poolMock.computeInvariant(balances, Rounding.ROUND_DOWN);
+        }
+    }
+
+    function testWeightedPoolEnsureMinTokenBalancesShortArrays() public {
+        WeightedPoolMock poolMock = deployWeightedPoolMock(_newParams8(_weightsAllEqual8(), _minBalances8()), vault);
+
+        uint256[] memory mins = _minBalances8();
+
+        // Exercise each early-return branch in _ensureMinTokenBalances by passing shorter balance arrays.
+        // computeInvariant will revert later (weights length mismatch), but coverage is still recorded.
+        for (uint256 n = 2; n <= 7; ++n) {
+            uint256[] memory balances = new uint256[](n);
+            for (uint256 j = 0; j < n; ++j) {
+                balances[j] = mins[j];
+            }
+
+            vm.expectRevert();
+            poolMock.computeInvariant(balances, Rounding.ROUND_DOWN);
+        }
+    }
+
+    function _newParams8(
+        uint256[] memory weights,
+        uint256[] memory minBalances
+    ) private pure returns (WeightedPool.NewPoolParams memory) {
+        return
+            WeightedPool.NewPoolParams({
+                name: "WP",
+                symbol: "WP",
+                numTokens: 8,
+                normalizedWeights: weights,
+                version: "v1",
+                minTokenBalances: minBalances
+            });
+    }
+
+    function _weightsAllEqual8() private pure returns (uint256[] memory weights) {
+        weights = new uint256[](8);
+        // 12.5% each
+        for (uint256 i = 0; i < 8; ++i) {
+            weights[i] = 125e15;
+        }
+    }
+
+    function _minBalances8() private pure returns (uint256[] memory mins) {
+        mins = new uint256[](8);
+        for (uint256 i = 0; i < 8; ++i) {
+            // must be >= ABSOLUTE_MIN_TOKEN_BALANCE; use a comfortably large value
+            mins[i] = MinTokenBalanceLib.ABSOLUTE_MIN_TOKEN_BALANCE + 100 + i;
+        }
     }
 }

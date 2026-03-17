@@ -79,6 +79,10 @@ contract WeightedPoolFactoryTest is WeightedPoolContractsDeployer, BaseVaultTest
         assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, amountToDonate, "Vault USDC balance is wrong");
     }
 
+    function testFactoryGetPoolVersion() public view {
+        assertEq(weightedPoolFactory.getPoolVersion(), "Pool v1");
+    }
+
     function _deployAndInitializeWeightedPool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();

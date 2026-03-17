@@ -37,6 +37,11 @@ contract LBPoolEdgeCasesTest is WeightedLBPTest {
             );
     }
 
+    function testComputeBalanceReverts() public {
+        vm.expectRevert(LBPCommon.UnsupportedOperation.selector);
+        IBasePool(pool).computeBalance(new uint256[](2), 0, 0);
+    }
+
     /***************************************************************************
                           TIMING EDGE CASES
      ***************************************************************************/
