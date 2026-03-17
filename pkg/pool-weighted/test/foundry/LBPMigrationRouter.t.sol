@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPool, LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -15,12 +16,31 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { BPTTimeLocker } from "../../contracts/lbp/BPTTimeLocker.sol";
 import { SpotPriceHelper } from "./utils/SpotPriceHelper.sol";
+import { LBPCommon } from "../../contracts/lbp/LBPCommon.sol";
 import { WeightedLBPTest } from "./utils/WeightedLBPTest.sol";
+
+// Helper (malicious token) that attempts to reenter the migration router when its transfer function is called during
+// the withdrawal of locked BPT.
+contract ReentrantBPT is ERC20TestToken {
+    address private immutable _timelocker;
+
+    constructor(address timelocker) ERC20TestToken("Reentrant BPT", "RBPT", 18) {
+        _timelocker = timelocker;
+    }
+
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        BPTTimeLocker(_timelocker).withdrawBPT(address(this));
+        return super.transfer(to, amount);
+    }
+}
 
 contract LBPMigrationRouterTest is WeightedLBPTest {
     using ArrayHelpers for *;
@@ -947,5 +967,130 @@ contract LBPMigrationRouterTest is WeightedLBPTest {
             decimalScalingFactors[reserveIdx],
             DEFAULT_RATE
         );
+    }
+
+    // Salt collision tests for BPTTimeLocker
+
+    function testLockBPTAlreadyLocked() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        uint256 id = migrationRouter.getId(address(bpt));
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+    }
+
+    function testLockBPTTimestampUnchangedAfterCollision() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+        uint256 id = migrationRouter.getId(address(bpt));
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+        uint256 originalTimestamp = migrationRouter.getUnlockTimestamp(id);
+
+        // Warp forward so a second lock would write a different timestamp if the guard were absent.
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        assertEq(
+            migrationRouter.getUnlockTimestamp(id),
+            originalTimestamp,
+            "First lockee's unlock timestamp must not be modified by a failed second lock"
+        );
+    }
+
+    function testLockBPTBalanceUnchangedAfterCollision() external {
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+        uint256 id = migrationRouter.getId(address(bpt));
+        uint256 amount = 100e18;
+
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, amount, DEFAULT_BPT_LOCK_DURATION);
+
+        vm.expectRevert(abi.encodeWithSelector(BPTTimeLocker.AlreadyLocked.selector, id));
+        migrationRouter.manualLockBPT(IERC20(bpt), bob, amount, DEFAULT_BPT_LOCK_DURATION);
+
+        assertEq(
+            migrationRouter.balanceOf(alice, id),
+            amount,
+            "First lockee's ERC-6909 balance must not change after failed second lock"
+        );
+        assertEq(migrationRouter.balanceOf(bob, id), 0, "Second owner must not receive any ERC-6909 tokens");
+    }
+
+    function testLockBPTDifferentTokensLockIndependently() external {
+        ERC20TestToken bpt1 = new ERC20TestToken("Pool Token 1", "PT1", 18);
+        ERC20TestToken bpt2 = new ERC20TestToken("Pool Token 2", "PT2", 18);
+
+        // Both should succeed -- different IDs derived from different addresses.
+        migrationRouter.manualLockBPT(IERC20(bpt1), alice, 100e18, DEFAULT_BPT_LOCK_DURATION);
+        migrationRouter.manualLockBPT(IERC20(bpt2), bob, 100e18, DEFAULT_BPT_LOCK_DURATION);
+
+        assertGt(migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(bpt1))), 0, "bpt1 should be locked");
+        assertGt(migrationRouter.getUnlockTimestamp(migrationRouter.getId(address(bpt2))), 0, "bpt2 should be locked");
+    }
+
+    // Pre-sale removal tests
+
+    function testPresaleRemovalByOwnerViaTrustedRouter() external {
+        uint256 bptBalance = IERC20(pool).balanceOf(bob);
+        vm.prank(bob);
+        router.removeLiquidityProportional(pool, bptBalance, [uint256(0), 0].toMemoryArray(), false, bytes(""));
+
+        assertEq(IERC20(pool).balanceOf(bob), 0, "Bob should have no BPT after pre-sale removal");
+    }
+
+    function testDuringSaleRemoval() external {
+        uint256 startTime = ILBPool(pool).getLBPoolImmutableData().startTime;
+        uint256 bptBalance = IERC20(pool).balanceOf(bob);
+
+        vm.warp(startTime + 1);
+
+        vm.expectRevert(LBPCommon.RemovingLiquidityNotAllowed.selector);
+        vm.prank(bob);
+        router.removeLiquidityProportional(pool, bptBalance, [uint256(0), 0].toMemoryArray(), false, bytes(""));
+    }
+
+    // WithdrawBPT reentrancy tests
+
+    function testWithdrawBPTReentrancyGuard() external {
+        uint256 amount = 101e18;
+        uint256 duration = 1 days;
+
+        ReentrantBPT maliciousBpt = new ReentrantBPT(address(migrationRouter));
+        uint256 id = migrationRouter.getId(address(maliciousBpt));
+
+        maliciousBpt.mint(address(migrationRouter), amount);
+        migrationRouter.manualLockBPT(IERC20(maliciousBpt), alice, amount, duration);
+
+        vm.warp(block.timestamp + duration);
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        vm.prank(alice);
+        migrationRouter.withdrawBPT(address(maliciousBpt));
+
+        assertEq(
+            migrationRouter.balanceOf(alice, id),
+            amount,
+            "Alice balance should be unchanged after failed reentrant withdrawal"
+        );
+    }
+
+    function testWithdrawBPTStateCleanup() external {
+        uint256 amount = 101e18;
+        uint256 duration = 1 days;
+        ERC20TestToken bpt = new ERC20TestToken("Pool Token", "PT", 18);
+        uint256 id = migrationRouter.getId(address(bpt));
+
+        bpt.mint(address(migrationRouter), amount);
+        migrationRouter.manualLockBPT(IERC20(bpt), alice, amount, duration);
+
+        vm.warp(block.timestamp + duration);
+        vm.prank(alice);
+        migrationRouter.withdrawBPT(address(bpt));
+
+        assertEq(migrationRouter.balanceOf(alice, id), 0, "ERC-6909 balance should be zero after withdrawal");
+        assertEq(migrationRouter.getUnlockTimestamp(id), 0, "Unlock timestamp should be deleted after withdrawal");
     }
 }

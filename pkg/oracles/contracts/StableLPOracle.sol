@@ -81,8 +81,12 @@ contract StableLPOracle is LPOracleBase {
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
         // the invariant and the price vector.
 
-        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
-        uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        // Note that live balances are rounded down in the vault, and the invariant is computed rounding down as well,
+        // so the resulting TVL will be rounded down. This is appropriate for an oracle, since it ensures that the
+        // oracle price will not be higher than the true value of the pool. Additionally, using live balances ensures
+        // that we are using the most up-to-date information about the pool state, including token rates.
+        uint256[] memory currentBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
+        uint256 invariant = pool.computeInvariant(currentBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, normalizedPrices);
 

@@ -727,7 +727,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             bytes("")
         );
 
-        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
+        assertTrue(success, "onBeforeRemoveLiquidity should return true before start time");
     }
 
     function testOnBeforeRemoveLiquidityAfterEndTime() public {
@@ -778,24 +778,6 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
-    }
-
-    function testOnBeforeRemoveLiquidity() public {
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.prank(address(vault));
-        bool success = IHooks(pool).onBeforeRemoveLiquidity(
-            address(router),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-
-        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
     function testComputeBalance() public {

@@ -26,7 +26,7 @@ contract ERC20TestToken is ERC20 {
         _burn(sender, amount);
     }
 
-    function transfer(address to, uint256 value) public override returns (bool) {
+    function transfer(address to, uint256 value) public virtual override returns (bool) {
         if (value == 0) {
             revert ZeroTransfer();
         }
@@ -34,7 +34,7 @@ contract ERC20TestToken is ERC20 {
         return super.transfer(to, value);
     }
 
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+    function transferFrom(address from, address to, uint256 value) public virtual override returns (bool) {
         if (value == 0) {
             revert ZeroTransfer();
         }
