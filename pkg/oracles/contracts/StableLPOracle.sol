@@ -262,10 +262,16 @@ contract StableLPOracle is LPOracleBase {
         b = a - int256(FixedPoint.ONE * (_totalTokens ** _totalTokens));
     }
 
+    /**
+     * @dev Divides two integers, rounding down when positive and up when negative. It truncates toward zero
+     * (not toward -infinity). For positive results this is equivalent to rounding down, consistent with
+     * FixedPoint.divDown. For negative results it rounds toward zero.
+     */
     function _divDownInt(int256 a, int256 b) internal pure returns (int256) {
         return (a * _POSITIVE_ONE_INT) / b;
     }
 
+    /// @dev Truncates toward zero (not toward -infinity). See `_divDownInt`.
     function _mulDownInt(int256 a, int256 b) internal pure returns (int256) {
         return (a * b) / _POSITIVE_ONE_INT;
     }
