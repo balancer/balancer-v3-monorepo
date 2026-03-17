@@ -83,26 +83,20 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         medusa.prank(lp);
-        try
-            router.removeLiquiditySingleTokenExactOut(
-                address(pool),
-                type(uint128).max,
-                tokens[tokenIndex],
-                tokenAmountOut,
-                false,
-                bytes("")
-            )
-        returns (uint256 bptAmountIn) {
-            uint256[] memory exactAmountsIn = new uint256[](vault.getPoolTokens(address(pool)).length);
-            exactAmountsIn[tokenIndex] = tokenAmountOut;
+        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            type(uint128).max,
+            tokens[tokenIndex],
+            tokenAmountOut,
+            false,
+            bytes("")
+        );
+        uint256[] memory exactAmountsIn = new uint256[](vault.getPoolTokens(address(pool)).length);
+        exactAmountsIn[tokenIndex] = tokenAmountOut;
 
-            medusa.prank(lp);
-            try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (
-                uint256 bptAmountOut
-            ) {
-                bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
-            } catch {}
-        } catch {}
+        medusa.prank(lp);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
+        bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
     }
 
     function boundTokenDeposit(uint256 tokenAmountIn, uint256 tokenIndex) internal view override returns (uint256) {

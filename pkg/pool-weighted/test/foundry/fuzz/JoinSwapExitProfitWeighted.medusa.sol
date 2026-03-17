@@ -94,7 +94,6 @@ contract JoinSwapExitProfitWeightedMedusaTest is BaseMedusaTest {
         uint256 swapAmountInRaw
     ) public {
         uint256 numTokens = vault.getPoolTokens(address(pool)).length;
-        if (numTokens < 2) return;
 
         uint256 tokenJoinExitIndex = bound(tokenJoinExitIndexRaw, 0, numTokens - 1);
 
@@ -103,7 +102,6 @@ contract JoinSwapExitProfitWeightedMedusaTest is BaseMedusaTest {
         {
             uint256 maxBptOut = BalancerPoolToken(address(pool)).totalSupply() / 20;
             uint256 minBptOut = BalancerPoolToken(address(pool)).totalSupply() / 10000; // 0.01%
-            if (maxBptOut < minBptOut) return;
             bptOut = bound(bptOutRaw, minBptOut, maxBptOut);
         }
 
@@ -132,9 +130,6 @@ contract JoinSwapExitProfitWeightedMedusaTest is BaseMedusaTest {
                 false,
                 bytes("")
             );
-
-            // If rounding/limits made this nonsensical, discard.
-            if (tokenAmountIn < MIN_AMOUNT) return;
         }
 
         // --- Step 2: attacker manipulates pool state with a swap ---
@@ -148,7 +143,6 @@ contract JoinSwapExitProfitWeightedMedusaTest is BaseMedusaTest {
             uint256 maxSwapAmountIn = maxSwapAmountByPool < attackerBalanceAfterJoin
                 ? maxSwapAmountByPool
                 : attackerBalanceAfterJoin;
-            if (maxSwapAmountIn < MIN_AMOUNT) return;
             swapAmountIn = bound(swapAmountInRaw, MIN_AMOUNT, maxSwapAmountIn);
         }
 
@@ -166,14 +160,14 @@ contract JoinSwapExitProfitWeightedMedusaTest is BaseMedusaTest {
 
         // --- Step 3: attacker exits single-asset burning the same BPT, receiving token A ---
         medusa.prank(alice);
-        uint256 tokenAmountOut;
-        try router.removeLiquiditySingleTokenExactIn(address(pool), bptOut, joinToken, 1, false, bytes("")) returns (
-            uint256 amt
-        ) {
-            tokenAmountOut = amt;
-        } catch {
-            return; // remove failed, skip
-        }
+        uint256 tokenAmountOut = router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptOut,
+            joinToken,
+            1,
+            false,
+            bytes("")
+        );
 
         // --- Assertion: no profit in the join/exit token ---
         uint256 attackerBalanceAfter = joinToken.balanceOf(alice);

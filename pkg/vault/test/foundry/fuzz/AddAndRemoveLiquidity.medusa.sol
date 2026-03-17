@@ -45,6 +45,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return int256(bptProfit);
     }
 
+    function property_bptProfit() public view returns (bool) {
+        return bptProfit <= 0;
+    }
+
     /*******************************************************************************
                           Symmetrical Add/Remove Liquidity
     *******************************************************************************/
