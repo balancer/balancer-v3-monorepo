@@ -66,6 +66,10 @@ contract StableSurgeHook is SurgeHookCommon {
             return (false, 0);
         }
 
+        // This is an approximation of the new balances after the swap, without considering fees.
+        // In practice it's not 100% accurate because of that, but it's a cost-effective way to estimate the new
+        // imbalance without over-complicating the logic. The surge fee is just meant to be a deterrent for large swaps
+        // that would cause a big imbalance.
         uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
 
         uint256[] memory newBalancesScaled18 = new uint256[](params.balancesScaled18.length);

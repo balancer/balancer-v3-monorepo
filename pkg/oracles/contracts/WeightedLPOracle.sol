@@ -6,8 +6,8 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/oracles/IWeightedLPOracle.sol";
-import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/oracles/ILPOracleBase.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -17,7 +17,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
-/// @notice Oracle for weighted pools.
+/**
+ * @notice Oracle for weighted pools.
+ * @dev IMPORTANT: WeightedLPOracles store weights immutably, so this factory can only be used for pools with fixed
+ * weights, such as those created with the standard Balancer `WeightedPoolFactory`. It cannot be used for LBPs or other
+ * pools with variable weights.
+ */
 contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
@@ -125,7 +130,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         // k = invariant                                                                             //
         **********************************************************************************************/
 
-        uint256[] memory lastBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
+        uint256[] memory currentBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
         uint256[] memory weights = _getWeights();
 
         tvl = FixedPoint.ONE;
@@ -137,7 +142,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
             tvl = tvl.mulDown(prices[i].toUint256().divDown(weights[i]).powDown(weights[i]));
         }
 
-        uint256 k = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
+        uint256 k = pool.computeInvariant(currentBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         tvl = tvl.mulDown(k);
     }

@@ -258,6 +258,9 @@ contract ProtocolFeeController is
                     // need to "disaggregate" this total, dividing it between the protocol and pool creator according
                     // to their individual percentages. We do this by computing the protocol portion first, then
                     // assigning the remainder to the pool creator.
+                    // Note: this calculation can make the protocol portion > feeAmounts[i] due to rounding,
+                    // causing the tx to revert. This only happens when the fees collected are very small, so in
+                    // practice this is not an issue.
                     uint256 totalFeeAmountRaw = feeAmounts[i].divUp(aggregateFeePercentage);
                     uint256 protocolPortion = totalFeeAmountRaw.mulUp(protocolFeePercentage);
 
