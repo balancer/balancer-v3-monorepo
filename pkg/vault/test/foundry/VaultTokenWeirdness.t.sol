@@ -10,6 +10,8 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ERC20FeeOnTransferToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20FeeOnTransferToken.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
@@ -39,7 +41,7 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
     }
 
     function testFeeOnTransferTokenAddLiquidityRevertsAndPoolNotInitialized() public {
-        FeeOnTransferERC20 feeToken = new FeeOnTransferERC20("FOT", "FOT", 18, 100); // 1% fee
+        ERC20FeeOnTransferToken feeToken = new ERC20FeeOnTransferToken("FOT", "FOT", 18, 100); // 1% fee
         feeToken.mint(lp, 1_000_000e18);
 
         // Approve Permit2+routers for feeToken (BaseVaultTest only approved its default tokens).
@@ -73,8 +75,8 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
     }
 
     function _deployOddDecimalsPool() internal returns (address p, IERC20[] memory toks) {
-        ERC20DecimalsToken usdc6 = new ERC20DecimalsToken("USDC6", "USDC6", 6);
-        ERC20DecimalsToken wbtc8 = new ERC20DecimalsToken("WBTC8", "WBTC8", 8);
+        ERC20TestToken usdc6 = new ERC20TestToken("USDC6", "USDC6", 6);
+        ERC20TestToken wbtc8 = new ERC20TestToken("WBTC8", "WBTC8", 8);
 
         usdc6.mint(lp, 1_000_000_000e6);
         wbtc8.mint(lp, 1_000_000_000e8);
@@ -175,56 +177,5 @@ contract VaultTokenWeirdnessTest is BaseVaultTest {
             type(uint48).max
         );
         vm.stopPrank();
-    }
-}
-
-/**
- * @notice ERC20 that charges a fee (burn) on transfer/transferFrom.
- * @dev This breaks the Router/Vault assumption that an exact amount was transferred, so operations should
- * safely revert.
- */
-contract FeeOnTransferERC20 is ERC20 {
-    uint8 private immutable _decimals;
-    uint256 private immutable _feeBps;
-
-    constructor(string memory n, string memory s, uint8 d, uint256 feeBps) ERC20(n, s) {
-        _decimals = d;
-        _feeBps = feeBps;
-    }
-
-    function decimals() public view override returns (uint8) {
-        return _decimals;
-    }
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-
-    function _update(address from, address to, uint256 amount) internal override {
-        if (from != address(0) && to != address(0) && _feeBps != 0) {
-            uint256 fee = (amount * _feeBps) / 10_000;
-            uint256 sendAmount = amount - fee;
-            super._update(from, to, sendAmount);
-            if (fee != 0) super._update(from, address(0), fee);
-            return;
-        }
-        super._update(from, to, amount);
-    }
-}
-
-/// @dev Simple ERC20 with configurable decimals (used for odd-decimals scaling paths).
-contract ERC20DecimalsToken is ERC20 {
-    uint8 private immutable _decimals;
-
-    constructor(string memory n, string memory s, uint8 d) ERC20(n, s) {
-        _decimals = d;
-    }
-
-    function decimals() public view override returns (uint8) {
-        return _decimals;
-    }
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
     }
 }

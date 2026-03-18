@@ -14,6 +14,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { RecordingPoolMock } from "../../contracts/test/RecordingPoolMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
@@ -31,7 +32,7 @@ contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
     using ScalingHelpers for uint256;
 
     // Pool that records the swap params it receives from the Vault.
-    RecordingPool internal recordingPool;
+    RecordingPoolMock internal recordingPool;
 
     // Use distinct rate providers so this test also catches token<->rate misalignment after sorting.
     RateProviderMock internal daiRateProvider;
@@ -54,7 +55,7 @@ contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
         string memory name = "Recording Pool";
         string memory symbol = "REC";
 
-        recordingPool = new RecordingPool(IVault(address(vault)), name, symbol);
+        recordingPool = new RecordingPoolMock(IVault(address(vault)), name, symbol);
         newPool = address(recordingPool);
         vm.label(newPool, "recordingPool");
 
@@ -164,7 +165,7 @@ contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
         // If this fails, it indicates the chosen balances/rates didn't create a rounding boundary (test setup issue).
         require(hasUpDownDifference, "test precondition failed: roundUp == roundDown for all tokens");
 
-        // Perform a swap; our RecordingPool captures the calldata.
+        // Perform a swap; our RecordingPoolMock captures the calldata.
         // Use a fixed direction to avoid address-order dependent behavior.
         IERC20 tokenIn = dai;
         IERC20 tokenOut = usdc;
@@ -217,95 +218,5 @@ contract VaultSwapBalanceLoadRoundingTest is BaseVaultTest {
             }
         }
         require(foundIn && foundOut, "token indices not found");
-    }
-}
-
-contract RecordingPool is IBasePool, IPoolLiquidity, BalancerPoolToken {
-    using FixedPoint for uint256;
-
-    uint256[] private _lastBalancesScaled18;
-    SwapKind public lastKind;
-    uint256 public lastAmountGivenScaled18;
-    uint256 public lastIndexIn;
-    uint256 public lastIndexOut;
-
-    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function getLastBalancesScaled18() external view returns (uint256[] memory) {
-        return _lastBalancesScaled18;
-    }
-
-    function onSwap(PoolSwapParams calldata params) external override returns (uint256 amountCalculated) {
-        delete _lastBalancesScaled18;
-        for (uint256 i = 0; i < params.balancesScaled18.length; ++i) {
-            _lastBalancesScaled18.push(params.balancesScaled18[i]);
-        }
-        lastKind = params.kind;
-        lastAmountGivenScaled18 = params.amountGivenScaled18;
-        lastIndexIn = params.indexIn;
-        lastIndexOut = params.indexOut;
-
-        // Return 0 so this test doesn't depend on Vault reserves for tokenOut transfers.
-        return 0;
-    }
-
-    function computeInvariant(uint256[] memory balances, Rounding) public pure returns (uint256) {
-        uint256 invariant;
-        for (uint256 i = 0; i < balances.length; ++i) {
-            invariant += balances[i];
-        }
-        return invariant;
-    }
-
-    function computeBalance(
-        uint256[] memory balances,
-        uint256 tokenInIndex,
-        uint256 invariantRatio
-    ) external pure returns (uint256 newBalance) {
-        uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
-        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
-    }
-
-    function onAddLiquidityCustom(
-        address,
-        uint256[] memory maxAmountsInScaled18,
-        uint256 minBptAmountOut,
-        uint256[] memory,
-        bytes memory userData
-    ) external pure override returns (uint256[] memory, uint256, uint256[] memory, bytes memory) {
-        return (maxAmountsInScaled18, minBptAmountOut, new uint256[](maxAmountsInScaled18.length), userData);
-    }
-
-    function onRemoveLiquidityCustom(
-        address,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        uint256[] memory,
-        bytes memory userData
-    ) external pure override returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
-        return (maxBptAmountIn, minAmountsOut, new uint256[](minAmountsOut.length), userData);
-    }
-
-    /// @dev Even though pools do not handle scaling, we still need this for the tests.
-    function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        (scalingFactors, ) = _vault.getPoolTokenRates(address(this));
-    }
-
-    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
-        return 0;
-    }
-
-    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
-        return FixedPoint.ONE;
-    }
-
-    function getMinimumInvariantRatio() external pure override returns (uint256) {
-        return 0;
-    }
-
-    function getMaximumInvariantRatio() external pure override returns (uint256) {
-        return 1e40;
     }
 }

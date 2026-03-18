@@ -15,10 +15,12 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { VaultCommon } from "@balancer-labs/v3-vault/contracts/VaultCommon.sol";
 
-import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
+import { UnlockCallerMock } from "../../contracts/test/UnlockCallerMock.sol";
 import { PoolConfigConst } from "../../contracts/lib/PoolConfigConst.sol";
 import { VaultAdmin } from "../../contracts/VaultAdmin.sol";
+import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 /**
@@ -32,16 +34,15 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract CoverageVaultCoreGapsTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    UnlockCaller private _unlockCaller;
+    UnlockCallerMock private _unlockCaller;
 
     function setUp() public override {
         super.setUp();
-        _unlockCaller = new UnlockCaller(IVaultMain(address(vault)));
+        _unlockCaller = new UnlockCallerMock(vault);
     }
 
     function testVaultCommonReentrancyGuardEntered() public view {
-        // Covers `VaultCommon.reentrancyGuardEntered()`.
-        bool entered = IVaultCommonView(address(vault)).reentrancyGuardEntered();
+        bool entered = VaultCommon(address(vault)).reentrancyGuardEntered();
         // No strict expectation, just ensure it can be called.
         entered; // silence unused warning
     }
@@ -76,6 +77,67 @@ contract CoverageVaultCoreGapsTest is BaseVaultTest {
         vm.prank(address(feeController));
         vm.expectRevert(IVaultErrors.ProtocolFeesExceedTotalCollected.selector);
         IVaultAdmin(address(vault)).updateAggregateSwapFeePercentage(pool, FixedPoint.ONE + 1);
+    }
+
+    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactIn() public {
+        // exact-in: revert if amountOutRaw < limitRaw
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_IN,
+            direction: WrappingDirection.WRAP,
+            wrappedToken: waDAI,
+            amountGivenRaw: 10e18,
+            limitRaw: type(uint256).max // impossible to meet
+        });
+
+        vm.expectRevert();
+        _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCallerMock.cbWrapOrUnwrap, (params)));
+    }
+
+    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactOut() public {
+        // exact-out: revert if amountInRaw > limitRaw
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_OUT,
+            direction: WrappingDirection.WRAP,
+            wrappedToken: waDAI,
+            amountGivenRaw: 10e18,
+            limitRaw: 0 // will always be exceeded
+        });
+
+        vm.expectRevert();
+        _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCallerMock.cbWrapOrUnwrap, (params)));
+    }
+
+    function testVaultAdminRemoveLiquidityFromBufferHookMinUnderlyingOut() public {
+        uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
+        vm.prank(lp);
+        vm.expectRevert();
+        // Set min underlying out absurdly high to trigger revert at VaultAdmin.sol:679.
+        vault.removeLiquidityFromBuffer(waDAI, shares / 10, type(uint256).max, 0);
+    }
+
+    function testVaultAdminRemoveLiquidityFromBufferHookMinWrappedOut() public {
+        uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
+        vm.prank(lp);
+        vm.expectRevert();
+        // Set min wrapped out absurdly high to trigger revert at VaultAdmin.sol:683.
+        vault.removeLiquidityFromBuffer(waDAI, shares / 10, 0, type(uint256).max);
+    }
+
+    // These tests cover constructor revert branches in VaultAdmin.sol.
+    function testVaultAdminPauseWindowTooLarge() public {
+        vm.expectRevert(IVaultErrors.VaultPauseWindowDurationTooLarge.selector);
+        new VaultAdmin(IVault(address(1)), uint32(type(uint32).max), 0, 0, 0);
+    }
+
+    function testVaultAdminBufferPeriodTooLarge() public {
+        vm.expectRevert(IVaultErrors.PauseBufferPeriodDurationTooLarge.selector);
+        new VaultAdmin(IVault(address(1)), 0, uint32(type(uint32).max), 0, 0);
+    }
+
+    function testVaultAdminQueryModeBufferSharesIncreaseNotStaticCall() public {
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
+        // Parameters do not matter; this reverts before touching storage when not in a staticcall context.
+        vault.manualQueryModeBufferSharesIncreaseNonStatic(waDAI, address(this), 123);
     }
 
     function _corruptAggregateSwapFeePercentageBits(address pool_) private {
@@ -127,122 +189,5 @@ contract CoverageVaultCoreGapsTest is BaseVaultTest {
             }
         }
         revert("PoolConfigBits slot not found (probe)");
-    }
-}
-
-contract CoverageVaultCoreBuffersGapsTest is BaseERC4626BufferTest {
-    UnlockCaller private _unlockCaller;
-
-    function setUp() public override {
-        super.setUp();
-        _unlockCaller = new UnlockCaller(IVaultMain(address(vault)));
-    }
-
-    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactIn() public {
-        // exact-in: revert if amountOutRaw < limitRaw
-        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
-            kind: SwapKind.EXACT_IN,
-            direction: WrappingDirection.WRAP,
-            wrappedToken: waDAI,
-            amountGivenRaw: 10e18,
-            limitRaw: type(uint256).max // impossible to meet
-        });
-
-        vm.expectRevert();
-        _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCaller.cbWrapOrUnwrap, (params)));
-    }
-
-    function testVaultErc4626BufferWrapOrUnwrapSwapLimitExactOut() public {
-        // exact-out: revert if amountInRaw > limitRaw
-        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
-            kind: SwapKind.EXACT_OUT,
-            direction: WrappingDirection.WRAP,
-            wrappedToken: waDAI,
-            amountGivenRaw: 10e18,
-            limitRaw: 0 // will always be exceeded
-        });
-
-        vm.expectRevert();
-        _unlockCaller.unlockAndCall(abi.encodeCall(UnlockCaller.cbWrapOrUnwrap, (params)));
-    }
-
-    function testVaultAdminRemoveLiquidityFromBufferHookMinUnderlyingOut() public {
-        uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
-        vm.prank(lp);
-        vm.expectRevert();
-        // Set min underlying out absurdly high to trigger revert at VaultAdmin.sol:679.
-        vault.removeLiquidityFromBuffer(waDAI, shares / 10, type(uint256).max, 0);
-    }
-
-    function testVaultAdminRemoveLiquidityFromBufferHookMinWrappedOut() public {
-        uint256 shares = vault.getBufferOwnerShares(waDAI, lp);
-        vm.prank(lp);
-        vm.expectRevert();
-        // Set min wrapped out absurdly high to trigger revert at VaultAdmin.sol:683.
-        vault.removeLiquidityFromBuffer(waDAI, shares / 10, 0, type(uint256).max);
-    }
-}
-
-contract CoverageVaultAdminConstructorGapsTest is Test {
-    // These tests cover constructor revert branches in VaultAdmin.sol.
-    function testVaultAdminPauseWindowTooLarge() public {
-        vm.expectRevert(IVaultErrors.VaultPauseWindowDurationTooLarge.selector);
-        new VaultAdmin(IVault(address(1)), uint32(type(uint32).max), 0, 0, 0);
-    }
-
-    function testVaultAdminBufferPeriodTooLarge() public {
-        vm.expectRevert(IVaultErrors.PauseBufferPeriodDurationTooLarge.selector);
-        new VaultAdmin(IVault(address(1)), 0, uint32(type(uint32).max), 0, 0);
-    }
-
-    function testVaultAdminQueryModeBufferSharesIncreaseNotStaticCall() public {
-        VaultAdminQueryModeHarness h = new VaultAdminQueryModeHarness(IVault(address(1)));
-        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        h.callQueryModeBufferSharesIncreaseNonStatic();
-    }
-}
-
-interface IVaultCommonView {
-    function reentrancyGuardEntered() external view returns (bool);
-}
-
-/**
- * @dev Calls into Vault.unlock, which then calls back into this contract, allowing us to call
- * Vault-onlyWhenUnlocked functions without going through routers.
- */
-contract UnlockCaller {
-    IVaultMain private immutable _vault;
-
-    constructor(IVaultMain vault_) {
-        _vault = vault_;
-    }
-
-    function unlockAndCall(bytes calldata callbackData) external returns (bytes memory) {
-        return _vault.unlock(callbackData);
-    }
-
-    function cbAddLiquidity(AddLiquidityParams calldata params) external returns (bytes memory) {
-        _vault.addLiquidity(params);
-        return bytes("");
-    }
-
-    function cbRemoveLiquidity(RemoveLiquidityParams calldata params) external returns (bytes memory) {
-        _vault.removeLiquidity(params);
-        return bytes("");
-    }
-
-    function cbWrapOrUnwrap(BufferWrapOrUnwrapParams calldata params) external returns (bytes memory) {
-        _vault.erc4626BufferWrapOrUnwrap(params);
-        return bytes("");
-    }
-}
-
-contract VaultAdminQueryModeHarness is VaultAdmin {
-    constructor(IVault mainVault) VaultAdmin(mainVault, 0, 0, 0, 0) {}
-
-    // We want to execute the revert inside `VaultAdmin._queryModeBufferSharesIncrease` in a non-static call context.
-    function callQueryModeBufferSharesIncreaseNonStatic() external {
-        // Parameters do not matter; this reverts before touching storage when not in a staticcall context.
-        _queryModeBufferSharesIncrease(IERC4626(address(1)), address(2), 1);
     }
 }

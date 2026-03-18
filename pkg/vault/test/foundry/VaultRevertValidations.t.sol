@@ -21,7 +21,6 @@ import { Vault } from "../../contracts/Vault.sol";
 
 /**
  * @notice A collection of "fail-fast" tests for revert conditions in the Vault.
- * @dev Grouped by concern into separate contracts to keep setup minimal and explicit.
  */
 contract VaultSwapInputValidationTest is BaseVaultTest {
     function setUp() public virtual override {
@@ -109,7 +108,86 @@ contract VaultSwapInputValidationTest is BaseVaultTest {
         );
         _expectVaultSwapRevert(params, IVaultErrors.CannotSwapSameToken.selector);
     }
+
+    function testUnlockRevertsIfBalanceNotSettledAndRollsBack__Fuzz(uint256 rawAmount) public {
+        uint256 amount = bound(rawAmount, 1, poolInitAmount);
+        uint256 bobDaiBefore = dai.balanceOf(bob);
+        uint256 vaultDaiBefore = dai.balanceOf(address(vault));
+        uint256 reservesBefore = vault.getReservesOf(dai);
+        int256 deltaBefore = vault.getTokenDelta(dai);
+
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        vault.unlock(abi.encodeCall(this._sendToWithoutSettle, (vault, dai, bob, amount)));
+
+        // Stronger than "expectRevert": ensure nothing leaked despite the attempted transfer.
+        assertEq(dai.balanceOf(bob), bobDaiBefore, "bob DAI should rollback");
+        assertEq(dai.balanceOf(address(vault)), vaultDaiBefore, "vault DAI should rollback");
+        assertEq(vault.getReservesOf(dai), reservesBefore, "reserves should rollback");
+        assertEq(vault.getTokenDelta(dai), deltaBefore, "delta should rollback");
+    }
+
+    function testUnlockRevertsIfCreditNotFullyConsumedAndRollsBack__Fuzz(uint256 rawSettleAmount) public {
+        uint256 settleAmount = bound(rawSettleAmount, 2, poolInitAmount);
+        ERC20TestToken(address(dai)).mint(address(this), settleAmount);
+
+        uint256 bobDaiBefore = dai.balanceOf(bob);
+        uint256 vaultDaiBefore = dai.balanceOf(address(vault));
+        uint256 reservesBefore = vault.getReservesOf(dai);
+        int256 deltaBefore = vault.getTokenDelta(dai);
+
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        vault.unlock(abi.encodeCall(this._settleThenLeaveCreditUnsettled, (vault, dai, bob, settleAmount)));
+
+        assertEq(dai.balanceOf(bob), bobDaiBefore, "bob DAI should rollback");
+        assertEq(dai.balanceOf(address(vault)), vaultDaiBefore, "vault DAI should rollback");
+        assertEq(vault.getReservesOf(dai), reservesBefore, "reserves should rollback");
+        assertEq(vault.getTokenDelta(dai), deltaBefore, "delta should rollback");
+    }
+
+    function testVaultConstructorWrongVaultExtensionDeploymentReverts() public {
+        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
+
+        IVaultExtension badExtension = IVaultExtension(
+            address(new BadVaultExtension(IVault(makeAddr("not-the-vault"))))
+        );
+        IProtocolFeeController goodFeeController = IProtocolFeeController(address(new GoodProtocolFeeController()));
+
+        vm.expectRevert(IVaultErrors.WrongVaultExtensionDeployment.selector);
+        new Vault(badExtension, IAuthorizer(address(authorizer)), goodFeeController);
+    }
+
+    function testVaultConstructorWrongProtocolFeeControllerDeploymentReverts() public {
+        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
+        IVaultExtension goodExtension = IVaultExtension(address(new GoodVaultExtension()));
+        IProtocolFeeController badFeeController = IProtocolFeeController(
+            address(new BadProtocolFeeController(IVault(makeAddr("not-the-vault"))))
+        );
+
+        vm.expectRevert(IVaultErrors.WrongProtocolFeeControllerDeployment.selector);
+        new Vault(goodExtension, IAuthorizer(address(authorizer)), badFeeController);
+    }
+
+    function _sendToWithoutSettle(IVault vault, IERC20 token, address to, uint256 amount) external {
+        // Called by the Vault during unlock: msg.sender is the Vault (unlocked).
+        // `sendTo` takes debt but we do not `settle`, so the Vault must revert at the end of the unlock.
+        require(msg.sender == address(vault), "unexpected caller");
+        vault.sendTo(token, to, amount);
+    }
+
+    function _settleThenLeaveCreditUnsettled(IVault vault, IERC20 token, address to, uint256 settleAmount) external {
+        require(msg.sender == address(vault), "unexpected caller");
+        require(settleAmount > 1, "settleAmount too small");
+
+        // Transfer tokens in and settle to obtain credit.
+        token.transfer(address(vault), settleAmount);
+        vault.settle(token, settleAmount);
+
+        // Consume all but 1 wei of the credit; leaving any non-zero delta must revert at end of unlock.
+        vault.sendTo(token, to, settleAmount - 1);
+    }
 }
+
+/// Helper contracts - Left inline for simplicity.
 
 /**
  * @notice Minimal vault extension that always returns the caller as the "vault".
@@ -145,27 +223,19 @@ contract GoodVaultExtension {
 
 /// @dev Minimal vault extension that returns a wrong vault address.
 contract BadVaultExtension {
-    IVault private immutable _vault;
+    IVault public immutable vault;
 
     constructor(IVault wrongVault) {
-        _vault = wrongVault;
-    }
-
-    function vault() external view returns (IVault) {
-        return _vault;
+        vault = wrongVault;
     }
 }
 
 /// @dev Minimal protocol fee controller that returns a wrong vault address.
 contract BadProtocolFeeController {
-    IVault private immutable _vault;
+    IVault public immutable vault;
 
     constructor(IVault wrongVault) {
-        _vault = wrongVault;
-    }
-
-    function vault() external view returns (IVault) {
-        return _vault;
+        vault = wrongVault;
     }
 }
 
@@ -173,107 +243,5 @@ contract BadProtocolFeeController {
 contract GoodProtocolFeeController {
     function vault() external view returns (IVault) {
         return IVault(msg.sender);
-    }
-}
-
-contract VaultConstructorMisconfigurationTest is Test {
-    function testVaultConstructorWrongVaultExtensionDeploymentReverts() public {
-        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
-
-        IVaultExtension badExtension = IVaultExtension(
-            address(new BadVaultExtension(IVault(makeAddr("not-the-vault"))))
-        );
-        IProtocolFeeController goodFeeController = IProtocolFeeController(address(new GoodProtocolFeeController()));
-
-        vm.expectRevert(IVaultErrors.WrongVaultExtensionDeployment.selector);
-        new Vault(badExtension, IAuthorizer(address(authorizer)), goodFeeController);
-    }
-
-    function testVaultConstructorWrongProtocolFeeControllerDeploymentReverts() public {
-        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
-        IVaultExtension goodExtension = IVaultExtension(address(new GoodVaultExtension()));
-        IProtocolFeeController badFeeController = IProtocolFeeController(
-            address(new BadProtocolFeeController(IVault(makeAddr("not-the-vault"))))
-        );
-
-        vm.expectRevert(IVaultErrors.WrongProtocolFeeControllerDeployment.selector);
-        new Vault(goodExtension, IAuthorizer(address(authorizer)), badFeeController);
-    }
-}
-
-contract UnsettledDeltaCaller {
-    function runSendToWithoutSettle(IVault vault, IERC20 token, address to, uint256 amount) external {
-        // As msg.sender, we become the callback target for `Vault.unlock`.
-        vault.unlock(abi.encodeCall(this._sendToWithoutSettle, (vault, token, to, amount)));
-    }
-
-    function _sendToWithoutSettle(IVault vault, IERC20 token, address to, uint256 amount) external {
-        // Called by the Vault during unlock: msg.sender is the Vault (unlocked).
-        // `sendTo` takes debt but we do not `settle`, so the Vault must revert at the end of the unlock.
-        require(msg.sender == address(vault), "unexpected caller");
-        vault.sendTo(token, to, amount);
-    }
-
-    function runSettleThenLeaveCreditUnsettled(IVault vault, IERC20 token, address to, uint256 settleAmount) external {
-        // We fund this contract in the test so it can repay the Vault.
-        // Then we settle and immediately consume almost all of the credit, leaving 1 wei credit behind.
-        vault.unlock(abi.encodeCall(this._settleThenLeaveCreditUnsettled, (vault, token, to, settleAmount)));
-    }
-
-    function _settleThenLeaveCreditUnsettled(IVault vault, IERC20 token, address to, uint256 settleAmount) external {
-        require(msg.sender == address(vault), "unexpected caller");
-        require(settleAmount > 1, "settleAmount too small");
-
-        // Transfer tokens in and settle to obtain credit.
-        token.transfer(address(vault), settleAmount);
-        vault.settle(token, settleAmount);
-
-        // Consume all but 1 wei of the credit; leaving any non-zero delta must revert at end of unlock.
-        vault.sendTo(token, to, settleAmount - 1);
-    }
-}
-
-contract VaultUnsettledDeltasRevertTest is BaseVaultTest {
-    function setUp() public virtual override {
-        BaseVaultTest.setUp();
-    }
-
-    function testUnlockRevertsIfBalanceNotSettledAndRollsBack__Fuzz(uint256 rawAmount) public {
-        UnsettledDeltaCaller caller = new UnsettledDeltaCaller();
-
-        uint256 amount = bound(rawAmount, 1, poolInitAmount);
-        uint256 bobDaiBefore = dai.balanceOf(bob);
-        uint256 vaultDaiBefore = dai.balanceOf(address(vault));
-        uint256 reservesBefore = vault.getReservesOf(dai);
-        int256 deltaBefore = vault.getTokenDelta(dai);
-
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        caller.runSendToWithoutSettle(IVault(address(vault)), dai, bob, amount);
-
-        // Stronger than "expectRevert": ensure nothing leaked despite the attempted transfer.
-        assertEq(dai.balanceOf(bob), bobDaiBefore, "bob DAI should rollback");
-        assertEq(dai.balanceOf(address(vault)), vaultDaiBefore, "vault DAI should rollback");
-        assertEq(vault.getReservesOf(dai), reservesBefore, "reserves should rollback");
-        assertEq(vault.getTokenDelta(dai), deltaBefore, "delta should rollback");
-    }
-
-    function testUnlockRevertsIfCreditNotFullyConsumedAndRollsBack__Fuzz(uint256 rawSettleAmount) public {
-        UnsettledDeltaCaller caller = new UnsettledDeltaCaller();
-
-        uint256 settleAmount = bound(rawSettleAmount, 2, poolInitAmount);
-        ERC20TestToken(address(dai)).mint(address(caller), settleAmount);
-
-        uint256 bobDaiBefore = dai.balanceOf(bob);
-        uint256 vaultDaiBefore = dai.balanceOf(address(vault));
-        uint256 reservesBefore = vault.getReservesOf(dai);
-        int256 deltaBefore = vault.getTokenDelta(dai);
-
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        caller.runSettleThenLeaveCreditUnsettled(IVault(address(vault)), dai, bob, settleAmount);
-
-        assertEq(dai.balanceOf(bob), bobDaiBefore, "bob DAI should rollback");
-        assertEq(dai.balanceOf(address(vault)), vaultDaiBefore, "vault DAI should rollback");
-        assertEq(vault.getReservesOf(dai), reservesBefore, "reserves should rollback");
-        assertEq(vault.getTokenDelta(dai), deltaBefore, "delta should rollback");
     }
 }

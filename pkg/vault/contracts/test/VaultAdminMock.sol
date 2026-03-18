@@ -152,4 +152,8 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external {
         _mintMinimumBufferSupplyReserve(wrappedToken);
     }
+
+    function manualQueryModeBufferSharesIncreaseNonStatic(IERC4626 wrappedToken, address to, uint256 amount) external {
+        _queryModeBufferSharesIncrease(wrappedToken, to, amount);
+    }
 }
