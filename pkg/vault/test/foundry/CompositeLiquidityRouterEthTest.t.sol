@@ -6,12 +6,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
 /**
- * @notice Test CompositeLiquidityRouter ETH permanently locked on proportional ERC4626 pool remove liquidity.
- * @dev Root cause: `removeLiquidityERC4626PoolProportionalHook` is the only ERC4626 pool hook that does NOT call
- * `_returnEth(params.sender)`. Both add-liquidity hooks end with that call. The entry point is `external payable`
+ * @notice Regression test: ETH sent with removeLiquidityProportionalFromERC4626Pool must be returned to the caller.
+ * @dev Root cause (fixed): `removeLiquidityERC4626PoolProportionalHook` was the only ERC4626 pool hook that did NOT
+ * call `_returnEth(params.sender)`. Both add-liquidity hooks end with that call. The entry point is `external payable`
  * with the plain `saveSender` modifier, which does not sweep ETH (only `saveSenderAndManageEth` does).
  *
- * Any ETH in msg.value is permanently locked; `receive()` rejects non-WETH senders, so there is no recovery.
+ * Without the fix, any ETH in msg.value was permanently locked; `receive()` rejects non-WETH senders, so there
+ * was no recovery path. This scenario arises in practice when the SDK generates a multicall mixing add and remove
+ * operations in a single transaction.
  */
 contract CompositeLiquidityRouterEthTest is CompositeLiquidityRouterERC4626PoolTest {
     uint256 internal constant EXCESS_ETH = 1 ether;
