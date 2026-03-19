@@ -2,21 +2,20 @@
 
 pragma solidity ^0.8.24;
 
-import { Test } from "forge-std/Test.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
+import { WeightedBasePoolMathMock } from "../../../contracts/test/WeightedBasePoolMathMock.sol";
+import { WeightedPool8020Factory } from "../../../contracts/WeightedPool8020Factory.sol";
+import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
 import { WeightedPoolMock } from "../../../contracts/test/WeightedPoolMock.sol";
 import { WeightedMathMock } from "../../../contracts/test/WeightedMathMock.sol";
-import { WeightedBasePoolMathMock } from "../../../contracts/test/WeightedBasePoolMathMock.sol";
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
-import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
-import { WeightedPool8020Factory } from "../../../contracts/WeightedPool8020Factory.sol";
 
 /**
- * @dev This contract contains functions for deploying mocks and contracts related to the "WeightedPool". These functions should have support for reusing artifacts from the hardhat compilation.
+ * @dev This contract contains functions for deploying mocks and contracts related to the "WeightedPool".
+ * These functions should have support for reusing artifacts from the hardhat compilation.
  */
 contract WeightedPoolContractsDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
