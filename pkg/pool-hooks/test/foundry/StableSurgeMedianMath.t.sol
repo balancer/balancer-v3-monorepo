@@ -96,4 +96,26 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
         uint256 imbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
         assertEq(imbalance, expectedImbalance, "Imbalance is not correct");
     }
+
+    function testFindMedianDoesNotMutateCaller() public view {
+        // Deliberately unsorted descending array. After sorting ascending:
+        // - balances[0] would change from 4e18 to 1e18
+        // - balances[3] would change from 1e18 to 4e18
+        uint256[] memory balances = new uint256[](4);
+        balances[0] = 4e18;
+        balances[1] = 3e18;
+        balances[2] = 2e18;
+        balances[3] = 1e18;
+
+        uint256 expectedImbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
+
+        (uint256 imbalance, uint256 firstElement, uint256 lastElement) = stableSurgeMedianMathMock
+            .calculateImbalanceChecksMutation(balances);
+
+        assertEq(imbalance, expectedImbalance, "Wrong imbalance");
+
+        // If the copy protection works, the array inside the mock will still be in the original descending order.
+        assertEq(firstElement, 4e18, "First element was mutated (array sorted in place)");
+        assertEq(lastElement, 1e18, "Last element was mutated (array sorted in place)");
+    }
 }

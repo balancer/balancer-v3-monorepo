@@ -16,4 +16,15 @@ contract StableSurgeMedianMathMock {
     function absSub(uint256 a, uint256 b) public pure returns (uint256) {
         return StableSurgeMedianMath.absSub(a, b);
     }
+
+    function calculateImbalanceChecksMutation(
+        uint256[] memory balances
+    ) public pure returns (uint256 imbalance, uint256 firstElement, uint256 lastElement) {
+        imbalance = StableSurgeMedianMath.calculateImbalance(balances);
+
+        // Re-read balances after the call. With the copy, these must equal the values above.
+        // Without the copy, the array would be sorted ascending and both would change.
+        firstElement = balances[0];
+        lastElement = balances[balances.length - 1];
+    }
 }
