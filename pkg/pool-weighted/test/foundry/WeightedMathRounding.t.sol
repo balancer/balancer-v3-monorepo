@@ -4,14 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
+import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 
 contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
     using FixedPoint for uint256;

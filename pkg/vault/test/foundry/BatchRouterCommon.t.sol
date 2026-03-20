@@ -3,10 +3,6 @@
 pragma solidity ^0.8.24;
 
 import {
-    TransientEnumerableSet
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
-
-import {
     TransientStorageHelpers,
     AddressToUintMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";

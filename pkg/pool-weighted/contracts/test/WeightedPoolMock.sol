@@ -35,6 +35,11 @@ contract WeightedPoolMock is WeightedPool {
         _normalizedWeights[1] = newWeights[1];
     }
 
+    // Helper to trigger otherwise impossible conditions
+    function exposedGetNormalizedWeight(uint256 tokenIndex) external view returns (uint256) {
+        return _getNormalizedWeight(tokenIndex);
+    }
+
     function _getNormalizedWeight(uint256 tokenIndex) internal view override returns (uint256) {
         if (tokenIndex < _normalizedWeights.length) {
             return _normalizedWeights[tokenIndex];
