@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -13,8 +12,9 @@ library StableSurgeMedianMath {
     /**
      * @notice Calculate the imbalance of a set of balances relative to their median.
      * @dev Returns totalAbsDeviation / totalBalance, where deviation is measured from the median.
+     * NB: `balances` is mutated and unusable after this call: any access will revert.
      */
-    function calculateImbalance(uint256[] memory balances) internal pure returns (uint256) {
+    function calculateImbalance(uint256[] memory balances) internal pure returns (uint256 imbalance) {
         uint256 median = _findMedian(balances);
         uint256 totalBalance = 0;
         uint256 totalDiff = 0;
@@ -24,7 +24,16 @@ library StableSurgeMedianMath {
             totalDiff += absSub(balances[i], median);
         }
 
-        return totalDiff.divDown(totalBalance);
+        imbalance = totalDiff.divDown(totalBalance);
+
+        // Zero the length field in shared memory so any post-call access to balances reverts out-of-bounds.
+        // The array was sorted in place by _findMedian; this prevents callers from silently reading sorted values
+        // expecting the original order. Unlike `delete balances` (which only resets the local stack variable),
+        // `mstore` writes directly to the memory location both caller and callee share.
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            mstore(balances, 0)
+        }
     }
 
     /// @dev Returns the absolute difference of two uint256 values.
@@ -45,17 +54,12 @@ library StableSurgeMedianMath {
      */
     // solhint-disable-next-line private-vars-leading-underscore
     function _findMedian(uint256[] memory balances) internal pure returns (uint256) {
-        // We do not want to mutate the original balances array, so we copy it to a new array for sorting.
-        uint256[] memory sortedBalances = new uint256[](balances.length);
-        ScalingHelpers.copyToArray(balances, sortedBalances);
-
-        sortedBalances.sort();
-
-        uint256 mid = sortedBalances.length / 2;
-        if (sortedBalances.length % 2 == 0) {
-            return (sortedBalances[mid - 1] + sortedBalances[mid]) / 2;
+        balances.sort();
+        uint256 mid = balances.length / 2;
+        if (balances.length % 2 == 0) {
+            return (balances[mid - 1] + balances[mid]) / 2;
         } else {
-            return sortedBalances[mid];
+            return balances[mid];
         }
     }
 }
