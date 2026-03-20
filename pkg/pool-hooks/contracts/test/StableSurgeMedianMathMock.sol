@@ -10,7 +10,7 @@ contract StableSurgeMedianMathMock {
     }
 
     function findMedian(uint256[] memory sortedBalancesScaled18) public pure returns (uint256) {
-        return StableSurgeMedianMath.findMedian(sortedBalancesScaled18);
+        return StableSurgeMedianMath._findMedian(sortedBalancesScaled18);
     }
 
     function absSub(uint256 a, uint256 b) public pure returns (uint256) {
