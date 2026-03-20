@@ -2,10 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
-import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
+import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
 

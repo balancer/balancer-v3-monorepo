@@ -59,4 +59,6 @@ interface IVaultAdminMock {
     function manualBurnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) external;
 
     function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external;
+
+    function manualQueryModeBufferSharesIncreaseNonStatic(IERC4626 wrappedToken, address to, uint256 amount) external;
 }

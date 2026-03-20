@@ -11,7 +11,6 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { TimelockAuthorizerManagement } from "./TimelockAuthorizerManagement.sol";
-import { TimelockExecutionHelper } from "./TimelockExecutionHelper.sol";
 
 /// @notice See ITimelockAuthorizer.
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {

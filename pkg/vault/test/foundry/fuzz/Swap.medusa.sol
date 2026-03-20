@@ -4,16 +4,11 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
-import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
-
-import "../utils/BaseMedusaTest.sol";
+import { BaseMedusaTest } from "../utils/BaseMedusaTest.sol";
 
 contract SwapMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
@@ -115,6 +110,9 @@ contract SwapMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, balancesRaw[tokenIndex].mulDown(MAX_IN_RATIO));
+        uint256 maxIn = balancesRaw[tokenIndex].mulDown(MAX_IN_RATIO);
+        if (maxIn < MIN_SWAP_AMOUNT) return MIN_SWAP_AMOUNT;
+
+        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, maxIn);
     }
 }
