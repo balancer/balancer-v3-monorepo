@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -12,36 +13,18 @@ library StableSurgeMedianMath {
     /**
      * @notice Calculate the imbalance of a set of balances relative to their median.
      * @dev Returns totalAbsDeviation / totalBalance, where deviation is measured from the median.
-     *
-     * WARNING: This function deletes the `balances` array before returning. Any access to `balances` after this call
-     * will revert with an out-of-bounds error. This is intentional: `_findMedian` sorts the array in place, so the
-     * caller's array would be in an unexpected order after this call. Deleting it converts a potential silent bug
-     * (reading sorted values when expecting original order) into a revert.
-     *
-     * Callers must extract all needed values from `balances` before calling this function.
      */
-    function calculateImbalance(uint256[] memory balances) internal pure returns (uint256 imbalance) {
-        // Accumulate totals before calling _findMedian, which sorts balances in place. After _findMedian, the array
-        // is sorted (still valid for arithmetic), but we complete all reads here to make the deletion below safe.
-        uint256 totalBalance = 0;
-        uint256 length = balances.length;
-        for (uint256 i = 0; i < length; i++) {
-            totalBalance += balances[i];
-        }
-
+    function calculateImbalance(uint256[] memory balances) internal pure returns (uint256) {
         uint256 median = _findMedian(balances);
-
+        uint256 totalBalance = 0;
         uint256 totalDiff = 0;
-        for (uint256 i = 0; i < length; i++) {
+
+        for (uint256 i = 0; i < balances.length; i++) {
+            totalBalance += balances[i];
             totalDiff += absSub(balances[i], median);
         }
 
-        imbalance = totalDiff.divDown(totalBalance);
-
-        // Delete the array so that any future access to `balances` reverts out-of-bounds.
-        // This prevents callers from silently reading sorted values when they expect the original order.
-        // See function NatSpec for details.
-        delete balances;
+        return totalDiff.divDown(totalBalance);
     }
 
     /// @dev Returns the absolute difference of two uint256 values.
@@ -52,24 +35,27 @@ library StableSurgeMedianMath {
     }
 
     /**
-     * @dev Finds the median of `balances` by sorting the array in place.
+     * @notice Finds the median of `balances` by sorting the array in place.
+     * @dev For even-length arrays, it returns the average of the two middle elements. For odd-length arrays, it
+     * returns the middle element.
      *
      * WARNING: sorts `balances` in place. The caller's array is modified after this call. This function is internal
-     * with an underscore prefix to signal that external callers should not use it directly -- the mutation is
-     * surprising and the `delete` trap in `calculateImbalance` will not apply. Use `calculateImbalance` as the
-     * intended entry point.
-     *
-     * For even-length arrays returns the average of the two middle elements.
-     * For odd-length arrays returns the middle element.
+     * with an underscore prefix to signal that external callers should not use it directly. The intended entry point
+     * is `calculateImbalance`.
      */
     // solhint-disable-next-line private-vars-leading-underscore
     function _findMedian(uint256[] memory balances) internal pure returns (uint256) {
-        balances.sort();
-        uint256 mid = balances.length / 2;
-        if (balances.length % 2 == 0) {
-            return (balances[mid - 1] + balances[mid]) / 2;
+        // We do not want to mutate the original balances array, so we copy it to a new array for sorting.
+        uint256[] memory sortedBalances = new uint256[](balances.length);
+        ScalingHelpers.copyToArray(balances, sortedBalances);
+
+        sortedBalances.sort();
+
+        uint256 mid = sortedBalances.length / 2;
+        if (sortedBalances.length % 2 == 0) {
+            return (sortedBalances[mid - 1] + sortedBalances[mid]) / 2;
         } else {
-            return balances[mid];
+            return sortedBalances[mid];
         }
     }
 }
