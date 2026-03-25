@@ -19,6 +19,9 @@ interface IPoolInfo {
 
     /**
      * @notice Gets the raw data for the pool: tokens, token info, raw balances, and last live balances.
+     * @dev Note that this function is virtual in the default implementation contract, so that pools can override it to
+     * provide custom token info if necessary. For example, virtual balances in seedless LBPs.
+     *
      * @return tokens Pool tokens, sorted in token registration order
      * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in token registration order
      * @return balancesRaw Current native decimal balances of the pool tokens, sorted in token registration order
@@ -39,6 +42,9 @@ interface IPoolInfo {
      * @dev Note that live balances will not necessarily be accurate if the pool is in Recovery Mode.
      * Withdrawals in Recovery Mode do not make external calls (including those necessary for updating live balances),
      * so if there are withdrawals, raw and live balances will be out of sync until Recovery Mode is disabled.
+     *
+     * Note also that this function is virtual in the default implementation contract, so that pools can override it to
+     * provide custom token info if necessary. For example, virtual balances in seedless LBPs.
      *
      * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
