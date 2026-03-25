@@ -237,7 +237,7 @@ contract LBPoolTest is WeightedLBPTest {
         bool isSeedless = reserveTokenVirtualBalance > 0;
 
         vm.expectEmit();
-        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, false, isSeedless); // no migration
+        emit LBPoolFactory.WeightedLBPoolCreated(newPool, bob, DEFAULT_PROJECT_TOKENS_SWAP_IN, isSeedless);
 
         vm.expectEmit();
         emit BaseLBPFactory.LBPoolCreated(newPool, projectToken, reserveToken);
@@ -261,62 +261,6 @@ contract LBPoolTest is WeightedLBPTest {
 
     function testGetTrustedRouter() public view {
         assertEq(ILBPCommon(pool).getTrustedRouter(), address(router), "Wrong trusted router");
-    }
-
-    function testGetMigrationParams() public view {
-        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
-
-        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
-        assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
-        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
-        assertEq(data.migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
-        assertEq(data.migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
-    }
-
-    function testGetMigrationParamsWithMigration() public {
-        uint256 initBptLockDuration = 30 days;
-        uint256 initBptPercentageToMigrate = 50e16; // 50%
-        uint256 initNewWeightProjectToken = 60e16; // 60%
-        uint256 initNewWeightReserveToken = 40e16; // 40%
-
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            initBptLockDuration,
-            initBptPercentageToMigrate,
-            initNewWeightProjectToken,
-            initNewWeightReserveToken
-        );
-        initPool();
-
-        LBPoolImmutableData memory data = ILBPool(pool).getLBPoolImmutableData();
-
-        assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
-        assertEq(data.lockDurationAfterMigration, initBptLockDuration, "BPT lock duration mismatch");
-        assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
-        assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New project token weight mismatch");
-        assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
-
-        MigrationParams memory migrationParams = ILBPCommon(pool).getMigrationParameters();
-        assertEq(
-            migrationParams.lockDurationAfterMigration,
-            initBptLockDuration,
-            "BPT lock duration mismatch (params)"
-        );
-        assertEq(
-            migrationParams.bptPercentageToMigrate,
-            initBptPercentageToMigrate,
-            "Share to migrate mismatch (params)"
-        );
-        assertEq(
-            migrationParams.migrationWeightProjectToken,
-            initNewWeightProjectToken,
-            "New project token weight mismatch (params)"
-        );
-        assertEq(
-            migrationParams.migrationWeightReserveToken,
-            initNewWeightReserveToken,
-            "New reserve token weight mismatch (params)"
-        );
     }
 
     function testGetProjectToken() public view {
@@ -908,78 +852,6 @@ contract LBPoolTest is WeightedLBPTest {
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
-    }
-
-    function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            30 days, // BPT lock duration
-            50e16, // Share to migrate (50%)
-            60e16, // New weight for project token (60%)
-            40e16 // New weight for reserve token (40%)
-        );
-        initPool();
-
-        assertEq(ILBPCommon(pool).getMigrationRouter(), address(migrationRouter), "Wrong migration router");
-
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.prank(address(vault));
-        bool success = IHooks(pool).onBeforeRemoveLiquidity(
-            address(migrationRouter),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-
-        assertTrue(success, "onBeforeRemoveLiquidity should return true with migration router");
-    }
-
-    function testOnBeforeRemoveLiquidityWithMigrationRevertWithWrongRouter() public {
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            30 days, // BPT lock duration
-            50e16, // Share to migrate (50%)
-            60e16, // New weight for project token (60%)
-            40e16 // New weight for reserve token (40%)
-        );
-        initPool();
-
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.prank(address(vault));
-        bool success = IHooks(pool).onBeforeRemoveLiquidity(
-            address(router),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-
-        assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
-    }
-
-    function testInvalidMigrationWeight() public {
-        uint256 initBptLockDuration = 30 days;
-        uint256 initBptPercentageToMigrate = 50e16; // 50%
-        uint256 initNewWeightProjectToken = 1e16 - 1; // Just below minimum
-        uint256 initNewWeightReserveToken = 99e16 + 1; // Still totals to ONE
-
-        vm.expectRevert(LBPValidation.InvalidMigrationWeights.selector);
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            initBptLockDuration,
-            initBptPercentageToMigrate,
-            initNewWeightProjectToken,
-            initNewWeightReserveToken
-        );
     }
 
     /*******************************************************************************

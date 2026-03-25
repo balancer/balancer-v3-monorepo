@@ -68,11 +68,6 @@ struct LBPoolDynamicData {
  * @param startWeights Starting weights for the LBP, sorted in token registration order
  * @param endWeights Ending weights for the LBP, sorted in token registration order
  * @param reserveTokenVirtualBalance The reserve token virtual balance, in native decimals. Non-zero for seedless LBPs
- * @param migrationRouter The address of the router used for migration to a Weighted Pool after the sale
- * @param lockDurationAfterMigration The duration for which the BPT will be locked after migration
- * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
- * @param migrationWeightProjectToken The weight of the project token
- * @param migrationWeightReserveToken The weight of the reserve token
  */
 struct LBPoolImmutableData {
     // Common LBPool immutable parameters
@@ -87,12 +82,6 @@ struct LBPoolImmutableData {
     uint256[] startWeights;
     uint256[] endWeights;
     uint256 reserveTokenVirtualBalance;
-    // Migration parameters (if migrationRouter == address(0), the pool does not support migration).
-    address migrationRouter;
-    uint256 lockDurationAfterMigration;
-    uint256 bptPercentageToMigrate;
-    uint256 migrationWeightProjectToken;
-    uint256 migrationWeightReserveToken;
 }
 
 /// @notice Interface for standard LBPools - base LBP functions, plus immutable/dynamic field getters.

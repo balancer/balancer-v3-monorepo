@@ -11,20 +11,17 @@ import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/con
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
 import { WeightedPoolContractsDeployer } from "./WeightedPoolContractsDeployer.sol";
 import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
-import { LBPMigrationRouterDeployer } from "./LBPMigrationRouterDeployer.sol";
 import { LBPValidation } from "../../../contracts/lbp/LBPValidation.sol";
 
-abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, LBPMigrationRouterDeployer {
+abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
 
     uint256 public constant swapFee = 1e16; // 1%
 
     string public constant factoryVersion = "Factory v1";
     string public constant poolVersion = "Pool v1";
-    string public constant migrationRouterVersion = "Migration Router v1";
 
     uint256 internal constant TOKEN_COUNT = 2;
     uint32 internal constant DEFAULT_START_OFFSET = LBPValidation.INITIALIZATION_PERIOD;
@@ -54,7 +51,6 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
 
     BalancerContractRegistry internal balancerContractRegistry;
     WeightedPoolFactory internal weightedPoolFactory;
-    LBPMigrationRouterMock internal migrationRouter;
 
     function setUp() public virtual override {
         super.setUp();
@@ -98,9 +94,6 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
             "WeightedPool",
             address(weightedPoolFactory)
         );
-
-        migrationRouter = deployLBPMigrationRouterMock(balancerContractRegistry, migrationRouterVersion);
-        vm.label(address(migrationRouter), "LBP migration router");
     }
 
     function initPool() internal virtual override {
@@ -123,16 +116,6 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer, L
         uint32 startTime,
         uint32 endTime,
         bool blockProjectTokenSwapsIn
-    ) internal virtual returns (address newPool, bytes memory poolArgs) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function _createLBPoolWithMigration(
-        address poolCreator,
-        uint256 lockDurationAfterMigration,
-        uint256 bptPercentageToMigrate,
-        uint256 migrationWeightProjectToken,
-        uint256 migrationWeightReserveToken
     ) internal virtual returns (address newPool, bytes memory poolArgs) {
         // solhint-disable-previous-line no-empty-blocks
     }
