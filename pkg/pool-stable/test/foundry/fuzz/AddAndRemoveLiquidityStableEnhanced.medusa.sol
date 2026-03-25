@@ -107,14 +107,14 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         uint256[] memory aliceTokenBefore = _balancesOf(tokens, alice);
 
         medusa.prank(alice);
-        try router.addLiquidityProportional(address(pool), maxAmountsIn, exactBptAmountOut, false, bytes("")) returns (
-            uint256[] memory actualAmountsIn
-        ) {
-            _assertAmountsInAndBalances(tokens, balancesBefore, alice, aliceTokenBefore, actualAmountsIn);
-        } catch {
-            // Halt execution; this should never revert.
-            assert(false);
-        }
+        uint256[] memory actualAmountsIn = router.addLiquidityProportional(
+            address(pool),
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+        _assertAmountsInAndBalances(tokens, balancesBefore, alice, aliceTokenBefore, actualAmountsIn);
 
         uint256 aliceBptAfter = IERC20(address(pool)).balanceOf(alice);
         uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
@@ -196,28 +196,22 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         }
 
         medusa.prank(alice);
-        uint256 bptOut;
-        try router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes("")) returns (uint256 result) {
-            bptOut = result;
+        uint256 bptOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
+        // Verify BPT/accounting
+        uint256 aliceBptAfter = IERC20(address(pool)).balanceOf(alice);
+        uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
+        assert(bptOut > 0);
+        assert(aliceBptAfter - aliceBptBefore == bptOut);
+        assert(totalSupplyAfter - totalSupplyBefore == bptOut);
 
-            // Verify BPT/accounting
-            uint256 aliceBptAfter = IERC20(address(pool)).balanceOf(alice);
-            uint256 totalSupplyAfter = IERC20(address(pool)).totalSupply();
-            assert(bptOut > 0);
-            assert(aliceBptAfter - aliceBptBefore == bptOut);
-            assert(totalSupplyAfter - totalSupplyBefore == bptOut);
-
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            for (uint256 i = 0; i < tokens.length; i++) {
-                uint256 delta = aliceTokenBefore[i] - tokens[i].balanceOf(alice);
-                assert(delta == exactAmountsIn[i]);
-                assert(balancesAfter[i] - balancesBefore[i] == exactAmountsIn[i]);
-            }
-
-            _updateBptRateDecrease();
-        } catch {
-            return; // Guardrail reverts are expected, so just exit
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        for (uint256 i = 0; i < tokens.length; i++) {
+            uint256 delta = aliceTokenBefore[i] - tokens[i].balanceOf(alice);
+            assert(delta == exactAmountsIn[i]);
+            assert(balancesAfter[i] - balancesBefore[i] == exactAmountsIn[i]);
         }
+
+        _updateBptRateDecrease();
     }
 
     /**
@@ -247,17 +241,18 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         }
 
         medusa.prank(lp);
-        try router.removeLiquidityProportional(address(pool), bptIn, minAmountsOut, false, bytes("")) returns (
-            uint256[] memory amountsOut
-        ) {
-            // Verify accounting (pool/user deltas match returned amounts)
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            for (uint256 i = 0; i < tokens.length; i++) {
-                assert(tokens[i].balanceOf(lp) - lpTokenBefore[i] == amountsOut[i]);
-                assert(balancesBefore[i] - balancesAfter[i] == amountsOut[i]);
-            }
-        } catch {
-            return; // Guardrail reverts are expected, so just exit
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(pool),
+            bptIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+        // Verify accounting (pool/user deltas match returned amounts)
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        for (uint256 i = 0; i < tokens.length; i++) {
+            assert(tokens[i].balanceOf(lp) - lpTokenBefore[i] == amountsOut[i]);
+            assert(balancesBefore[i] - balancesAfter[i] == amountsOut[i]);
         }
 
         // Verify BPT burn accounting
@@ -292,28 +287,23 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         uint256 lpTokenBefore = tokens[tokenIndex].balanceOf(lp);
 
         medusa.prank(lp);
-        try
-            router.removeLiquiditySingleTokenExactOut(
-                address(pool),
-                lpBptBefore,
-                tokens[tokenIndex],
-                amountOut,
-                false,
-                bytes("")
-            )
-        returns (uint256 bptIn) {
-            // Verify accounting
-            uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
-            assert(lpBptBefore - lpBptAfter == bptIn);
+        uint256 bptIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            lpBptBefore,
+            tokens[tokenIndex],
+            amountOut,
+            false,
+            bytes("")
+        );
+        // Verify accounting
+        uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
+        assert(lpBptBefore - lpBptAfter == bptIn);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            assert(tokens[tokenIndex].balanceOf(lp) - lpTokenBefore == amountOut);
-            assert(balancesBefore[tokenIndex] - balancesAfter[tokenIndex] == amountOut);
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(tokens[tokenIndex].balanceOf(lp) - lpTokenBefore == amountOut);
+        assert(balancesBefore[tokenIndex] - balancesAfter[tokenIndex] == amountOut);
 
-            _updateBptRateDecrease();
-        } catch {
-            return; // Guardrail reverts are expected, so just exit
-        }
+        _updateBptRateDecrease();
     }
 
     /**
@@ -338,26 +328,22 @@ contract AddAndRemoveLiquidityStableEnhancedMedusa is BaseMedusaTest {
         uint256 lpTokenBefore = tokens[tokenIndex].balanceOf(lp);
 
         medusa.prank(lp);
-        try
-            router.removeLiquiditySingleTokenExactIn(
-                address(pool),
-                bptIn,
-                tokens[tokenIndex],
-                1, // Accept any amount out (vault reverts with 0 min out in this case)
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            // Verify accounting
-            uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
-            assert(lpBptBefore - lpBptAfter == bptIn);
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptIn,
+            tokens[tokenIndex],
+            1, // Accept any amount out (vault reverts with 0 min out in this case)
+            false,
+            bytes("")
+        );
+        // Verify accounting
+        uint256 lpBptAfter = IERC20(address(pool)).balanceOf(lp);
+        assert(lpBptBefore - lpBptAfter == bptIn);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            assert(tokens[tokenIndex].balanceOf(lp) - lpTokenBefore == amountOut);
-            assert(balancesBefore[tokenIndex] - balancesAfter[tokenIndex] == amountOut);
-        } catch {
-            return; // Guardrail reverts are expected, so just exit
-        }
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        assert(tokens[tokenIndex].balanceOf(lp) - lpTokenBefore == amountOut);
+        assert(balancesBefore[tokenIndex] - balancesAfter[tokenIndex] == amountOut);
+
         _updateBptRateDecrease();
     }
 
