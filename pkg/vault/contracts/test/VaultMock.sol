@@ -18,19 +18,18 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import { VaultStateLib, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "../lib/PoolConfigLib.sol";
+import { PoolConfigConst } from "../lib/PoolConfigConst.sol";
 import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { InputHelpersMock } from "./InputHelpersMock.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
-import { VaultExtension } from "../VaultExtension.sol";
-import { PoolConfigConst } from "../lib/PoolConfigConst.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
 import { Vault } from "../Vault.sol";
 

@@ -9,6 +9,10 @@ import { ERC6909 } from "@openzeppelin/contracts/token/ERC6909/draft-ERC6909.sol
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+
 /**
  * @notice Timelock for WeightedPool BPT created during an LBP migration.
  * @dev The migration router creates and initializes a new weighted pool upon completion of an LBP sale, sending the
@@ -21,7 +25,7 @@ import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
  * non-fungible tokens efficiently. ERC6909Metadata is an extension similar to ERC20Metadata that supports name,
  * symbol, and decimals.
  */
-contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
+contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /**
@@ -40,6 +44,9 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     /// @notice The caller has no balance of the locked BPT.
     error NoLockedBPT();
 
+    /// @notice The BPT address has already been locked; use withdrawBPT before locking again.
+    error AlreadyLocked(uint256 id);
+
     // The bptId is the numeric equivalent of the BPT address.
     mapping(uint256 bptId => uint256 unlockTimestamp) internal _unlockTimestamps;
 
@@ -47,7 +54,7 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
      * @notice Withdraw the locked tokens for the caller, and return the underlying BPT.
      * @param bptAddress The address of the BPT to withdraw
      */
-    function withdrawBPT(address bptAddress) public {
+    function withdrawBPT(address bptAddress) public nonReentrant {
         uint256 id = getId(bptAddress);
         uint256 amount = balanceOf(msg.sender, id);
         if (amount == 0) {
@@ -60,8 +67,9 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
             revert BPTStillLocked(unlockTimestamp);
         }
 
-        delete _unlockTimestamps[id];
         _burn(msg.sender, id, amount);
+
+        delete _unlockTimestamps[id];
 
         IERC20(bptAddress).safeTransfer(msg.sender, amount);
     }
@@ -85,9 +93,17 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
         return _unlockTimestamps[id];
     }
 
-    /// @dev Locks an amount of tokens, locked amount is represented as an ERC6909 token.
+    /**
+     * @notice Locks an amount of tokens; locked amount is represented as an ERC6909 token.
+     * @param bptAddress The address of the BPT being locked, which determines the ID of the lock token
+     * @param owner The address of the owner of the locked tokens
+     * @param amount The amount of tokens to lock
+     * @param duration The duration for which the tokens are locked, in seconds
+     */
     function _lockBPT(IERC20 bptAddress, address owner, uint256 amount, uint256 duration) internal {
         uint256 id = getId(address(bptAddress));
+
+        require(_unlockTimestamps[id] == 0, AlreadyLocked(id));
 
         // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + duration;
