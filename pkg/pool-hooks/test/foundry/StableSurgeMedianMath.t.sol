@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/StdError.sol";
+
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -95,5 +97,15 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
 
         uint256 imbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
         assertEq(imbalance, expectedImbalance, "Imbalance is not correct");
+    }
+
+    function testCalculateImbalanceMutationGuard() public {
+        uint256[] memory balances = new uint256[](MAX_TOKENS);
+        for (uint256 i = 0; i < MAX_TOKENS; i++) {
+            balances[i] = FixedPoint.ONE;
+        }
+
+        vm.expectRevert(stdError.indexOOBError); // out-of-bounds panic revert
+        stableSurgeMedianMathMock.calculateImbalanceAndAccessAfterward(balances);
     }
 }
