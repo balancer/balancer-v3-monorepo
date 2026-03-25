@@ -95,10 +95,7 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
         assert(amountOut > 0);
 
         (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-        uint256 invariantAfter = StableMath.computeInvariant(
-            AMPLIFICATION_PARAMETER * AMP_PRECISION,
-            balancesAfter
-        );
+        uint256 invariantAfter = StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balancesAfter);
 
         assert(invariantAfter >= invariantBefore);
 
