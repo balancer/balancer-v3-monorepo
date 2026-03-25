@@ -75,14 +75,23 @@ contract BatchRouterAddLiquidityTest is BaseVaultTest {
         paths[0].steps[1] = SwapPathStep({ pool: joinPool, tokenOut: IERC20(joinPool), isBuffer: false });
 
         uint256 bptBefore = IERC20(joinPool).balanceOf(lp);
+        uint256 daiBefore = IERC20(dai).balanceOf(lp);
 
         vm.prank(lp);
-        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, type(uint128).max, false, bytes(""));
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, type(uint128).max, false, bytes(""));
+
+        uint256 daiAfter = IERC20(dai).balanceOf(lp);
 
         assertGe(IERC20(joinPool).balanceOf(lp), bptBefore + EXACT_BPT_OUT, "lp did not receive BPT");
+        assertGt(pathAmountsIn.length, 0, "No pathAmountsIn");
         assertGt(pathAmountsIn[0], 0, "amountIn should be positive");
         assertEq(IERC20(joinPool).balanceOf(address(batchRouter)), 0, "router holds residual BPT");
         assertEq(weth.balanceOf(address(batchRouter)), 0, "router holds residual WETH");
+        assertEq(tokensIn.length, 1, "Wrong tokensIn length");
+        assertEq(address(tokensIn[0]), address(dai), "Wrong token in");
+        assertEq(amountsIn.length, 1, "Wrong amountsIn length");
+        assertEq(amountsIn[0], daiBefore - daiAfter, "Wrong amountsIn value");
     }
 
     // Path: WETH --[addLiquidity WETH--> BPT]--> BPT (single step)
@@ -108,12 +117,19 @@ contract BatchRouterAddLiquidityTest is BaseVaultTest {
         uint256 wethBefore = weth.balanceOf(lp);
 
         vm.prank(lp);
-        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, type(uint128).max, false, bytes(""));
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, type(uint128).max, false, bytes(""));
+
+        uint256 wethAfter = weth.balanceOf(lp);
 
         assertGe(IERC20(joinPool).balanceOf(lp), bptBefore + EXACT_BPT_OUT, "lp did not receive BPT");
+        assertGt(pathAmountsIn.length, 0, "No pathAmountsIn");
         assertGt(pathAmountsIn[0], 0, "amountIn should be positive");
-        assertLt(weth.balanceOf(lp), wethBefore, "lp WETH balance should decrease");
         assertEq(IERC20(joinPool).balanceOf(address(batchRouter)), 0, "router holds residual BPT");
         assertEq(weth.balanceOf(address(batchRouter)), 0, "router holds residual WETH");
+        assertEq(tokensIn.length, 1, "Wrong tokensIn length");
+        assertEq(address(tokensIn[0]), address(weth), "Wrong token in");
+        assertEq(amountsIn.length, 1, "Wrong amountsIn length");
+        assertEq(amountsIn[0], wethBefore - wethAfter, "Wrong amountsIn value");
     }
 }
