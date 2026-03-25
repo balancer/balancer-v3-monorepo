@@ -96,7 +96,6 @@ contract LBPoolFactory is BaseLBPFactory {
         // Emit type-specific event first.
         emit WeightedLBPoolCreated(pool, lbpCommonParams.owner, lbpCommonParams.blockProjectTokenSwapsIn, isSeedless);
 
-        // Emit common events via base contract helper.
-        _emitPoolCreatedEvents(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
+        emit LBPoolCreated(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
     }
 }

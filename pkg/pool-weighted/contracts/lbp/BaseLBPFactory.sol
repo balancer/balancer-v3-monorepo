@@ -111,19 +111,4 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
             liquidityManagement
         );
     }
-
-    /**
-     * @notice Emits common pool creation events in a consistent order.
-     * @dev This helper ensures all LBP factories emit events consistently:
-     * LBPoolCreated (with pool address and tokens)
-     *
-     * Derived factories should emit their type-specific event before calling this.
-     *
-     * @param pool The address of the newly created pool
-     * @param projectToken The project token address
-     * @param reserveToken The reserve token address
-     */
-    function _emitPoolCreatedEvents(address pool, IERC20 projectToken, IERC20 reserveToken) internal {
-        emit LBPoolCreated(pool, projectToken, reserveToken);
-    }
 }

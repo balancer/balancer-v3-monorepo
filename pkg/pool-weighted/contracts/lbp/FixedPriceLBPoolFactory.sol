@@ -102,7 +102,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
 
         pool = _create(abi.encode(lbpCommonParams, factoryParams, projectTokenRate), salt);
 
-        // Emit type-specific event first
+        // Emit type-specific event first.
         emit FixedPriceLBPoolCreated(
             pool,
             lbpCommonParams.owner,
@@ -111,8 +111,7 @@ contract FixedPriceLBPoolFactory is BaseLBPFactory {
             projectTokenRate
         );
 
-        // Emit common events via base helper
-        _emitPoolCreatedEvents(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
+        emit LBPoolCreated(pool, lbpCommonParams.projectToken, lbpCommonParams.reserveToken);
 
         _registerLBP(pool, lbpCommonParams, swapFeePercentage, poolCreator);
     }
