@@ -235,4 +235,11 @@ contract BaseMedusaTest is Test {
     function _create3(bytes memory constructorArgs, bytes memory bytecode, bytes32 salt) private returns (address) {
         return CREATE3.deploy(salt, abi.encodePacked(bytecode, constructorArgs), 0);
     }
+
+    function _maxLimitArray(uint256 length) internal pure returns (uint256[] memory limits) {
+        limits = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            limits[i] = MAX_UINT128;
+        }
+    }
 }
