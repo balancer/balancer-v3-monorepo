@@ -257,7 +257,8 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
             revert RemovingLiquidityNotAllowed();
         }
 
-        return _migrationRouter == address(0) || router == _migrationRouter;
+        // Allow removing liquidity pre-sale with router (e.g., to correct mistakes without forcing migration).
+        return block.timestamp < _startTime || _migrationRouter == address(0) || router == _migrationRouter;
     }
 
     /*******************************************************************************

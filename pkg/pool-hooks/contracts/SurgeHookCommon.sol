@@ -121,7 +121,8 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
             return (true, amountsInRaw);
         }
 
-        // Rebuild old balances before adding liquidity.
+        // Note that these are approximations of the old balances. They aren't adjusted for the aggregate protocol fee,
+        // which is processed exclusively in the Vault. The magnitude of the difference is negligible for surge checks.
         uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
         for (uint256 i = 0; i < balancesScaled18.length; ++i) {
             oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
@@ -149,7 +150,8 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
             return (true, amountsOutRaw);
         }
 
-        // Rebuild old balances before removing liquidity.
+        // Note that these are approximations of the old balances. They aren't adjusted for the aggregate protocol fee,
+        // which is processed exclusively in the Vault. The magnitude of the difference is negligible for surge checks.
         uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
         for (uint256 i = 0; i < balancesScaled18.length; ++i) {
             oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];

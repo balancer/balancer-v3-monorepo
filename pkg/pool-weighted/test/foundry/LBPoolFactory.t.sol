@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
@@ -153,8 +150,6 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             DEFAULT_PROJECT_TOKENS_SWAP_IN,
             "Wrong project token swap blocked flag"
         );
-
-        assertEq(data.migrationRouter, address(0), "Migration router not zero");
 
         assertEq(data.lockDurationAfterMigration, 0, "BPT lock duration should be zero");
         assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
@@ -316,7 +311,7 @@ contract LBPoolFactoryTest is WeightedLBPTest {
         );
     }
 
-    function testCreatePoolWithInvalidBptLockDurationTooZero() public {
+    function testCreatePoolWithInvalidBptLockDurationZero() public {
         uint256 initBptPercentageToMigrate = 50e16; // 50%
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%

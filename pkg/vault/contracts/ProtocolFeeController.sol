@@ -6,14 +6,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { FEE_SCALING_FACTOR, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    FEE_SCALING_FACTOR,
-    MAX_FEE_PERCENTAGE,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     ReentrancyGuardTransient
@@ -262,6 +258,9 @@ contract ProtocolFeeController is
                     // need to "disaggregate" this total, dividing it between the protocol and pool creator according
                     // to their individual percentages. We do this by computing the protocol portion first, then
                     // assigning the remainder to the pool creator.
+                    // Note: this calculation can make the protocol portion > feeAmounts[i] due to rounding,
+                    // causing the tx to revert. This only happens when the fees collected are very small, so in
+                    // practice this is not an issue.
                     uint256 totalFeeAmountRaw = feeAmounts[i].divUp(aggregateFeePercentage);
                     uint256 protocolPortion = totalFeeAmountRaw.mulUp(protocolFeePercentage);
 

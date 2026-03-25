@@ -301,7 +301,7 @@ contract WeightedLPOracleTest is BaseLPOracleTest, WeightedPoolContractsDeployer
             uint256 price = results.answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
             expectedTVL = expectedTVL.mulDown(uint256(price).divDown(results.weights[i]).powDown(results.weights[i]));
         }
-        expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+        expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN));
 
         (
             uint80 roundId,

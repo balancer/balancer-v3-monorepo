@@ -49,8 +49,8 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (`tokenOut` of the swap)
      * @param encodedMinAmountsOut The minimum amounts out for the swap, encoded as a 256-bit integer:
-     * - Upper 128 bits: the minimum amount of the target token to receive
-     * - Lower 128 bits: the minimum amount of the ERC4626 token to receive
+     * - Upper 128 bits: the minimum amount of the ERC4626 token to receive
+     * - Lower 128 bits: the minimum amount of the target token to receive
      * @param recipient The recipient of the swap proceeds
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */

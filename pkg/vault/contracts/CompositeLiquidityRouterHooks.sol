@@ -162,6 +162,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 params.minAmountsOut[i]
             );
         }
+
+        _returnEth(params.sender);
     }
 
     // ERC4626 Pool helper functions

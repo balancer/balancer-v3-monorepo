@@ -9,7 +9,10 @@
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
     "targetContracts": [
-      "AddAndRemoveLiquidityStableEnhancedMedusa"
+      "AddAndRemoveLiquidityStableMedusaTest",
+      "AddAndRemoveLiquidityStableEnhancedMedusa",
+      "SwapStableMedusaTest",
+      "SwapStableEnhancedPR1607Medusa"
     ],
     "predeployedContracts": {},
     "targetContractsBalances": [],
