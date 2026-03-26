@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
@@ -58,11 +57,10 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
 
     constructor(
         LBPCommonParams memory lbpCommonParams,
-        MigrationParams memory migrationParams,
         LBPParams memory lbpParams,
         FactoryParams memory factoryParams
     )
-        LBPCommon(lbpCommonParams, migrationParams, factoryParams.trustedRouter, migrationParams.migrationRouter)
+        LBPCommon(lbpCommonParams, factoryParams.trustedRouter)
         WeightedPool(
             _buildWeightedPoolParams(lbpCommonParams, lbpParams, factoryParams.poolVersion),
             factoryParams.vault
@@ -180,13 +178,6 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         if (_reserveTokenVirtualBalanceScaled18 > 0) {
             data.reserveTokenVirtualBalance = _toRaw(_reserveTokenVirtualBalanceScaled18, _reserveTokenScalingFactor);
         }
-
-        // Migration-related params, non-zero if the pool supports migration.
-        data.migrationRouter = _migrationRouter;
-        data.lockDurationAfterMigration = _lockDurationAfterMigration;
-        data.bptPercentageToMigrate = _bptPercentageToMigrate;
-        data.migrationWeightProjectToken = _migrationWeightProjectToken;
-        data.migrationWeightReserveToken = _migrationWeightReserveToken;
     }
 
     /// @inheritdoc ILBPool

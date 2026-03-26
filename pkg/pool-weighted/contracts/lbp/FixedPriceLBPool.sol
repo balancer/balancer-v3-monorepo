@@ -17,7 +17,6 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
-import { LBPValidation } from "./LBPValidation.sol";
 import { LBPCommon } from "./LBPCommon.sol";
 
 /**
@@ -57,12 +56,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         FactoryParams memory factoryParams,
         uint256 projectTokenRate
     )
-        LBPCommon(
-            lbpCommonParams,
-            _getEmptyMigrationParams(),
-            factoryParams.trustedRouter,
-            address(0) // no migration router
-        )
+        LBPCommon(lbpCommonParams, factoryParams.trustedRouter)
         BalancerPoolToken(factoryParams.vault, lbpCommonParams.name, lbpCommonParams.symbol)
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
@@ -76,11 +70,6 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         }
 
         _projectTokenRate = projectTokenRate;
-    }
-
-    // wake-disable-next-line missing-return
-    function _getEmptyMigrationParams() private pure returns (MigrationParams memory params) {
-        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IFixedPriceLBPool

@@ -649,16 +649,14 @@ abstract contract BatchRouterHooks is BatchRouterCommon {
 
         amountIn = stepAmountsIn[tokenIndex];
 
-        uint256 stepSettlementAmount = isLastStep ? stepExactAmountOut : amountIn;
-
         // The first step executed determines the outputs for the path, since this is given out.
         if (isFirstStep) {
-            // Instead of sending tokens back to the Vault, we can just discount it from whatever
-            // the Vault owes the sender to make one less transfer.
-            _currentSwapTokenOutAmounts().tSub(address(tokenOut), stepSettlementAmount);
+            // BPT was minted directly to sender; remove the full BPT amount from settlement tracking.
+            _currentSwapTokenOutAmounts().tSub(address(tokenOut), stepExactAmountOut);
         } else {
-            // If it's not the first step, BPT is minted to the Vault so we just get the credit.
-            _vault.settle(IERC20(pool), stepSettlementAmount);
+            // BPT was minted to the Vault; settle the BPT credit.
+            // Use stepExactAmountOut as the hint since that is the actual BPT minted.
+            _vault.settle(IERC20(pool), stepExactAmountOut);
         }
 
         if (isLastStep) {

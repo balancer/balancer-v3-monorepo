@@ -383,7 +383,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         if (poolData.poolConfigBits.shouldCallBeforeInitialize()) {
             HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
-            // The before hook is reentrant, and could have changed token rates.
+            // The before hook can call external contracts (e.g., rate providers or the pool itself), which could have
+            // changed token rates. It cannot re-enter any nonReentrant Vault function.
+            //
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
             poolData.reloadBalancesAndRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);

@@ -82,32 +82,26 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
         uint256 invariantBefore = StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balances);
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[tokenIndexIn],
-                tokens[tokenIndexOut],
-                amountIn,
-                0,
-                type(uint256).max,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut) {
-            assert(amountOut > 0);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[tokenIndexIn],
+            tokens[tokenIndexOut],
+            amountIn,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        assert(amountOut > 0);
 
-            (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
-            uint256 invariantAfter = StableMath.computeInvariant(
-                AMPLIFICATION_PARAMETER * AMP_PRECISION,
-                balancesAfter
-            );
+        (, , uint256[] memory balancesAfter, ) = vault.getPoolTokenInfo(address(pool));
+        uint256 invariantAfter = StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balancesAfter);
 
-            assertGe(invariantAfter, invariantBefore, "Invariant decreased after swap (ExactIn)");
+        assert(invariantAfter >= invariantBefore);
 
-            if (invariantAfter > lastKnownInvariant) {
-                lastKnownInvariant = invariantAfter;
-            }
-        } catch {}
+        if (invariantAfter > lastKnownInvariant) {
+            lastKnownInvariant = invariantAfter;
+        }
     }
 
     function roundTripSwap(uint256 amountIn, uint256 startTokenIndex) external {
@@ -120,41 +114,35 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         medusa.prank(alice);
-        try
-            router.swapSingleTokenExactIn(
-                address(pool),
-                tokens[startTokenIndex],
-                tokens[otherTokenIndex],
-                amountIn,
-                0,
-                type(uint256).max,
-                false,
-                bytes("")
-            )
-        returns (uint256 amountOut1) {
-            if (amountOut1 < MIN_SWAP_AMOUNT) return;
+        uint256 amountOut1 = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[startTokenIndex],
+            tokens[otherTokenIndex],
+            amountIn,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        if (amountOut1 < MIN_SWAP_AMOUNT) return;
 
-            medusa.prank(alice);
-            try
-                router.swapSingleTokenExactIn(
-                    address(pool),
-                    tokens[otherTokenIndex],
-                    tokens[startTokenIndex],
-                    amountOut1,
-                    0,
-                    type(uint256).max,
-                    false,
-                    bytes("")
-                )
-            returns (uint256 amountOut2) {
-                if (amountOut2 > amountIn) {
-                    uint256 profit = amountOut2 - amountIn;
-                    if (profit > maxRoundTripProfit) {
-                        maxRoundTripProfit = profit;
-                    }
-                }
-            } catch {}
-        } catch {}
+        medusa.prank(alice);
+        uint256 amountOut2 = router.swapSingleTokenExactIn(
+            address(pool),
+            tokens[otherTokenIndex],
+            tokens[startTokenIndex],
+            amountOut1,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        if (amountOut2 > amountIn) {
+            uint256 profit = amountOut2 - amountIn;
+            if (profit > maxRoundTripProfit) {
+                maxRoundTripProfit = profit;
+            }
+        }
     }
 
     /***************************************************************************
@@ -163,12 +151,8 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
 
     function property_invariantNonDecreasing() external view returns (bool) {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        try this.externalComputeInvariant(balances) returns (uint256 currentInvariant) {
-            return currentInvariant >= lastKnownInvariant;
-        } catch {
-            return true;
-        }
+        uint256 currentInvariant = StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balances);
+        return currentInvariant >= lastKnownInvariant;
     }
 
     function property_noRoundTripProfit() external view returns (bool) {
@@ -210,9 +194,5 @@ contract SwapStableEnhancedPR1607Medusa is BaseMedusaTest {
     function _boundValue(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
         if (max <= min) return min;
         return min + (x % (max - min + 1));
-    }
-
-    function externalComputeInvariant(uint256[] memory balances) external pure returns (uint256) {
-        return StableMath.computeInvariant(AMPLIFICATION_PARAMETER * AMP_PRECISION, balances);
     }
 }
