@@ -233,6 +233,11 @@ interface IHooks {
      * @dev Called if the `shouldCallComputeDynamicSwapFee` flag is set in the configuration. Hook contracts should use
      * the `onlyVault` modifier to guarantee this is only called by the Vault.
      *
+     * Note that the minimum swap fees set by pools (e.g., weighted and stable) represent an important security
+     * guardrail against attacks employing flash loans and approximations resulting from rounding. Setting a dynamic
+     * fee lower than the minimum could expose pools to these attacks, and should be done with extreme caution, and
+     * only with a deep understanding of the attack vectors and additional safeguards in place.
+     *
      * @param params Swap parameters (see PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the Vault (poolData, token config, etc.)
      * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage, for reference

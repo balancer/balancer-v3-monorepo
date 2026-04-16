@@ -6,7 +6,7 @@ test = 'test/foundry'
 ffi = true
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/', '../../pkg']
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read", path = "artifacts/"}]
 remappings = [
     'vault/=../../pkg/vault/',
     'pool-weighted/=../../pkg/pool-weighted/',
@@ -22,7 +22,7 @@ gas_reports = ["Router", "Vault", "WeightedPool"]
 optimizer = true
 optimizer_runs = 9999
 via_ir = true
-solc_version = '0.8.26'
+solc_version = '0.8.27'
 auto_detect_solc = false
 evm_version = 'cancun'
 ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size

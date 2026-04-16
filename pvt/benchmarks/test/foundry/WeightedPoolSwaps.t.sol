@@ -99,6 +99,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
             false,
             bytes32(uint256(1))
         );
+        weightedPool = WeightedPool(newPool);
 
         uint256[] memory minTokenBalances = MinTokenBalanceLib.computeMinTokenBalances(tokenConfig);
 
