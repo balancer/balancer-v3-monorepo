@@ -31,6 +31,20 @@ jobs:
           name: built-contracts
           path: pkg/
 
+  slither:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Install Slither
+        run: yarn slither-install
+      - name: Run Slither
+        run: yarn slither
+        # Report the existing Slither baseline in CI without blocking unrelated PRs.
+        continue-on-error: true
+
   test-forge-vault:
     runs-on: ubuntu-latest
     needs: lint-and-build
