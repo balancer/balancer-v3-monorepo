@@ -83,7 +83,8 @@ contract LBPoolFactoryTest is WeightedLBPTest {
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            blockProjectTokenSwapsIn: true
+            blockProjectTokenSwapsIn: true,
+            maxReserveTokenRaised: 0
         });
 
         // Create LBP params with owner set to zero address

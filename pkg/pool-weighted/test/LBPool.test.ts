@@ -117,6 +117,7 @@ describe('LBPool', function () {
       startTime,
       endTime,
       blockProjectTokenSwapsIn,
+      maxReserveTokenRaised: 0n,
     };
 
     const lbpParams = {
