@@ -5435,12 +5435,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"handlebars@npm:^4.0.1":
-  version: 4.7.7
-  resolution: "handlebars@npm:4.7.7"
+"handlebars@npm:^4.7.9":
+  version: 4.7.9
+  resolution: "handlebars@npm:4.7.9"
   dependencies:
     minimist: "npm:^1.2.5"
-    neo-async: "npm:^2.6.0"
+    neo-async: "npm:^2.6.2"
     source-map: "npm:^0.6.1"
     uglify-js: "npm:^3.1.4"
     wordwrap: "npm:^1.0.0"
@@ -5449,7 +5449,7 @@ __metadata:
       optional: true
   bin:
     handlebars: bin/handlebars
-  checksum: 10/617b1e689b7577734abc74564bdb8cdaddf8fd48ce72afdb489f426e9c60a7d6ee2a2707c023720c4059070128243c948bded8f2716e4543378033e3971b85ea
+  checksum: 10/e755433d652e8a15fc02f83d7478e652359e7a4d354c4328818853ed4f8a39d4a09e1d22dad3c7213c5240864a65b3c840970b8b181745575dd957dd258f2b8d
   languageName: node
   linkType: hard
 
@@ -7161,7 +7161,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"neo-async@npm:^2.6.0":
+"neo-async@npm:^2.6.2":
   version: 2.6.2
   resolution: "neo-async@npm:2.6.2"
   checksum: 10/1a7948fea86f2b33ec766bc899c88796a51ba76a4afc9026764aedc6e7cde692a09067031e4a1bf6db4f978ccd99e7f5b6c03fe47ad9865c3d4f99050d67e002
@@ -8425,19 +8425,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sha.js@npm:^2.4.0, sha.js@npm:^2.4.8":
-  version: 2.4.11
-  resolution: "sha.js@npm:2.4.11"
-  dependencies:
-    inherits: "npm:^2.0.1"
-    safe-buffer: "npm:^5.0.1"
-  bin:
-    sha.js: ./bin.js
-  checksum: 10/d833bfa3e0a67579a6ce6e1bc95571f05246e0a441dd8c76e3057972f2a3e098465687a4369b07e83a0375a88703577f71b5b2e966809e67ebc340dbedb478c7
-  languageName: node
-  linkType: hard
-
-"sha.js@npm:^2.4.11":
+"sha.js@npm:2.4.12":
   version: 2.4.12
   resolution: "sha.js@npm:2.4.12"
   dependencies:
@@ -9142,16 +9130,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.5.3":
-  version: 7.5.4
-  resolution: "tar@npm:7.5.4"
+"tar@npm:^7.5.11":
+  version: 7.5.15
+  resolution: "tar@npm:7.5.15"
   dependencies:
     "@isaacs/fs-minipass": "npm:^4.0.0"
     chownr: "npm:^3.0.0"
     minipass: "npm:^7.1.2"
     minizlib: "npm:^3.1.0"
     yallist: "npm:^5.0.0"
-  checksum: 10/c6a2b93a1417220de5ac613eb87b46a75e85817952b8198b5b98b26158276134267a348d9d579332cc59188e5131215fc3831022e5b06d43ccbbf10eef5daee3
+  checksum: 10/b4cb6acd822159867f81ebda8d765c6941ec8292f1cf2f870d3713f4933c14bf0ed7bf4a92338143c31e8815ca0a1fdd62aa03ddb48a42ae187f7ef696583ffe
   languageName: node
   linkType: hard
 
