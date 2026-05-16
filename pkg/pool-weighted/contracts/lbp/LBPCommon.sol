@@ -48,6 +48,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     // the `tokenIn` of a swap.
     bool internal immutable _blockProjectTokenSwapsIn;
 
+    // Optional cap on gross reserve token proceeds, stored in scaled18 for precise accounting.
+    uint256 internal immutable _maxReserveTokenRaisedScaled18;
+    uint256 internal immutable _reserveTokenScalingFactorCommon;
+    uint256 internal _reserveTokenRaisedScaled18;
+
     /// @notice Swaps are disabled except during the sale (i.e., between and start and end times).
     error SwapsDisabled();
 
@@ -84,6 +89,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         _endTime = lbpCommonParams.endTime;
 
         _blockProjectTokenSwapsIn = lbpCommonParams.blockProjectTokenSwapsIn;
+        _reserveTokenScalingFactorCommon = _computeScalingFactor(lbpCommonParams.reserveToken);
+        _maxReserveTokenRaisedScaled18 = _toScaled18(
+            lbpCommonParams.maxReserveTokenRaised,
+            _reserveTokenScalingFactorCommon
+        );
 
         (_projectTokenIndex, _reserveTokenIndex) = lbpCommonParams.projectToken < lbpCommonParams.reserveToken
             ? (0, 1)
@@ -120,6 +130,19 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         return _isSwapEnabled();
     }
 
+    /// @inheritdoc ILBPCommon
+    function getReserveTokenRaised() external view returns (uint256, uint256) {
+        return (_toRaw(_reserveTokenRaisedScaled18, _reserveTokenScalingFactorCommon), _reserveTokenRaisedScaled18);
+    }
+
+    /// @inheritdoc ILBPCommon
+    function getMaxReserveTokenRaised() external view returns (uint256, uint256) {
+        return (
+            _toRaw(_maxReserveTokenRaisedScaled18, _reserveTokenScalingFactorCommon),
+            _maxReserveTokenRaisedScaled18
+        );
+    }
+
     /*******************************************************************************
                                       Pool Hooks
     *******************************************************************************/
@@ -154,13 +177,16 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
      * @dev For each flag set to true, the Vault will call the corresponding hook.
      * @return hookFlags Flags indicating which hooks are supported for LBPs
      */
-    function getHookFlags() public pure virtual override returns (HookFlags memory hookFlags) {
+    function getHookFlags() public view virtual override returns (HookFlags memory hookFlags) {
         // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
         hookFlags.shouldCallBeforeInitialize = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
 
         // Required to enforce the liquidity can only be withdrawn after the end of the sale.
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
+
+        // Optional cap enforcement on gross reserve proceeds is handled after the swap settles.
+        hookFlags.shouldCallAfterSwap = _maxReserveTokenRaisedScaled18 > 0;
     }
 
     /**
@@ -223,7 +249,26 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     *******************************************************************************/
 
     function _isSwapEnabled() internal view returns (bool) {
-        return block.timestamp >= _startTime && block.timestamp <= _endTime;
+        return
+            block.timestamp >= _startTime && block.timestamp <= _endTime &&
+            (_maxReserveTokenRaisedScaled18 == 0 || _reserveTokenRaisedScaled18 < _maxReserveTokenRaisedScaled18);
+    }
+
+    function _onAfterSwap(AfterSwapParams calldata params) internal returns (uint256) {
+        if (_maxReserveTokenRaisedScaled18 == 0 || address(params.tokenIn) != address(_reserveToken)) {
+            return params.amountCalculatedRaw;
+        }
+
+        uint256 updatedReserveTokenRaisedScaled18 = _reserveTokenRaisedScaled18 + params.amountInScaled18;
+        if (updatedReserveTokenRaisedScaled18 > _maxReserveTokenRaisedScaled18) {
+            revert MaxReserveTokenRaisedExceeded(
+                updatedReserveTokenRaisedScaled18,
+                _maxReserveTokenRaisedScaled18
+            );
+        }
+
+        _reserveTokenRaisedScaled18 = updatedReserveTokenRaisedScaled18;
+        return params.amountCalculatedRaw;
     }
 
     function _computeScalingFactor(IERC20 token) internal view returns (uint256) {

@@ -138,7 +138,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: false
+            blockProjectTokenSwapsIn: false,
+            maxReserveTokenRaised: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({
@@ -163,7 +164,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: false
+            blockProjectTokenSwapsIn: false,
+            maxReserveTokenRaised: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({
@@ -660,6 +662,76 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertFalse(flags.shouldCallAfterRemoveLiquidity, "shouldCallAfterRemoveLiquidity should be false");
     }
 
+    function testGetHookFlagsWithMaxReserveTokenRaised() public {
+        (address cappedPool, ) = _createFixedPriceLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_RATE,
+            poolInitAmount / 10
+        );
+
+        HookFlags memory flags = IHooks(cappedPool).getHookFlags();
+        assertTrue(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be true when cap is configured");
+    }
+
+    function testReserveTokenRaisedTracksSuccessfulSwap() public {
+        uint256 cap = poolInitAmount / 10;
+        uint256 swapAmount = cap / 2;
+
+        (address cappedPool, ) = _createFixedPriceLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_RATE,
+            cap
+        );
+
+        vm.startPrank(bob);
+        _initPool(cappedPool, _computeInitAmounts(), 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(cappedPool, reserveToken, projectToken, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        (uint256 reserveTokenRaised, ) = ILBPCommon(cappedPool).getReserveTokenRaised();
+        assertEq(reserveTokenRaised, swapAmount, "Wrong reserve token raised amount");
+        assertTrue(ILBPCommon(cappedPool).isSwapEnabled(), "Swaps should remain enabled below the cap");
+    }
+
+    function testReserveTokenRaisedCapExceededReverts() public {
+        uint256 cap = poolInitAmount / 10;
+
+        (address cappedPool, ) = _createFixedPriceLBPool(
+            address(0),
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            DEFAULT_RATE,
+            cap
+        );
+
+        vm.startPrank(bob);
+        _initPool(cappedPool, _computeInitAmounts(), 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBPCommon.MaxReserveTokenRaisedExceeded.selector, cap + 1, cap));
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            cappedPool,
+            reserveToken,
+            projectToken,
+            cap + 1,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
     function testOnBeforeInitializeAfterStartTime() public {
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
 
@@ -821,7 +893,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
+            blockProjectTokenSwapsIn: true, // all fixed price LBPs are "buy-only"
+            maxReserveTokenRaised: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({
@@ -878,7 +951,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint32 startTime,
         uint32 endTime
     ) internal returns (address newPool, bytes memory poolArgs) {
-        return _createFixedPriceLBPool(address(0), startTime, endTime, DEFAULT_RATE);
+        return _createFixedPriceLBPool(address(0), startTime, endTime, DEFAULT_RATE, 0);
     }
 
     function _createFixedPriceLBPool(
@@ -886,6 +959,16 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         uint32 startTime,
         uint32 endTime,
         uint256 projectTokenRate
+    ) internal returns (address newPool, bytes memory poolArgs) {
+        return _createFixedPriceLBPool(poolCreator, startTime, endTime, projectTokenRate, 0);
+    }
+
+    function _createFixedPriceLBPool(
+        address poolCreator,
+        uint32 startTime,
+        uint32 endTime,
+        uint256 projectTokenRate,
+        uint256 maxReserveTokenRaised
     ) internal returns (address newPool, bytes memory poolArgs) {
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "FixedPriceLBPool",
@@ -895,7 +978,8 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: true // all fixed price LBPs are "buy-only"
+            blockProjectTokenSwapsIn: true, // all fixed price LBPs are "buy-only"
+            maxReserveTokenRaised: maxReserveTokenRaised
         });
 
         FactoryParams memory factoryParams = FactoryParams({
