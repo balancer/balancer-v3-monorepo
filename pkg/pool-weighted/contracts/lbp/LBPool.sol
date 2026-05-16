@@ -266,6 +266,11 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
         return calculatedAmountScaled18;
     }
 
+    /// @notice Updates cap accounting after swaps when a reserve-raise cap is configured.
+    function onAfterSwap(AfterSwapParams calldata params) public override onlyVault returns (bool, uint256) {
+        return (true, _onAfterSwap(params));
+    }
+
     /**
      * @inheritdoc LBPCommon
      * @dev Ensure the owner is initializing the pool, and ensure seedless LBPs do not accept reserve tokens.

@@ -102,6 +102,31 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
         uint32 endTime,
         bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
+        return
+            _createLBPoolWithCustomWeightsAndCap(
+                poolCreator,
+                projectTokenStartWeight,
+                reserveTokenStartWeight,
+                projectTokenEndWeight,
+                reserveTokenEndWeight,
+                startTime,
+                endTime,
+                blockProjectTokenSwapsIn,
+                0
+            );
+    }
+
+    function _createLBPoolWithCustomWeightsAndCap(
+        address poolCreator,
+        uint256 projectTokenStartWeight,
+        uint256 reserveTokenStartWeight,
+        uint256 projectTokenEndWeight,
+        uint256 reserveTokenEndWeight,
+        uint32 startTime,
+        uint32 endTime,
+        bool blockProjectTokenSwapsIn,
+        uint256 maxReserveTokenRaised
+    ) internal returns (address newPool, bytes memory poolArgs) {
         LBPCommonParams memory lbpCommonParams = LBPCommonParams({
             name: "LBPool",
             symbol: "LBP",
@@ -110,7 +135,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn,
+            maxReserveTokenRaised: maxReserveTokenRaised
         });
 
         LBPParams memory lbpParams = LBPParams({
@@ -154,7 +180,8 @@ abstract contract WeightedLBPTest is BaseLBPTest, LBPoolContractsDeployer {
             reserveToken: reserveTokenNon18,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn,
+            maxReserveTokenRaised: 0
         });
 
         LBPParams memory lbpParams = LBPParams({

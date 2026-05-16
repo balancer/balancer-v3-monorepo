@@ -114,7 +114,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            blockProjectTokenSwapsIn: true
+            blockProjectTokenSwapsIn: true,
+            maxReserveTokenRaised: 0
         });
 
         vm.expectRevert(LBPValidation.InvalidOwner.selector);
@@ -207,7 +208,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            blockProjectTokenSwapsIn: false
+            blockProjectTokenSwapsIn: false,
+            maxReserveTokenRaised: 0
         });
 
         uint256 salt = _saltCounter++;
@@ -225,7 +227,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
             endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
-            blockProjectTokenSwapsIn: false
+            blockProjectTokenSwapsIn: false,
+            maxReserveTokenRaised: 0
         });
 
         uint256 salt = _saltCounter++;
@@ -254,7 +257,8 @@ contract FixedPriceLBPoolFactoryTest is BaseLBPTest, FixedPriceLBPoolContractsDe
             reserveToken: reserveToken,
             startTime: startTime,
             endTime: endTime,
-            blockProjectTokenSwapsIn: true // Fixed price LBPs are always "buy-only"
+            blockProjectTokenSwapsIn: true, // Fixed price LBPs are always "buy-only"
+            maxReserveTokenRaised: 0
         });
 
         FactoryParams memory factoryParams = FactoryParams({

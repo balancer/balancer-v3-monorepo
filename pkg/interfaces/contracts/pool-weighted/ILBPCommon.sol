@@ -21,6 +21,7 @@ import { IVault } from "../vault/IVault.sol";
  * @param startTime The timestamp at the beginning of the sale - initialization/funding must occur before this time
  * @param endTime the timestamp at the end of the sale - withdrawal of proceeds becomes possible after this time
  * @param blockProjectTokenSwapsIn If set, the pool only supports one-way "token distribution"
+ * @param maxReserveTokenRaised Optional cap on gross reserve token proceeds, in native reserve token decimals
  */
 struct LBPCommonParams {
     string name;
@@ -31,6 +32,7 @@ struct LBPCommonParams {
     uint256 startTime;
     uint256 endTime;
     bool blockProjectTokenSwapsIn;
+    uint256 maxReserveTokenRaised;
 }
 
 /**
@@ -98,4 +100,24 @@ interface ILBPCommon is IBasePool {
      * @return isSwapEnabled True if the sale is in progress
      */
     function isSwapEnabled() external view returns (bool isSwapEnabled);
+
+    /**
+     * @notice Returns the reserve token amount raised so far.
+     * @return reserveTokenRaised Amount raised in native reserve token decimals
+     * @return reserveTokenRaisedScaled18 Amount raised in 18-decimal scaling
+     */
+    function getReserveTokenRaised() external view returns (uint256 reserveTokenRaised, uint256 reserveTokenRaisedScaled18);
+
+    /**
+     * @notice Returns the configured cap on reserve token proceeds.
+     * @return maxReserveTokenRaised Cap in native reserve token decimals
+     * @return maxReserveTokenRaisedScaled18 Cap in 18-decimal scaling
+     */
+    function getMaxReserveTokenRaised()
+        external
+        view
+        returns (uint256 maxReserveTokenRaised, uint256 maxReserveTokenRaisedScaled18);
+
+    /// @notice Raised reserve token proceeds would exceed the configured cap.
+    error MaxReserveTokenRaisedExceeded(uint256 reserveTokenRaisedScaled18, uint256 maxReserveTokenRaisedScaled18);
 }

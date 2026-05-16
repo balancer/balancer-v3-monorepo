@@ -127,6 +127,11 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             : request.amountGivenScaled18.mulUp(_projectTokenRate);
     }
 
+    /// @notice Updates cap accounting after swaps when a reserve-raise cap is configured.
+    function onAfterSwap(AfterSwapParams calldata params) public override onlyVault returns (bool, uint256) {
+        return (true, _onAfterSwap(params));
+    }
+
     /**
      * @notice Compute the pool invariant.
      * @dev The invariant is: inv = projectBalance * projectTokenRate + reserveBalance.

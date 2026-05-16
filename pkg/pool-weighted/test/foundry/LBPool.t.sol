@@ -58,7 +58,8 @@ contract LBPoolTest is WeightedLBPTest {
             reserveToken: reserveToken,
             startTime: block.timestamp,
             endTime: block.timestamp + 1000,
-            blockProjectTokenSwapsIn: false
+            blockProjectTokenSwapsIn: false,
+            maxReserveTokenRaised: 0
         });
 
         LBPParams memory lbpParams = LBPParams({
@@ -732,6 +733,92 @@ contract LBPoolTest is WeightedLBPTest {
         assertFalse(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be false");
         assertFalse(flags.shouldCallAfterAddLiquidity, "shouldCallAfterAddLiquidity should be false");
         assertFalse(flags.shouldCallAfterRemoveLiquidity, "shouldCallAfterRemoveLiquidity should be false");
+    }
+
+    function testGetHookFlagsWithMaxReserveTokenRaised() public {
+        (address cappedPool, ) = _createLBPoolWithCustomWeightsAndCap(
+            address(0),
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            false,
+            poolInitAmount / 10
+        );
+
+        HookFlags memory flags = IHooks(cappedPool).getHookFlags();
+        assertTrue(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be true when cap is configured");
+    }
+
+    function testReserveTokenRaisedCapStopsSwaps() public {
+        uint256 cap = poolInitAmount / 10;
+        (address cappedPool, ) = _createLBPoolWithCustomWeightsAndCap(
+            address(0),
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            false,
+            cap
+        );
+
+        vm.startPrank(bob);
+        _initPool(cappedPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(cappedPool, reserveToken, projectToken, cap, 0, MAX_UINT256, false, bytes(""));
+
+        (uint256 reserveTokenRaised, ) = ILBPCommon(cappedPool).getReserveTokenRaised();
+        assertEq(reserveTokenRaised, cap, "Wrong reserve token raised amount");
+        assertFalse(ILBPCommon(cappedPool).isSwapEnabled(), "Swaps should be disabled once the cap is reached");
+
+        vm.expectRevert(LBPCommon.SwapsDisabled.selector);
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(cappedPool, reserveToken, projectToken, 1, 0, MAX_UINT256, false, bytes(""));
+    }
+
+    function testProjectTokenInSwapDoesNotIncreaseRaisedAmount() public {
+        uint256 cap = poolInitAmount;
+        (address cappedPool, ) = _createLBPoolWithCustomWeightsAndCap(
+            address(0),
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            false,
+            cap
+        );
+
+        vm.startPrank(bob);
+        _initPool(cappedPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            cappedPool,
+            projectToken,
+            reserveToken,
+            poolInitAmount / 20,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        (uint256 reserveTokenRaised, ) = ILBPCommon(cappedPool).getReserveTokenRaised();
+        assertEq(reserveTokenRaised, 0, "Project-token-in swaps must not count toward reserve raised");
+        assertTrue(ILBPCommon(cappedPool).isSwapEnabled(), "Swaps should remain enabled below the cap");
     }
 
     function testOnBeforeInitializeAfterStartTime() public {
