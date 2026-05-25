@@ -131,7 +131,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
-    function testManualUpdatePoolDataLiveBalancesAndRates() public {
+    function testManualUpdatePoolDataLiveBalancesAndRates__Fuzz(uint256 secondTokenRate, bool roundUp) public {
+        secondTokenRate = bound(secondTokenRate, 1, 100e18);
+
         PoolData memory poolData;
         poolData.tokens = new IERC20[](2);
         poolData.balancesRaw = new uint256[](2);
@@ -139,7 +141,6 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         poolData.balancesLiveScaled18 = new uint256[](2);
 
         address rateProvider = address(0xFF123);
-        uint256 secondTokenRate = 3e25;
 
         poolData.decimalScalingFactors = decimalScalingFactors;
 
@@ -148,39 +149,45 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         poolData.tokenInfo[1].tokenType = TokenType.WITH_RATE;
         poolData.tokenInfo[1].rateProvider = IRateProvider(rateProvider);
 
-        uint256[] memory tokenBalances = [uint256(1e18), 2e18].toMemoryArray();
+        uint256[] memory tokenBalances = [uint256(1e18 + 1), 2e18 + 1].toMemoryArray();
 
         IERC20[] memory defaultTokens = new IERC20[](2);
         defaultTokens[0] = dai;
         defaultTokens[1] = usdc;
         poolData.tokens[0] = dai;
         poolData.tokens[1] = usdc;
+        poolData.balancesRaw[0] = 1;
+        poolData.balancesRaw[1] = 2;
+        poolData.balancesLiveScaled18[0] = 3;
+        poolData.balancesLiveScaled18[1] = 4;
+        poolData.tokenRates[0] = 5;
+        poolData.tokenRates[1] = 6;
 
         // Live balances will be updated, so we just set them equal to the raw ones.
         vault.manualSetPoolTokensAndBalances(pool, defaultTokens, tokenBalances, tokenBalances);
 
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
-        poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
+        poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(
+            pool,
+            poolData,
+            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
+        );
 
-        // check _updateTokenRatesInPoolData is called.
+        // Check token rates are refreshed before live balances are recomputed.
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
         assertEq(poolData.tokenRates[1], secondTokenRate, "Unexpected tokenRates[1]");
 
-        // check balances
+        // Check raw balances are refreshed from storage.
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateRawAndLiveTokenBalancesInPoolData is called.
-        assertEq(
-            poolData.balancesLiveScaled18[0],
-            (poolData.balancesRaw[0] * poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
-            "Unexpected balancesLiveScaled18[0]"
-        );
-        assertEq(
-            poolData.balancesLiveScaled18[1],
-            (poolData.balancesRaw[1] * poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
-            "Unexpected balancesLiveScaled18[1]"
-        );
+        for (uint256 i = 0; i < 2; ++i) {
+            uint256 expectedLiveBalance = roundUp
+                ? (poolData.balancesRaw[i] * poolData.decimalScalingFactors[i]).mulUp(poolData.tokenRates[i])
+                : (poolData.balancesRaw[i] * poolData.decimalScalingFactors[i]).mulDown(poolData.tokenRates[i]);
+
+            assertEq(poolData.balancesLiveScaled18[i], expectedLiveBalance, "Unexpected balancesLiveScaled18");
+        }
     }
 
     function testSettle__Fuzz(uint256 initialReserves, uint256 addedReserves, uint256 settleHint) public {
