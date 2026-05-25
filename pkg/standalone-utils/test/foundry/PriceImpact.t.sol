@@ -113,4 +113,19 @@ contract PriceImpactTest is BaseVaultTest {
 
         vm.stopPrank();
     }
+
+    function testProportionalAddLiquidityHasZeroPriceImpact() public {
+        vm.startPrank(address(0), address(0));
+        uint256 snapshot = vm.snapshotState();
+
+        uint256 amountIn = poolInitAmount / 2;
+        uint256[] memory amountsIn = [amountIn, amountIn].toMemoryArray();
+
+        uint256 priceImpact = priceImpactHelper.calculateAddLiquidityUnbalancedPriceImpact(pool, amountsIn, address(0));
+        vm.revertToState(snapshot);
+
+        assertEq(priceImpact, 0, "proportional liquidity add should have no price impact");
+
+        vm.stopPrank();
+    }
 }

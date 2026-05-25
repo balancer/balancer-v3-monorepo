@@ -35,4 +35,8 @@ contract PriceImpactHelperMock is PriceImpactHelper {
     function maxNegativeIndex(int256[] memory array) external pure returns (uint256) {
         return _maxNegativeIndex(array);
     }
+
+    function countNonZero(int256[] memory array) external pure returns (uint256) {
+        return _countNonZero(array);
+    }
 }

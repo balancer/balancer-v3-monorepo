@@ -42,6 +42,11 @@ contract PriceImpactHelper is CallAndRevert {
             deltas[i] = proportionalAmountsOut[i].toInt256() - exactAmountsIn[i].toInt256();
         }
 
+        (bool hasPositiveDelta, bool hasNegativeDelta) = _hasPositiveAndNegative(deltas);
+        if (!hasPositiveDelta || !hasNegativeDelta) {
+            return 0;
+        }
+
         // query add liquidity for each delta, so we know how unbalanced each amount in is in terms of BPT
         int256[] memory deltaBPTs = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
@@ -53,7 +58,12 @@ contract PriceImpactHelper is CallAndRevert {
 
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
         // remaining delta is always negative, so by multiplying by -1 we get a positive number
-        uint256 delta = (-deltas[remainingDeltaIndex]).toUint256();
+        int256 remainingDelta = deltas[remainingDeltaIndex];
+        if (remainingDelta == 0) {
+            return 0;
+        }
+
+        uint256 delta = (-remainingDelta).toUint256();
         return delta.divDown(exactAmountsIn[remainingDeltaIndex]) / 2;
     }
 
@@ -182,54 +192,80 @@ contract PriceImpactHelper is CallAndRevert {
         int256[] memory deltaBPTs,
         address sender
     ) internal returns (uint256) {
+        uint256 nonZeroDeltaBPTs = _countNonZero(deltaBPTs);
+        if (nonZeroDeltaBPTs == 0) {
+            return 0;
+        }
+
         // Index of closest from 0 negative number in deltaBPTs array.
-        uint256 maxNegativeDeltaIndex = 0;
+        uint256 maxNegativeDeltaIndex = _maxNegativeIndex(deltaBPTs);
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
-        for (uint256 i = 0; i < deltas.length - 1; i++) {
+        for (uint256 i = 0; i < nonZeroDeltaBPTs - 1; i++) {
             // get minPositiveDeltaIndex and maxNegativeDeltaIndex
             uint256 minPositiveDeltaIndex = _minPositiveIndex(deltaBPTs);
             maxNegativeDeltaIndex = _maxNegativeIndex(deltaBPTs);
 
-            uint256 givenTokenIndex;
-            uint256 resultTokenIndex;
-            uint256 resultAmount;
-
             if (deltaBPTs[minPositiveDeltaIndex] < -deltaBPTs[maxNegativeDeltaIndex]) {
-                givenTokenIndex = minPositiveDeltaIndex;
-                resultTokenIndex = maxNegativeDeltaIndex;
-                resultAmount = _querySwapSingleTokenExactIn(
+                uint256 resultAmount = _querySwapSingleTokenExactIn(
                     pool,
-                    poolTokens[givenTokenIndex],
-                    poolTokens[resultTokenIndex],
-                    deltas[givenTokenIndex].toUint256(),
+                    poolTokens[minPositiveDeltaIndex],
+                    poolTokens[maxNegativeDeltaIndex],
+                    deltas[minPositiveDeltaIndex].toUint256(),
+                    sender
+                );
+
+                // Update deltas and deltaBPTs
+                deltas[minPositiveDeltaIndex] = 0;
+                deltaBPTs[minPositiveDeltaIndex] = 0;
+                deltas[maxNegativeDeltaIndex] += resultAmount.toInt256();
+                deltaBPTs[maxNegativeDeltaIndex] = _queryAddLiquidityUnbalancedForTokenDeltas(
+                    pool,
+                    maxNegativeDeltaIndex,
+                    deltas,
                     sender
                 );
             } else {
-                givenTokenIndex = maxNegativeDeltaIndex;
-                resultTokenIndex = minPositiveDeltaIndex;
-                resultAmount = _querySwapSingleTokenExactOut(
+                uint256 resultAmount = _querySwapSingleTokenExactOut(
                     pool,
-                    poolTokens[resultTokenIndex],
-                    poolTokens[givenTokenIndex],
-                    (-deltas[givenTokenIndex]).toUint256(),
+                    poolTokens[minPositiveDeltaIndex],
+                    poolTokens[maxNegativeDeltaIndex],
+                    (-deltas[maxNegativeDeltaIndex]).toUint256(),
+                    sender
+                );
+
+                // Update deltas and deltaBPTs
+                deltas[maxNegativeDeltaIndex] = 0;
+                deltaBPTs[maxNegativeDeltaIndex] = 0;
+                deltas[minPositiveDeltaIndex] += resultAmount.toInt256();
+                deltaBPTs[minPositiveDeltaIndex] = _queryAddLiquidityUnbalancedForTokenDeltas(
+                    pool,
+                    minPositiveDeltaIndex,
+                    deltas,
                     sender
                 );
             }
-
-            // Update deltas and deltaBPTs
-            deltas[givenTokenIndex] = 0;
-            deltaBPTs[givenTokenIndex] = 0;
-            deltas[resultTokenIndex] += resultAmount.toInt256();
-            deltaBPTs[resultTokenIndex] = _queryAddLiquidityUnbalancedForTokenDeltas(
-                pool,
-                resultTokenIndex,
-                deltas,
-                sender
-            );
         }
 
         return maxNegativeDeltaIndex;
+    }
+
+    function _countNonZero(int256[] memory array) internal pure returns (uint256 count) {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] != 0) {
+                count++;
+            }
+        }
+    }
+
+    function _hasPositiveAndNegative(int256[] memory array) internal pure returns (bool hasPositive, bool hasNegative) {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] > 0) {
+                hasPositive = true;
+            } else if (array[i] < 0) {
+                hasNegative = true;
+            }
+        }
     }
 
     // returns the index of the smallest positive integer in an array - i.e. [3, 2, -2, -3] returns 1

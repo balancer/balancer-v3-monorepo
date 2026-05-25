@@ -39,6 +39,31 @@ contract PriceImpactUnitTest is BaseVaultTest {
         assertEq(expectedIndex, minIndex, "expected min value index wrong");
     }
 
+    function testCountNonZero__Fuzz(int256[10] memory arrayRaw) public view {
+        int256[] memory array = new int256[](arrayRaw.length);
+        uint256 expectedCount = 0;
+
+        for (uint256 i = 0; i < arrayRaw.length; i++) {
+            array[i] = arrayRaw[i];
+            if (arrayRaw[i] != 0) {
+                expectedCount++;
+            }
+        }
+
+        assertEq(priceImpactHelper.countNonZero(array), expectedCount, "non-zero count is wrong");
+    }
+
+    function testZeroOutDeltasReturnsZeroForAllZeroDeltaBPTs() public {
+        int256[] memory deltas = new int256[](2);
+        int256[] memory deltaBPTs = new int256[](2);
+
+        uint256 remainingDeltaIndex = priceImpactHelper.zeroOutDeltas(pool, deltas, deltaBPTs, address(this));
+
+        assertEq(remainingDeltaIndex, 0, "remaining delta index is wrong");
+        assertEq(deltas[0], 0, "first delta changed");
+        assertEq(deltas[1], 0, "second delta changed");
+    }
+
     function testQueryAddLiquidityUnbalancedForTokenDeltas__Fuzz(
         int256[10] memory deltasRaw,
         uint256 length,
