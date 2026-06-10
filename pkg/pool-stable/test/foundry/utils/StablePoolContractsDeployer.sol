@@ -6,6 +6,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
+import { UnpausableStablePoolFactory } from "../../../contracts/UnpausableStablePoolFactory.sol";
 import { StablePoolFactory } from "../../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../../contracts/StablePool.sol";
 
@@ -49,6 +50,24 @@ contract StablePoolContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new StablePoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion);
+        }
+    }
+
+    function deployUnpausableStablePoolFactory(
+        IVault vault,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) internal returns (UnpausableStablePoolFactory) {
+        if (reusingArtifacts) {
+            return
+                UnpausableStablePoolFactory(
+                    deployCode(
+                        _computeStablePoolPath("UnpausableStablePoolFactory"),
+                        abi.encode(vault, factoryVersion, poolVersion)
+                    )
+                );
+        } else {
+            return new UnpausableStablePoolFactory(vault, factoryVersion, poolVersion);
         }
     }
 
