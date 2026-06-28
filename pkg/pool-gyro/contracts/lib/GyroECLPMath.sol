@@ -61,9 +61,9 @@ library GyroECLPMath {
     int256 internal constant _MAX_BALANCES = 1e34; // 1e16 in normal precision
     int256 internal constant _MAX_INVARIANT = 3e37; // 3e19 in normal precision
 
-    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
-    uint256 public constant MIN_INVARIANT_RATIO = 60e16; // 60%
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 public constant MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
     uint256 public constant MAX_INVARIANT_RATIO = 500e16; // 500%
 
     struct QParams {
