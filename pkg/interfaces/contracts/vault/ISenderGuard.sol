@@ -11,8 +11,14 @@ interface ISenderGuard {
     error SwapDeadline();
 
     /**
-     * @notice Get the first sender which initialized the call to Router.
-     * @return sender The address of the sender
+     * @notice Get the sender stored for the current Router operation.
+     * @dev Note that the stored value depends on the entry point. Execution entry points store the account that called
+     * the router. Query entry points store the address passed as their `sender` argument, which need not be the
+     * caller. Queries intentionally accept any address so that a quote can be requested for a third-party account.
+     * The consequence is that a hook that prices by sender identity will quote for the address passed in, and execute
+     * for the actual router caller.
+     *
+     * @return sender The address stored for the current operation
      */
     function getSender() external view returns (address sender);
 }
