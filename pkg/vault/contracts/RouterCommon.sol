@@ -312,11 +312,16 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
      * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
      * caller.
      *
-     * Any ETH sent to the Router outside of the WETH unwrapping mechanism would be forever locked inside the Router, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Router (such as being the recipient of
-     * an ETH swap, Pool exit or withdrawal, contract self-destruction, or receiving the block mining reward) will
-     * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
-     * to prevent user error.
+     * The Router is not meant to hold ETH between transactions, so this rejects transfers from anyone but the WETH
+     * contract. A user who sends ETH here by mistake keeps it, since the transfer reverts. This check only exists as
+     * an attempt to prevent user error.
+     *
+     * Two routes still leave a balance behind, and this check cannot stop either: delivery with no function call at
+     * all (contract self-destruction, or receiving the block mining reward), and value attached to a payable entry
+     * point that neither spends nor refunds it. Such a balance is not stuck, but it does not stay with whoever left
+     * it either. `_returnEth` sends the contract's entire balance, whatever its source, to the sender of the next
+     * operation that reaches it. Nothing else is affected, as no accounting entry is ever kept against a stray
+     * balance.
      */
     receive() external payable virtual {
         if (msg.sender != address(_weth)) {
