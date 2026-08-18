@@ -71,6 +71,48 @@ library BasePoolMath {
     }
 
     /**
+     * @notice Computes the proportional amounts of tokens to be deposited into the pool
+     * with rounding dust distribution to prevent accumulation errors.
+     * @dev This is an improved version that distributes rounding dust across tokens
+     * to prevent significant accumulation in multi-token pools (up to 64 tokens).
+     * Without this, each token rounds up independently, causing users to overpay.
+     *
+     * @param balances Array of current token balances in the pool
+     * @param bptTotalSupply Total supply of the pool tokens (BPT)
+     * @param bptAmountOut The amount of pool tokens that need to be minted
+     * @return amountsIn Array of amounts for each token to be deposited
+     */
+    function computeProportionalAmountsInWithDustDistribution(
+        uint256[] memory balances,
+        uint256 bptTotalSupply,
+        uint256 bptAmountOut
+    ) internal pure returns (uint256[] memory amountsIn) {
+        amountsIn = new uint256[](balances.length);
+        
+        // First pass: calculate amounts with rounding up
+        uint256 totalCalculated = 0;
+        for (uint256 i = 0; i < balances.length; ++i) {
+            amountsIn[i] = balances[i].mulDivUp(bptAmountOut, bptTotalSupply);
+            totalCalculated += amountsIn[i];
+        }
+        
+        // Calculate the ideal total (without rounding)
+        uint256 idealTotal = 0;
+        for (uint256 i = 0; i < balances.length; ++i) {
+            idealTotal += balances[i].mulDiv(bptAmountOut, bptTotalSupply);
+        }
+        
+        // If there's rounding dust, distribute it proportionally
+        if (totalCalculated > idealTotal && balances.length > 0) {
+            uint256 dust = totalCalculated - idealTotal;
+            // Reduce the last token's amount by the dust
+            if (amountsIn[balances.length - 1] >= dust) {
+                amountsIn[balances.length - 1] -= dust;
+            }
+        }
+    }
+
+    /**
      * @notice Computes the proportional amounts of tokens to be withdrawn from the pool.
      * @dev This function computes the amount of each token that will be withdrawn in exchange for burning
      * a specific amount of pool tokens (BPT). It ensures that the amounts of tokens withdrawn are proportional
