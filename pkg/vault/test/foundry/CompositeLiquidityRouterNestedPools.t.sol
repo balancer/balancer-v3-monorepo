@@ -2851,14 +2851,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         _wa6 = createERC4626("Wrapped USDC-6", "wa6", 6, usdc6Decimals);
 
         // The wrapper is created after `setUp` ran its approvals, so it needs its own.
-        for (uint256 i = 0; i < users.length; ++i) {
-            vm.startPrank(users[i]);
-            usdc6Decimals.approve(address(_wa6), type(uint256).max);
-            _wa6.approve(address(permit2), type(uint256).max);
-            permit2.approve(address(_wa6), address(router), type(uint160).max, type(uint48).max);
-            permit2.approve(address(_wa6), address(bufferRouter), type(uint160).max, type(uint48).max);
-            vm.stopPrank();
-        }
+        approveForWrapper(_wa6, usdc6Decimals);
 
         (_zeroLegChildPool, ) = _createPool([address(_wa6), address(waWETH)].toMemoryArray(), "zeroLegChildPool");
         (_zeroLegParentPool, ) = _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "zeroLegParentPool");
