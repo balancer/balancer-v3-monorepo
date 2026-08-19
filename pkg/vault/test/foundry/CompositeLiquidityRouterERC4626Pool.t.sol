@@ -2127,7 +2127,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         weth.transfer(address(wrapper), underlyingDelta);
     }
 
-    /// @dev Raises a wrapper's redeem rate to approximately `newRate`. Reverts if `newRate` is not above the current.
+    /**
+     * @dev Raises a wrapper's redeem rate to approximately `newRate`. Reverts if `newRate` is not above the current.
+     * `ERC4626TestToken.mockRate` is not usable here: it raises a rate by minting the underlying, and WETH cannot be
+     * minted, so this donates through `_donateUnderlying`, which handles a WETH-backed wrapper as well.
+     */
     function _raiseRedeemRate(ERC4626TestToken wrapper, uint256 newRate) internal {
         uint256 targetAssets = wrapper.totalSupply().mulDown(newRate);
         uint256 currentAssets = wrapper.totalAssets();
