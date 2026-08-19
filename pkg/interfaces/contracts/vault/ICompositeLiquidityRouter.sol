@@ -150,8 +150,11 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * token, and the withdrawal succeeds.
      *
      * This function does not perform recovery-mode withdrawal. The ordinary removal path is always taken, so the
-     * call reverts wherever that path would: when the pool or the Vault is paused, or when a rate provider or a pool
-     * hook fails. To withdraw in such a state, put the pool in Recovery Mode if it is not already
+     * call reverts wherever that path would: when the pool or the Vault is paused, when a rate provider or a pool
+     * hook fails, or when the burn is small enough that a token's share is below the Vault's minimum trade amount
+     * (`TradeAmountTooSmall`); the remedy there is to burn more. Pool hooks apply on this path, so where the pool
+     * enables hook-adjusted amounts, the amounts paid are the hook's; `Router.removeLiquidityRecovery` makes no
+     * hook calls at all. To withdraw in such a state, put the pool in Recovery Mode if it is not already
      * (`IVaultAdmin.enableRecoveryMode`, which is permissionless while the pool or the Vault is paused), call
      * `Router.removeLiquidityRecovery` for the pool's registered tokens, and redeem the ERC4626 shares directly
      * against each wrapper. Note that the recovery withdrawal takes no `wethIsEth`, so it pays WETH, not ETH.
@@ -274,7 +277,10 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      *
      * This function does not perform recovery-mode withdrawal. The ordinary removal path is always taken, for the
      * parent pool and for every child pool, so the call reverts wherever that path would: when any of those pools or
-     * the Vault is paused, or when a rate provider or a pool hook fails. To withdraw in such a state, unwind one
+     * the Vault is paused, when a rate provider or a pool hook fails, or when a burn is small enough that a token's
+     * share is below the Vault's minimum trade amount (`TradeAmountTooSmall`); the remedy there is to burn more.
+     * Each pool's hooks apply on this path, so where a pool enables hook-adjusted amounts, the amounts paid are the
+     * hook's; `Router.removeLiquidityRecovery` makes no hook calls at all. To withdraw in such a state, unwind one
      * level at a time, taking for each pool whichever path its own state allows: `Router.removeLiquidityProportional`
      * where the pool is healthy, or `Router.removeLiquidityRecovery` where it is not, preceded by
      * `IVaultAdmin.enableRecoveryMode` if that pool is not in Recovery Mode already (permissionless while it or the
