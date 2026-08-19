@@ -209,6 +209,11 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * underlying tokens pulled as input, and expected to appear in `tokensIn`. Otherwise, they will be treated as
      * regular tokens.
      *
+     * Here the caller names each amount, so an amount the Vault buffer will not wrap is reported as the Vault's own
+     * `WrapAmountTooSmall`, naming the token, and the remedy is to name a larger amount, or to leave that token out
+     * of `tokensToWrap` and pay it wrapped instead. The proportional operations report that condition differently
+     * only because there the amount comes from the pool and the caller cannot set it directly.
+     *
      * NB: Pools with "overlapping" tokens (i.e., both the parent and a child pool contain one or more of the tokens in
      * `tokensIn`), are not supported! The gas cost to explicitly detect this rare edge case would be prohibitive, so
      * behavior in this case is undefined.
