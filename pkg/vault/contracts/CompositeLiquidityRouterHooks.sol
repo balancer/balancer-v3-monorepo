@@ -393,7 +393,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
      * @notice Centralized handler for ERC4626 unwrapping operations in nested pools.
      * @dev Adds the token and amount to transient storage. Note that the limit is set to 0 here; this is meant to be
      * called mid-operation, and assumes final limits will be checked externally. A zero amount registers the
-     * underlying token with a zero amount, without calling the buffer.
+     * underlying token with a zero amount, without calling the buffer. Callers reach this only for tokens whose
+     * buffer is initialized (the effective token type requires one), so `getERC4626BufferAsset` cannot return the
+     * zero address here.
      *
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
@@ -434,10 +436,14 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
      * the two directions. This router does not predict it. It hands the amount over, and reports the Vault's own
      * verdict in terms of the operation the caller asked for, naming the wrapped token and the amount the pool fixed,
      * where the Vault's error names the token alone. Every other failure means something else, and is bubbled up
-     * unchanged.
+     * unchanged, with one mechanical exception: revert data too short to carry a selector (empty included, which is
+     * also what an out-of-gas sub-call produces) is reported as `RevertCodec.ErrorSelectorNotFound`.
      *
      * The two buffer calls in this contract that wrap an amount the caller named do not use this, and should not: an
-     * amount the caller chose is not one this router should describe as the pool's.
+     * amount the caller chose is not one this router should describe as the pool's. Callers pass a nonzero
+     * `amountGivenRaw`, denominated in the wrapped token, which is what both errors name: a zero is skipped at the
+     * call sites rather than handed over here, and a call site whose given amount were the underlying would need
+     * different reporting.
      *
      * @param params The buffer operation, whose `amountGivenRaw` is the pool-derived amount of the wrapped token
      * @return amountInRaw The amount taken in: underlying when wrapping, wrapped when unwrapping
