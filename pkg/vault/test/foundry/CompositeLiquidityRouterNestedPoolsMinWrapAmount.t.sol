@@ -11,17 +11,16 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { CompositeLiquidityRouterMinWrapAmountBase } from "./utils/CompositeLiquidityRouterMinWrapAmountBase.sol";
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 /**
  * @notice Nested-pool unwrap behavior at the Vault minimums the deployed Vaults actually report.
- * @dev `BaseVaultTest` defaults to a minimum wrap amount of 1 and no minimum trade amount, so no other composite
- * router suite can reach the band in which the buffer rejects a non-zero amount. This one raises both, and pins
- * where the nested remove path changes behavior and where it does not.
+ * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`; this suite drives the nested remove entry point
+ * across the band in which the buffer rejects a non-zero amount, and pins where that path changes behavior and
+ * where it does not.
  *
  * At a redeem rate of exactly one, which is what this suite's wrapper carries, the first accepted raw amount is
  * two above the Vault's stated minimum rather than equal to it, because `erc4626BufferWrapOrUnwrap` applies that
@@ -37,35 +36,14 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * A parent pool is set up alongside the pool this suite removes from, so both of the traversal's unwrap call
  * sites are covered: the token in the pool the caller names, and the token in a child pool below it.
  */
-contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is BaseVaultTest {
+contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquidityRouterMinWrapAmountBase {
     using ArrayHelpers for *;
-    using FixedPoint for *;
-
-    // Value reported by the Vault on every chain it is deployed to.
-    uint256 private constant _PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
-
-    // Smallest raw wrapped amount the buffer accepts, at a redeem rate of exactly one.
-    uint256 private constant _FIRST_ACCEPTED_RAW = _PRODUCTION_MIN_WRAP_AMOUNT + 2;
-
-    uint256 private constant _WA6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
-    uint256 private constant _WADAI_POOL_BALANCE = 1e6 * 1e18;
-    uint256 private constant _WA6_BUFFER_UNDERLYING = 1e5 * 1e6;
-
-    ERC4626TestToken private _wa6;
-
-    uint256 private _wa6Idx;
-    uint256 private _waDaiIdx;
 
     // A parent pool holding `pool` as a child, so the traversal reaches the unwrap at the child level as well.
     address private _parentPool;
 
     function setUp() public override {
-        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
-        vaultMockMinWrapAmount = _PRODUCTION_MIN_WRAP_AMOUNT;
-
-        BaseVaultTest.setUp();
-
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        CompositeLiquidityRouterMinWrapAmountBase.setUp();
 
         _createParentPool();
     }
@@ -87,38 +65,6 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is BaseVaultTest {
 
         vm.startPrank(lp);
         _initPool(_parentPool, amountsIn, 0);
-        vm.stopPrank();
-    }
-
-    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
-        _wa6 = createERC4626("Wrapped USDC-6", "wa6", 6, usdc6Decimals);
-
-        (_wa6Idx, _waDaiIdx) = getSortedIndexes(address(_wa6), address(waDAI));
-
-        return _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "minWrapPool");
-    }
-
-    function initPool() internal override {
-        // The wrapper is created inside `createPool`, after the base approvals ran, so it needs its own.
-        for (uint256 i = 0; i < users.length; ++i) {
-            vm.startPrank(users[i]);
-            usdc6Decimals.approve(address(_wa6), type(uint256).max);
-            _wa6.approve(address(permit2), type(uint256).max);
-            permit2.approve(address(_wa6), address(router), type(uint160).max, type(uint48).max);
-            permit2.approve(address(_wa6), address(bufferRouter), type(uint160).max, type(uint48).max);
-            vm.stopPrank();
-        }
-
-        vm.startPrank(lp);
-        _wa6.deposit(_WA6_BUFFER_UNDERLYING + _WA6_POOL_BALANCE, lp);
-        bufferRouter.initializeBuffer(_wa6, _WA6_BUFFER_UNDERLYING, _wa6.previewDeposit(_WA6_BUFFER_UNDERLYING), 0);
-        bufferRouter.initializeBuffer(waDAI, _WA6_BUFFER_UNDERLYING * 1e12, waDAI.previewDeposit(1e5 * 1e18), 0);
-
-        uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[_wa6Idx] = _WA6_POOL_BALANCE;
-        amountsIn[_waDaiIdx] = _WADAI_POOL_BALANCE;
-
-        _initPool(pool, amountsIn, 0);
         vm.stopPrank();
     }
 
@@ -390,43 +336,6 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is BaseVaultTest {
         while (low < high) {
             uint256 mid = (low + high + 1) / 2;
             if (_childRawWa6Out(mid) <= targetRaw) {
-                low = mid;
-            } else {
-                high = mid - 1;
-            }
-        }
-
-        return low;
-    }
-
-    function _tokenLists() private view returns (address[] memory tokensOut, address[] memory tokensToUnwrap) {
-        (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
-
-        tokensOut = new address[](2);
-        tokensOut[usdc6Idx] = address(usdc6Decimals);
-        tokensOut[daiIdx] = address(dai);
-
-        tokensToUnwrap = new address[](2);
-        tokensToUnwrap[0] = address(_wa6);
-        tokensToUnwrap[1] = address(waDAI);
-    }
-
-    /// @dev Raw pool-token amounts a proportional burn of `bptIn` would return, from the plain Router's query.
-    function _rawAmountsOut(uint256 bptIn) private returns (uint256[] memory amountsOut) {
-        uint256 snapshotId = vm.snapshotState();
-        _prankStaticCall();
-        amountsOut = router.queryRemoveLiquidityProportional(pool, bptIn, address(this), bytes(""));
-        vm.revertToState(snapshotId);
-    }
-
-    /// @dev Largest `bptIn` whose raw wa6 output is at most `targetRaw`.
-    function _burnForRawWa6(uint256 targetRaw) private returns (uint256) {
-        uint256 low = PRODUCTION_MIN_TRADE_AMOUNT;
-        uint256 high = BalancerPoolToken(pool).balanceOf(lp);
-
-        while (low < high) {
-            uint256 mid = (low + high + 1) / 2;
-            if (_rawAmountsOut(mid)[_wa6Idx] <= targetRaw) {
                 low = mid;
             } else {
                 high = mid - 1;
