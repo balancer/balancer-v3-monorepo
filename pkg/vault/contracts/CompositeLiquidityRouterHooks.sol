@@ -15,6 +15,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -135,19 +136,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             unwrapWrapped.length
         );
 
-        uint256[] memory actualAmountsOut;
-
-        // If the pool is in Recovery Mode, do a recovery withdrawal.
-        if (_vault.isPoolInRecoveryMode(params.pool)) {
-            actualAmountsOut = _vault.removeLiquidityRecovery(
-                params.pool,
-                params.sender,
-                params.maxBptAmountIn,
-                params.minAmountsOut
-            );
-        } else {
-            (, actualAmountsOut, ) = _vault.removeLiquidity(_buildRemoveLiquidityParams(params, numTokens));
-        }
+        (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
+            _buildRemoveLiquidityParams(params, numTokens)
+        );
 
         amountsOut = new uint256[](numTokens);
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
@@ -307,7 +298,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         if (amountIn > 0) {
             if (needToWrap) {
                 // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-                (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                (actualAmountIn, ) = _bufferWrapOrUnwrapPoolAmount(
                     BufferWrapOrUnwrapParams({
                         kind: SwapKind.EXACT_OUT,
                         direction: WrappingDirection.WRAP,
@@ -367,7 +358,10 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
 
             if (amountOut > 0) {
-                (, , actualAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                // The amount unwrapped here is the pool's, not the caller's: it is this token's share of the burned
+                // BPT. The caller asked for the underlying token, and delivering the wrapped token in its place would
+                // return an asset they did not ask for, so an amount the buffer will not unwrap fails the operation.
+                (, actualAmountOut) = _bufferWrapOrUnwrapPoolAmount(
                     BufferWrapOrUnwrapParams({
                         kind: SwapKind.EXACT_IN,
                         direction: WrappingDirection.UNWRAP,
@@ -398,23 +392,80 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     /**
      * @notice Centralized handler for ERC4626 unwrapping operations in nested pools.
      * @dev Adds the token and amount to transient storage. Note that the limit is set to 0 here; this is meant to be
-     * called mid-operation, and assumes final limits will be checked externally.
+     * called mid-operation, and assumes final limits will be checked externally. A zero amount registers the
+     * underlying token with a zero amount, without calling the buffer.
      *
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
      */
     function _unwrapExactInAndUpdateTokenOutData(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
-        (, , uint256 underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.UNWRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: wrappedAmount,
-                limitRaw: 0
-            })
-        );
+        uint256 underlyingAmount;
 
+        // The Vault's minimum wrap amount has no zero exemption, so handing the buffer a zero amount would revert
+        // the whole nested operation. Nothing needs to be handed over: a zero amount creates no delta, so there is
+        // no credit left to settle. This matches the flat ERC4626 path, which also skips the call at zero.
+        if (wrappedAmount > 0) {
+            // As on the flat path, the amount is the pool's rather than the caller's, and the caller asked for the
+            // underlying token, so an amount the buffer will not unwrap fails the whole traversal.
+            (, underlyingAmount) = _bufferWrapOrUnwrapPoolAmount(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.UNWRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: wrappedAmount,
+                    limitRaw: 0
+                })
+            );
+        }
+
+        // Register the token unconditionally. The caller declares the output tokens up front, and the set produced
+        // by the traversal must match that declaration exactly, so a token that produced nothing is still an output
+        // token: returning early here instead would revert `WrongTokensOut`.
         _updateSwapTokensOut(_vault.getERC4626BufferAsset(wrappedToken), underlyingAmount);
+    }
+
+    /**
+     * @notice Wraps or unwraps through the Vault buffer, where the amount comes from a pool and not from the caller.
+     * @dev Proportional operations fix the amount of each token from the pool's own balances, so the caller cannot
+     * choose it: on a removal it is that token's share of the burned pool tokens, and on an addition it is what the
+     * pool requires for the pool tokens requested. The Vault refuses wrap and unwrap amounts below its minimum wrap
+     * amount, applying that minimum both to the amount it is given and to the amount it calculates, so the smallest
+     * amount it will accept is a property of the wrapper: it moves with the wrapper's rate, and it is not the same in
+     * the two directions. This router does not predict it. It hands the amount over, and reports the Vault's own
+     * verdict in terms of the operation the caller asked for, naming the wrapped token and the amount the pool fixed,
+     * where the Vault's error names the token alone. Every other failure means something else, and is bubbled up
+     * unchanged.
+     *
+     * The two buffer calls in this contract that wrap an amount the caller named do not use this, and should not: an
+     * amount the caller chose is not one this router should describe as the pool's.
+     *
+     * @param params The buffer operation, whose `amountGivenRaw` is the pool-derived amount of the wrapped token
+     * @return amountInRaw The amount taken in: underlying when wrapping, wrapped when unwrapping
+     * @return amountOutRaw The amount produced: wrapped when wrapping, underlying when unwrapping
+     */
+    function _bufferWrapOrUnwrapPoolAmount(
+        BufferWrapOrUnwrapParams memory params
+    ) private returns (uint256 amountInRaw, uint256 amountOutRaw) {
+        try _vault.erc4626BufferWrapOrUnwrap(params) returns (uint256, uint256 amountIn, uint256 amountOut) {
+            (amountInRaw, amountOutRaw) = (amountIn, amountOut);
+        } catch (bytes memory returnData) {
+            if (RevertCodec.parseSelector(returnData) == IVaultErrors.WrapAmountTooSmall.selector) {
+                if (params.direction == WrappingDirection.WRAP) {
+                    revert ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall(
+                        address(params.wrappedToken),
+                        params.amountGivenRaw
+                    );
+                }
+
+                revert ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall(
+                    address(params.wrappedToken),
+                    params.amountGivenRaw
+                );
+            }
+
+            // Every other failure means something else, so it is not this router's to reinterpret.
+            RevertCodec.bubbleUpRevert(returnData);
+        }
     }
 
     // Nested Pool Hooks
@@ -480,23 +531,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
-        uint256[] memory parentPoolAmountsOut;
-
-        // If the pool is in Recovery Mode, do a recovery withdrawal.
-        if (_vault.isPoolInRecoveryMode(params.pool)) {
-            // Pass zero limits here, as params.minAmountsOut corresponds to `tokensOut`: not the parent pool tokens.
-            // Limits will be checked at the end of the operation.
-            parentPoolAmountsOut = _vault.removeLiquidityRecovery(
-                params.pool,
-                params.sender,
-                params.maxBptAmountIn,
-                new uint256[](parentPoolTokens.length)
-            );
-        } else {
-            (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
-                _buildRemoveLiquidityParams(params, parentPoolTokens.length)
-            );
-        }
+        (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
+            _buildRemoveLiquidityParams(params, parentPoolTokens.length)
+        );
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
@@ -519,27 +556,16 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
-                uint256[] memory childPoolAmountsOut;
-
-                if (_vault.isPoolInRecoveryMode(parentPoolToken)) {
-                    childPoolAmountsOut = _vault.removeLiquidityRecovery(
-                        parentPoolToken,
-                        address(this),
-                        parentPoolAmountOut,
-                        new uint256[](childPoolTokens.length)
-                    );
-                } else {
-                    (, childPoolAmountsOut, ) = _vault.removeLiquidity(
-                        RemoveLiquidityParams({
-                            pool: parentPoolToken,
-                            from: address(this),
-                            maxBptAmountIn: parentPoolAmountOut,
-                            minAmountsOut: new uint256[](childPoolTokens.length),
-                            kind: params.kind,
-                            userData: params.userData
-                        })
-                    );
-                }
+                (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
+                    RemoveLiquidityParams({
+                        pool: parentPoolToken,
+                        from: address(this),
+                        maxBptAmountIn: parentPoolAmountOut,
+                        minAmountsOut: new uint256[](childPoolTokens.length),
+                        kind: params.kind,
+                        userData: params.userData
+                    })
+                );
 
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
