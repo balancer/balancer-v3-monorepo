@@ -81,7 +81,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * an amount the caller chose. Where the Vault buffer will not wrap it the call reverts with
      * `RequiredWrapAmountTooSmall`, which names the token and the amount, and nothing else is charged in its place.
      * The buffer applies its minimum to the wrapped amount it is given and again to the underlying amount it
-     * calculates, testing the caller's limit between the two, so a limit the leg cannot meet is reported as
+     * calculates, testing the caller's limit between the two, so a limit that token cannot meet is reported as
      * `SwapLimit` ahead of the second of those but not of the first. A failed call leaves the sender holding their own
      * tokens. Requesting more pool tokens always raises the required amount, so it clears this for any wrapper as long
      * as `maxAmountsIn` covers the larger cost; clearing `wrapUnderlying` for that token pays it wrapped instead.
@@ -141,9 +141,9 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * Wherever `unwrapWrapped` is set, the amount unwrapped is that token's share of the burned pool tokens, and not
      * an amount the caller chose. Where the Vault buffer will not unwrap it the call reverts with
      * `UnwrapAmountTooSmall`, which names the token and the amount, and the wrapped token is never delivered in its
-     * place. The buffer applies its minimum to the wrapped amount it is given and again to the underlying amount it
-     * calculates, testing the caller's limit between the two, so a limit the leg cannot meet is reported as
-     * `SwapLimit` ahead of the second of those but not of the first. Clearing `unwrapWrapped` for that
+     * place. The buffer applies its minimum twice, to the wrapped amount it is given and again to the underlying
+     * amount it calculates, and it is given no limit of its own, so a `minAmountsOut` entry the withdrawal cannot
+     * meet is reported afterwards as `AmountOutBelowMin`, which names the token. Clearing `unwrapWrapped` for that
      * token always works and pays it wrapped, as does `Router.removeLiquidityProportional`; burning more pool tokens
      * works only where the pool holds enough of that token for a larger share to clear the buffer's minimum, which
      * is not true of every pool. An amount of exactly zero is not this case: it is returned as zero of the underlying
