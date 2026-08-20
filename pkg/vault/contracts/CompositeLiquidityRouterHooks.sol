@@ -361,13 +361,17 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 // The amount unwrapped here is the pool's, not the caller's: it is this token's share of the burned
                 // BPT. The caller asked for the underlying token, and delivering the wrapped token in its place would
                 // return an asset they did not ask for, so an amount the buffer will not unwrap fails the operation.
+                //
+                // The buffer gets no limit of its own. `minAmountOut` is checked at the end of this function, where
+                // the error names the token; handing it over here would preempt the Vault's own check on the
+                // underlying amount, and report a limit where the real reason is the buffer's minimum.
                 (, actualAmountOut) = _bufferWrapOrUnwrapPoolAmount(
                     BufferWrapOrUnwrapParams({
                         kind: SwapKind.EXACT_IN,
                         direction: WrappingDirection.UNWRAP,
                         wrappedToken: wrappedToken,
                         amountGivenRaw: amountOut,
-                        limitRaw: minAmountOut
+                        limitRaw: 0
                     })
                 );
 
