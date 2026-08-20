@@ -19,7 +19,7 @@ import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 /**
  * @notice Nested-pool unwrap behavior at the Vault minimums the deployed Vaults actually report.
  * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`; this suite drives the nested remove entry point
- * across the band in which the buffer rejects a non-zero amount, and pins where that path changes behavior and
+ * across the band in which the buffer rejects a non-zero amount, and records where that path changes behavior and
  * where it does not.
  *
  * At a redeem rate of exactly one, which is what this suite's wrapper carries, the first accepted raw amount is
@@ -71,7 +71,7 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
     /// @dev Zero is the case the guard covers, and it is covered at the real minimum, not just the test default.
     function testNestedZeroUnwrapAtProductionMinimum() public {
         uint256 bptIn = _burnForRawWa6(0);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], 0, "Setup: wa6 leg should be exactly zero");
+        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], 0, "Setup: wa6 share should be exactly zero");
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
@@ -87,8 +87,8 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsOut[usdc6Idx], 0, "Zero leg should report zero");
-        assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+        assertEq(amountsOut[usdc6Idx], 0, "Zero share should report zero");
+        assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
     }
 
     /**
@@ -286,8 +286,8 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
             );
 
             // The unwrap deducts two wei: one from the amount given, one from the preview result.
-            assertEq(amountsOut[usdc6Idx], rawTargets[i] - 2, "USDC-6 leg is wrong");
-            assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+            assertEq(amountsOut[usdc6Idx], rawTargets[i] - 2, "USDC-6 amount is wrong");
+            assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
             vm.revertToState(snapshotId);
         }
     }

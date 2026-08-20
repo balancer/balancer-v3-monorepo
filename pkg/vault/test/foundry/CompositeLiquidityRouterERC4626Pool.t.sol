@@ -1007,7 +1007,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         // ordinary removal path and pays exactly what that path pays. The `recoveryMode` variant is the control on
         // that, and it cannot show more than the fixture allows: the Vault forgoes yield fees while a pool is in
         // Recovery Mode, so the flag would move the amounts for a pool holding yield-fee-paying tokens, and this
-        // fixture holds none. What the variant pins is the path, not the arithmetic.
+        // fixture holds none. What the variant asserts is the path, not the arithmetic.
         _prankStaticCall();
         uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
             pool,
@@ -1230,10 +1230,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(amountsOut[waWethIdx], minAmountsOut[waWethIdx], "Wrong WETH amount out");
     }
 
-    function testRemoveLiquidityProportionalFromERC4626PoolLimitTooHighOnUnwrappedLeg() public {
-        // The counterpart of the test above: a limit one wei above what the caller actually receives has to bite.
-        // On an unwrapped leg it bites inside the buffer, which is handed the caller's limit as `limitRaw`, so the
-        // error is `SwapLimit` rather than the closing check's `AmountOutBelowMin`. That is the enforcement the
+    function testRemoveLiquidityProportionalFromERC4626PoolLimitTooHighOnUnwrappedToken() public {
+        // The counterpart of the test above: a limit one wei above what the caller actually receives has to reject
+        // the call. The buffer is handed no limit, so the rejection comes from the check at the end of
+        // `_processTokenOutExactIn`, and the error names the token the caller was owed. That is the enforcement the
         // limits rely on being unconditional, so it needs a test that names it.
         _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
         _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
@@ -1264,7 +1264,12 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             minAmountsOut,
             false,
             bytes(""),
-            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, expectedDaiAmountOut, minAmountsOut[waDaiIdx])
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                expectedDaiAmountOut,
+                minAmountsOut[waDaiIdx]
+            )
         );
         vm.stopPrank();
     }

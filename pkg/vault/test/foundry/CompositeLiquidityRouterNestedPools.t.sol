@@ -1427,7 +1427,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // The composite router has no Recovery Mode handling, so none of these flags selects a different withdrawal:
         // the parent and both children are removed through the ordinary path in every combination, and the same
         // tolerance has to hold for all eight. In this fixture the flags are inert by construction, every token being
-        // 18-decimal, STANDARD and yield-fee exempt, so what the fuzzed flags pin is the path, not the arithmetic.
+        // 18-decimal, STANDARD and yield-fee exempt, so what the fuzzed flags assert is the path, not the arithmetic.
         uint256 tolerance = MAX_ROUND_ERROR;
 
         assertApproxEqAbs(
@@ -1629,7 +1629,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertGt(childABptOut, 0, "No childPoolA BPT was returned");
         assertEq(IERC20(childPoolA).balanceOf(lp) - childABptBefore, childABptOut, "LP: wrong childPoolA BPT balance");
 
-        // Step two: the child is healthy, unpaused and NOT in Recovery Mode, so the ordinary path unwinds it.
+        // Step two: the child is healthy, unpaused and not in Recovery Mode, so the ordinary path unwinds it.
         assertFalse(vault.isPoolInRecoveryMode(childPoolA), "childPoolA is in Recovery Mode");
 
         vm.prank(lp);
@@ -2546,7 +2546,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     /*******************************************************************************
-                     Remove liquidity with a zero-amount unwrap leg
+                      Remove liquidity with a zero-amount unwrap
     *******************************************************************************/
 
     // The Vault's minimum wrap amount has no zero exemption, so handing the buffer an exactly zero amount reverts
@@ -2554,11 +2554,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     // at burns that still pay the 18-decimal tokens in full. The pools are built on demand rather than in `setUp`,
     // since nothing else uses them.
 
-    // Burn 1/1e7 of the supply: the wa6 leg holds 1e6 raw, so its proportional output rounds to zero, while the
-    // 18-decimal legs (1e6 * 1e18 raw) still return 1e17.
-    uint256 private constant _ZERO_LEG_BURN_DIVISOR = 1e7;
-    // Burn 1/1e3 of the supply, which puts the wa6 leg well above the buffer minimum. Used as the control.
-    uint256 private constant _NON_ZERO_LEG_BURN_DIVISOR = 1e3;
+    // Burn 1/1e7 of the supply: the wa6 token holds 1e6 raw, so its proportional output rounds to zero, while
+    // the 18-decimal tokens (1e6 * 1e18 raw) still return 1e17.
+    uint256 private constant _ZERO_SHARE_BURN_DIVISOR = 1e7;
+    // Burn 1/1e3 of the supply, which puts the wa6 share well above the buffer minimum. Used as the control.
+    uint256 private constant _NON_ZERO_SHARE_BURN_DIVISOR = 1e3;
 
     uint256 private constant _WA6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
     uint256 private constant _WA18_POOL_BALANCE = 1e6 * 1e18;
@@ -2568,20 +2568,20 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     uint256 private constant _USDC6_POOL_BALANCE = 1e12;
 
     ERC4626TestToken private _wa6;
-    // [wa6, waDAI]: the zero leg is a parent pool token.
-    address private _zeroLegParentPool;
-    // [wa6, waWETH], nested in [_zeroLegChildPool, waDAI]: the zero leg is a child pool token.
-    address private _zeroLegChildPool;
-    address private _zeroLegNestedPool;
-    // [wa6, usdc6Decimals, waDAI]: the zero leg's underlying is also a plain pool token.
-    address private _zeroLegDupUnderlyingPool;
+    // [wa6, waDAI]: the zero share is a parent pool token.
+    address private _zeroShareParentPool;
+    // [wa6, waWETH], nested in [_zeroShareChildPool, waDAI]: the zero share is a child pool token.
+    address private _zeroShareChildPool;
+    address private _zeroShareNestedPool;
+    // [wa6, usdc6Decimals, waDAI]: the zero share's underlying is also a plain pool token.
+    address private _zeroShareDupUnderlyingPool;
 
     function testRemoveLiquidityNestedPoolZeroUnwrapParentToken() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegParentPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareParentPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroLegParentTokenLists();
+        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
         uint256 lpUsdc6Before = usdc6Decimals.balanceOf(lp);
@@ -2589,7 +2589,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             tokensOut,
             new uint256[](2),
@@ -2599,28 +2599,28 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // The zero leg reports zero and transfers nothing; it does not fail the withdrawal.
-        assertEq(amountsOut[usdc6Idx], 0, "Zero leg should report zero");
+        // The zero share reports zero and transfers nothing; it does not fail the withdrawal.
+        assertEq(amountsOut[usdc6Idx], 0, "Zero share should report zero");
         assertEq(usdc6Decimals.balanceOf(lp), lpUsdc6Before, "LP USDC-6 balance should not move");
 
-        // The other leg is paid in full.
-        assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+        // The other token is paid in full.
+        assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
         assertEq(dai.balanceOf(lp), lpDaiBefore + amountsOut[daiIdx], "LP DAI balance is wrong");
     }
 
     function testRemoveLiquidityNestedPoolZeroUnwrapChildToken() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegNestedPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareNestedPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroLegNestedTokenLists();
+        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroShareNestedTokenLists();
         (uint256 usdc6Idx, uint256 wethIdx, uint256 daiIdx) = (0, 1, 2);
 
         uint256 lpUsdc6Before = usdc6Decimals.balanceOf(lp);
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            _zeroLegNestedPool,
+            _zeroShareNestedPool,
             exactBptIn,
             tokensOut,
             new uint256[](3),
@@ -2630,24 +2630,24 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        assertEq(amountsOut[usdc6Idx], 0, "Zero child leg should report zero");
+        assertEq(amountsOut[usdc6Idx], 0, "Zero child share should report zero");
         assertEq(usdc6Decimals.balanceOf(lp), lpUsdc6Before, "LP USDC-6 balance should not move");
 
-        assertGt(amountsOut[wethIdx], 0, "WETH leg should be non-zero");
-        assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+        assertGt(amountsOut[wethIdx], 0, "WETH amount should be non-zero");
+        assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
     }
 
     function testQueryRemoveLiquidityNestedPoolZeroUnwrap() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegParentPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareParentPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroLegParentTokenLists();
+        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
 
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory queryAmountsOut = initQueryClrRouter().queryRemoveLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             tokensOut,
             tokensToUnwrap,
@@ -2658,7 +2658,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             tokensOut,
             new uint256[](2),
@@ -2674,11 +2674,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedPoolZeroUnwrapTokenIsRegistered() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegParentPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareParentPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        (, address[] memory tokensToUnwrap) = _zeroLegParentTokenLists();
+        (, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
 
         // The traversal registers the underlying of each unwrapped parent token, in pool registration order.
         (uint256 wa6Idx, uint256 waDaiIdx_) = getSortedIndexes(address(_wa6), address(waDAI));
@@ -2686,13 +2686,13 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         actualTokensOut[wa6Idx] = address(usdc6Decimals);
         actualTokensOut[waDaiIdx_] = address(dai);
 
-        // Omitting the zero leg's underlying must fail: the leg produces no output, but it is still an output token.
+        // Omitting the zero share's underlying must fail: it produces no output, but it is still an output token.
         address[] memory shortTokensOut = new address[](1);
         shortTokensOut[0] = address(dai);
 
         vm.startPrank(lp);
         _removeLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             shortTokensOut,
             new uint256[](1),
@@ -2709,21 +2709,21 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedPoolZeroUnwrapNonZeroLimit() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegParentPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareParentPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroLegParentTokenLists();
+        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
         (uint256 usdc6Idx, ) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[usdc6Idx] = 1;
 
-        // A caller who set a limit on the zero leg still fails, and with the limit error rather than the buffer's.
+        // A caller who set a limit on the zero share still fails, and with the limit error, not the buffer's.
         // This matches the flat ERC4626 path, whose zero guard produces exactly the same outcome.
         vm.startPrank(lp);
         _removeLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             tokensOut,
             minAmountsOut,
@@ -2736,18 +2736,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedPoolNonZeroUnwrapUnchanged() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegParentPool).totalSupply() / _NON_ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareParentPool).totalSupply() / _NON_ZERO_SHARE_BURN_DIVISOR;
 
-        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroLegParentTokenLists();
+        (address[] memory tokensOut, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
         uint256 lpUsdc6Before = usdc6Decimals.balanceOf(lp);
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             exactBptIn,
             tokensOut,
             new uint256[](2),
@@ -2757,18 +2757,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // Control: a leg comfortably above the buffer minimum is unaffected by the zero handling.
-        assertGt(amountsOut[usdc6Idx], 0, "USDC-6 leg should be non-zero");
-        assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+        // Control: an amount comfortably above the buffer minimum is unaffected by the zero handling.
+        assertGt(amountsOut[usdc6Idx], 0, "USDC-6 amount should be non-zero");
+        assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
         assertEq(usdc6Decimals.balanceOf(lp), lpUsdc6Before + amountsOut[usdc6Idx], "LP USDC-6 balance is wrong");
     }
 
     function testRemoveLiquidityNestedPoolZeroUnwrapUnderlyingAlsoPlainToken() public {
-        _createZeroLegPools();
+        _createZeroSharePools();
 
-        uint256 exactBptIn = BalancerPoolToken(_zeroLegDupUnderlyingPool).totalSupply() / _ZERO_LEG_BURN_DIVISOR;
+        uint256 exactBptIn = BalancerPoolToken(_zeroShareDupUnderlyingPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        // The wa6 leg is unwrapped into USDC-6, which the pool also holds directly, so the traversal registers
+        // The wa6 token is unwrapped into USDC-6, which the pool also holds directly, so the traversal registers
         // USDC-6 twice and the produced set has two members for three pool tokens.
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
@@ -2784,7 +2784,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory rawAmountsOut = router.queryRemoveLiquidityProportional(
-            _zeroLegDupUnderlyingPool,
+            _zeroShareDupUnderlyingPool,
             exactBptIn,
             address(this),
             bytes("")
@@ -2794,12 +2794,12 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256[] memory poolTokenIndexes = getSortedIndexes(
             [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray()
         );
-        assertEq(rawAmountsOut[poolTokenIndexes[0]], 0, "Setup: wa6 leg should be exactly zero");
-        assertGt(rawAmountsOut[poolTokenIndexes[1]], 0, "Setup: plain USDC-6 leg should be non-zero");
+        assertEq(rawAmountsOut[poolTokenIndexes[0]], 0, "Setup: wa6 share should be exactly zero");
+        assertGt(rawAmountsOut[poolTokenIndexes[1]], 0, "Setup: plain USDC-6 amount should be non-zero");
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            _zeroLegDupUnderlyingPool,
+            _zeroShareDupUnderlyingPool,
             exactBptIn,
             tokensOut,
             new uint256[](2),
@@ -2809,13 +2809,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // Registering the zero adds nothing to the accumulator the plain leg already wrote, and does not enlarge
-        // the produced set.
-        assertEq(amountsOut[usdc6Idx], rawAmountsOut[poolTokenIndexes[1]], "USDC-6 out should be the plain leg alone");
-        assertGt(amountsOut[daiIdx], 0, "DAI leg should be non-zero");
+        // Registering the zero adds nothing to the accumulator the plain token already wrote, and does not
+        // enlarge the produced set.
+        assertEq(
+            amountsOut[usdc6Idx],
+            rawAmountsOut[poolTokenIndexes[1]],
+            "USDC-6 out should be the plain token alone"
+        );
+        assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
     }
 
-    function _zeroLegParentTokenLists()
+    function _zeroShareParentTokenLists()
         private
         view
         returns (address[] memory tokensOut, address[] memory tokensToUnwrap)
@@ -2831,7 +2835,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToUnwrap[1] = address(waDAI);
     }
 
-    function _zeroLegNestedTokenLists()
+    function _zeroShareNestedTokenLists()
         private
         view
         returns (address[] memory tokensOut, address[] memory tokensToUnwrap)
@@ -2847,49 +2851,52 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToUnwrap[2] = address(waDAI);
     }
 
-    function _createZeroLegPools() private {
+    function _createZeroSharePools() private {
         _wa6 = createERC4626("Wrapped USDC-6", "wa6", 6, usdc6Decimals);
 
         // The wrapper is created after `setUp` ran its approvals, so it needs its own.
         approveForWrapper(_wa6, usdc6Decimals);
 
-        (_zeroLegChildPool, ) = _createPool([address(_wa6), address(waWETH)].toMemoryArray(), "zeroLegChildPool");
-        (_zeroLegParentPool, ) = _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "zeroLegParentPool");
-        (_zeroLegNestedPool, ) = _createPool([_zeroLegChildPool, address(waDAI)].toMemoryArray(), "zeroLegNestedPool");
-        (_zeroLegDupUnderlyingPool, ) = _createPool(
+        (_zeroShareChildPool, ) = _createPool([address(_wa6), address(waWETH)].toMemoryArray(), "zeroShareChildPool");
+        (_zeroShareParentPool, ) = _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "zeroShareParentPool");
+        (_zeroShareNestedPool, ) = _createPool(
+            [_zeroShareChildPool, address(waDAI)].toMemoryArray(),
+            "zeroShareNestedPool"
+        );
+        (_zeroShareDupUnderlyingPool, ) = _createPool(
             [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
-            "zeroLegDupUnderlyingPool"
+            "zeroShareDupUnderlyingPool"
         );
 
-        approveForPool(IERC20(_zeroLegChildPool));
-        approveForPool(IERC20(_zeroLegParentPool));
-        approveForPool(IERC20(_zeroLegNestedPool));
-        approveForPool(IERC20(_zeroLegDupUnderlyingPool));
+        approveForPool(IERC20(_zeroShareChildPool));
+        approveForPool(IERC20(_zeroShareParentPool));
+        approveForPool(IERC20(_zeroShareNestedPool));
+        approveForPool(IERC20(_zeroShareDupUnderlyingPool));
 
         vm.startPrank(lp);
         _wa6.deposit(_WA6_BUFFER_UNDERLYING + 3 * _WA6_POOL_BALANCE, lp);
         bufferRouter.initializeBuffer(_wa6, _WA6_BUFFER_UNDERLYING, _wa6.previewDeposit(_WA6_BUFFER_UNDERLYING), 0);
 
         _initPoolUnsorted(
-            _zeroLegParentPool,
+            _zeroShareParentPool,
             [address(_wa6), address(waDAI)].toMemoryArray(),
             [_WA6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
 
         uint256 childBptOut = _initPoolUnsorted(
-            _zeroLegChildPool,
+            _zeroShareChildPool,
             [address(_wa6), address(waWETH)].toMemoryArray(),
             [_WA6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
 
         _initPoolUnsorted(
-            _zeroLegNestedPool,
-            [_zeroLegChildPool, address(waDAI)].toMemoryArray(),
+            _zeroShareNestedPool,
+            [_zeroShareChildPool, address(waDAI)].toMemoryArray(),
             [childBptOut, _WA18_POOL_BALANCE].toMemoryArray()
         );
 
         _initPoolUnsorted(
-            _zeroLegDupUnderlyingPool,
+            _zeroShareDupUnderlyingPool,
             [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
             [_WA6_POOL_BALANCE, _USDC6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
