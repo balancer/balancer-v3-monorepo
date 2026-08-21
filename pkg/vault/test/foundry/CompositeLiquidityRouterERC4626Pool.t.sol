@@ -1003,20 +1003,18 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshotState();
 
-        // Amounts are slightly different in recovery mode, due to rounding.
-        uint256[] memory expectedWrappedAmountsOut;
-        if (vault.isPoolInRecoveryMode(pool)) {
-            _prankStaticCall();
-            expectedWrappedAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
-        } else {
-            _prankStaticCall();
-            expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
-                pool,
-                exactBptAmountIn,
-                address(this),
-                bytes("")
-            );
-        }
+        // The composite router has no Recovery Mode handling: an unpaused pool in Recovery Mode is served by the
+        // ordinary removal path and pays exactly what that path pays. The `recoveryMode` variant is the control on
+        // that, and it cannot show more than the fixture allows: the Vault forgoes yield fees while a pool is in
+        // Recovery Mode, so the flag would move the amounts for a pool holding yield-fee-paying tokens, and this
+        // fixture holds none. What the variant asserts is the path, not the arithmetic.
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
 
         vm.revertToState(snapshot);
 
@@ -1066,6 +1064,252 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 afterBPTBalance = IERC20(pool).balanceOf(bob);
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
+    }
+
+    /***************************************************************************
+                   Recovery Mode is not a composite-router operation
+    ***************************************************************************/
+
+    // The composite router carries no Recovery Mode handling. Where the pool is unpaused, the ordinary removal path
+    // works and is the one taken; where the pool is paused, the call reverts, and the caller withdraws the pool's
+    // registered tokens with `Router.removeLiquidityRecovery`, then redeems the ERC4626 shares directly against each
+    // wrapper. That costs an extra transaction and loses no reach, and it keeps the buffer's minimum wrap amount and
+    // the (independent) buffer pause flag out of the emergency withdrawal path.
+
+    function testRemoveLiquidityProportionalFromERC4626PoolRecoveryModeUsesOrdinaryPath() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory ordinaryAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        vault.manualEnableRecoveryMode(pool);
+
+        snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory recoveryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+        vm.revertToState(snapshot);
+
+        // A recovery withdrawal reads raw balances and applies no rates, so it does not pay what the ordinary path
+        // pays. That is what makes the assertions below discriminating rather than incidentally true.
+        assertTrue(
+            recoveryAmountsOut[waDaiIdx] != ordinaryAmountsOut[waDaiIdx] ||
+                recoveryAmountsOut[waWethIdx] != ordinaryAmountsOut[waWethIdx],
+            "The two withdrawals pay the same amounts, so this test cannot tell them apart"
+        );
+
+        vm.startPrank(bob);
+        uint256[] memory amountsOut = _removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            _setupTrueBoolArray(2),
+            exactBptAmountIn,
+            new uint256[](2),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(
+            amountsOut[waDaiIdx],
+            _vaultPreviewRedeem(waDAI, ordinaryAmountsOut[waDaiIdx]),
+            "DAI amount out did not come from the ordinary removal path"
+        );
+        assertEq(
+            amountsOut[waWethIdx],
+            _vaultPreviewRedeem(waWETH, ordinaryAmountsOut[waWethIdx]),
+            "WETH amount out did not come from the ordinary removal path"
+        );
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolPausedInRecoveryModeReverts() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        vault.manualSetPoolPaused(pool, true);
+        vault.manualEnableRecoveryMode(pool);
+
+        vm.startPrank(bob);
+        _removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            _setupTrueBoolArray(2),
+            exactBptAmountIn,
+            new uint256[](2),
+            false,
+            bytes(""),
+            abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool)
+        );
+        vm.stopPrank();
+
+        // The query reverts with the same error, so a caller learns this without spending a transaction.
+        _prankStaticCall();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
+        queryClrRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+            pool,
+            _setupTrueBoolArray(2),
+            exactBptAmountIn,
+            bob,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolPausedRecoveryThroughPlainRouter() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        vault.manualSetPoolPaused(pool, true);
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+        vm.revertToState(snapshot);
+
+        uint256 beforeDaiBalance = dai.balanceOf(bob);
+        uint256 beforeWethBalance = weth.balanceOf(bob);
+
+        // Step one: the plain Router returns the pool's registered tokens, which for an ERC4626 pool are the wrappers.
+        vm.prank(bob);
+        uint256[] memory wrappedAmountsOut = router.removeLiquidityRecovery(pool, exactBptAmountIn, new uint256[](2));
+
+        assertEq(wrappedAmountsOut[waDaiIdx], expectedWrappedAmountsOut[waDaiIdx], "Wrong waDAI amount out");
+        assertEq(wrappedAmountsOut[waWethIdx], expectedWrappedAmountsOut[waWethIdx], "Wrong waWETH amount out");
+
+        // Step two: an ERC4626 share redeems against its own protocol, with no Vault involvement of any kind.
+        vm.startPrank(bob);
+        uint256 daiAmountOut = waDAI.redeem(wrappedAmountsOut[waDaiIdx], bob, bob);
+        uint256 wethAmountOut = waWETH.redeem(wrappedAmountsOut[waWethIdx], bob, bob);
+        vm.stopPrank();
+
+        assertGt(daiAmountOut, 0, "No DAI was recovered");
+        assertGt(wethAmountOut, 0, "No WETH was recovered");
+        assertEq(dai.balanceOf(bob) - beforeDaiBalance, daiAmountOut, "Bob: wrong DAI balance");
+        assertEq(weth.balanceOf(bob) - beforeWethBalance, wethAmountOut, "Bob: wrong WETH balance");
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolRateAboveOne() public {
+        // A redeem rate well above one, where each wrapped amount is numerically far below the underlying it
+        // redeems for, so a limit measured on the wrong axis would reject a withdrawal the caller is entitled to.
+        _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
+        _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
+
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
+        minAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
+
+        assertGt(minAmountsOut[waDaiIdx], expectedWrappedAmountsOut[waDaiIdx], "waDAI limit is not above wrapped");
+        assertGt(minAmountsOut[waWethIdx], expectedWrappedAmountsOut[waWethIdx], "waWETH limit is not above wrapped");
+
+        vm.startPrank(bob);
+        uint256[] memory amountsOut = _removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            _setupTrueBoolArray(2),
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(amountsOut[waDaiIdx], minAmountsOut[waDaiIdx], "Wrong DAI amount out");
+        assertEq(amountsOut[waWethIdx], minAmountsOut[waWethIdx], "Wrong WETH amount out");
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolLimitTooHighOnUnwrappedToken() public {
+        // The counterpart of the test above: a limit one wei above what the caller actually receives has to reject
+        // the call. The buffer is handed no limit, so the rejection comes from the check at the end of
+        // `_processTokenOutExactIn`, and the error names the token the caller was owed. That is the enforcement the
+        // limits rely on being unconditional, so it needs a test that names it.
+        _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
+        _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
+
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        uint256 expectedDaiAmountOut = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[waDaiIdx] = expectedDaiAmountOut + 1;
+        minAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
+
+        vm.startPrank(bob);
+        _removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            _setupTrueBoolArray(2),
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes(""),
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                expectedDaiAmountOut,
+                minAmountsOut[waDaiIdx]
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolRecoveryModeQueryIsExecutable() public {
+        // The router's own query is what a caller derives `minAmountsOut` from. Feeding its result straight back
+        // into the operation it quoted has to work, which is the shape reported as a quote-versus-execute mismatch.
+        // Recovery Mode does not change that: the query and the operation both take the ordinary removal path.
+        _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
+        _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
+
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+        bool[] memory unwrapWrapped = _setupTrueBoolArray(2);
+
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory quotedAmountsOut = queryClrRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+            pool,
+            unwrapWrapped,
+            exactBptAmountIn,
+            bob,
+            bytes("")
+        );
+        vm.revertToState(snapshot);
+
+        vm.startPrank(bob);
+        uint256[] memory amountsOut = _removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            unwrapWrapped,
+            exactBptAmountIn,
+            quotedAmountsOut,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(amountsOut[waDaiIdx], quotedAmountsOut[waDaiIdx], "DAI execution did not match the quote");
+        assertEq(amountsOut[waWethIdx], quotedAmountsOut[waWethIdx], "WETH execution did not match the quote");
     }
 
     function testRemoveLiquidityProportionalFromERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
@@ -1872,6 +2116,33 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         testBalances.wethIdx = 1;
         testBalances.waDaiIdx = 2;
         testBalances.waWethIdx = 3;
+    }
+
+    /// @dev Donates underlying tokens to a wrapper, raising its redeem rate as yield accrual would.
+    function _donateUnderlying(ERC4626TestToken wrapper, uint256 underlyingDelta) internal {
+        if (wrapper.asset() != address(weth)) {
+            wrapper.inflateUnderlyingOrWrapped(underlyingDelta, 0);
+            return;
+        }
+
+        // `inflateUnderlyingOrWrapped` mints the underlying, which WETH does not support; deposit ETH instead.
+        // Add to the existing balance rather than replacing it, as subclasses of this test hold ETH of their own.
+        vm.deal(address(this), address(this).balance + underlyingDelta);
+        weth.deposit{ value: underlyingDelta }();
+        weth.transfer(address(wrapper), underlyingDelta);
+    }
+
+    /**
+     * @dev Raises a wrapper's redeem rate to approximately `newRate`. Reverts if `newRate` is not above the current.
+     * `ERC4626TestToken.mockRate` is not usable here: it raises a rate by minting the underlying, and WETH cannot be
+     * minted, so this donates through `_donateUnderlying`, which handles a WETH-backed wrapper as well.
+     */
+    function _raiseRedeemRate(ERC4626TestToken wrapper, uint256 newRate) internal {
+        uint256 targetAssets = wrapper.totalSupply().mulDown(newRate);
+        uint256 currentAssets = wrapper.totalAssets();
+        require(targetAssets > currentAssets, "_raiseRedeemRate: rate would not rise");
+
+        _donateUnderlying(wrapper, targetAssets - currentAssets);
     }
 
     // Virtual functions
