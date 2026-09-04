@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { stdError } from "forge-std/StdError.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IFixedPriceLBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IFixedPriceLBPool.sol";
