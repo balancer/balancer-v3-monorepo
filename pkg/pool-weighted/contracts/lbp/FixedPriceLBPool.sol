@@ -119,12 +119,33 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
             revert SwapOfProjectTokenIn();
         }
 
-        // Calculated amount is amount out; round down to favor the Vault.
-        // When buying project (reserve in): amountOut = amountIn / rate
-        // When selling project (project in): amountOut = amountIn * rate
-        amountCalculatedScaled18 = request.kind == SwapKind.EXACT_IN
-            ? request.amountGivenScaled18.divDown(_projectTokenRate)
-            : request.amountGivenScaled18.mulUp(_projectTokenRate);
+        // Round the calculated amount in favor of the Vault: amounts out round down, and amounts in round up.
+        // Exact in (reserve in): amountOut = amountIn / rate
+        // Exact out (project out): amountIn = amountOut * rate
+        uint256 amountInScaled18;
+        uint256 amountOutScaled18;
+
+        if (request.kind == SwapKind.EXACT_IN) {
+            amountInScaled18 = request.amountGivenScaled18;
+            amountOutScaled18 = amountInScaled18.divDown(_projectTokenRate);
+            amountCalculatedScaled18 = amountOutScaled18;
+        } else {
+            amountOutScaled18 = request.amountGivenScaled18;
+            amountInScaled18 = amountOutScaled18.mulUp(_projectTokenRate);
+            amountCalculatedScaled18 = amountInScaled18;
+        }
+
+        // Reject requests larger than the available output balance.
+        uint256 balanceOutScaled18 = request.balancesScaled18[request.indexOut];
+        if (amountOutScaled18 > balanceOutScaled18) {
+            revert SwapAmountExceedsBalance(amountOutScaled18, balanceOutScaled18);
+        }
+
+        // Exact-in output rounding makes this a conservative balance estimate.
+        _ensureBalanceIsRedeemable(request.indexOut, balanceOutScaled18 - amountOutScaled18);
+
+        // The stored input balance is at least this value after aggregate fees.
+        _ensureBalanceIsRedeemable(request.indexIn, request.balancesScaled18[request.indexIn] + amountInScaled18);
     }
 
     /**
@@ -132,7 +153,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
      * @dev The invariant is: inv = projectBalance * projectTokenRate + reserveBalance.
      * This represents the total value in the pool, in terms of reserve tokens.
      *
-     * @param balances The current pool balances (in 18-decimal scaling)
+     * @param balances The current pool balances (as an 18-decimal FixedPoint value)
      * @param rounding The rounding direction (up or down)
      * @return invariant The calculated invariant value
      */

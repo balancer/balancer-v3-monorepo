@@ -238,30 +238,44 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             revert SwapOfProjectTokenIn();
         }
 
+        uint256 calculatedAmountScaled18;
+
         if (_reserveTokenVirtualBalanceScaled18 == 0) {
             // This is not a seedless LBP, fall back on standard Weighted Pool behavior.
-            return super.onSwap(request);
-        }
+            calculatedAmountScaled18 = super.onSwap(request);
+        } else {
+            // Mutate the request to add the virtual balance for seedless LBPs, and restore it later.
+            uint256 originalReserveBalance = request.balancesScaled18[_reserveTokenIndex];
+            request.balancesScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
 
-        // Mutate the request to add the virtual balance for seedless LBPs, and restore it later.
-        uint256 originalReserveBalance = request.balancesScaled18[_reserveTokenIndex];
-        request.balancesScaled18[_reserveTokenIndex] += _reserveTokenVirtualBalanceScaled18;
+            calculatedAmountScaled18 = super.onSwap(request);
 
-        uint256 calculatedAmountScaled18 = super.onSwap(request);
+            // If we are returning reserve tokens, ensure we have enough real balance.
+            if (request.indexOut == _reserveTokenIndex) {
+                uint256 reserveAmountOut = request.kind == SwapKind.EXACT_IN
+                    ? calculatedAmountScaled18
+                    : request.amountGivenScaled18;
 
-        // If we are returning reserve tokens, ensure we have enough real balance.
-        if (request.indexOut == _reserveTokenIndex) {
-            uint256 reserveAmountOut = request.kind == SwapKind.EXACT_IN
-                ? calculatedAmountScaled18
-                : request.amountGivenScaled18;
-
-            if (reserveAmountOut > originalReserveBalance) {
-                revert InsufficientRealReserveBalance(reserveAmountOut, originalReserveBalance);
+                if (reserveAmountOut > originalReserveBalance) {
+                    revert InsufficientRealReserveBalance(reserveAmountOut, originalReserveBalance);
+                }
             }
+
+            // Restore the original request reserve balance.
+            request.balancesScaled18[_reserveTokenIndex] = originalReserveBalance;
         }
 
-        // Restore the original request reserve balance.
-        request.balancesScaled18[_reserveTokenIndex] = originalReserveBalance;
+        // Normalize the swap amounts for the real-balance checks.
+        (uint256 amountOutScaled18, uint256 amountInScaled18) = request.kind == SwapKind.EXACT_IN
+            ? (calculatedAmountScaled18, request.amountGivenScaled18)
+            : (request.amountGivenScaled18, calculatedAmountScaled18);
+
+        // The request holds the real Vault balances again at this point. Check them as well as the weighted-pool
+        // minimums, which may have used the virtual reserve.
+        _ensureBalanceIsRedeemable(request.indexOut, request.balancesScaled18[request.indexOut] - amountOutScaled18);
+
+        // The stored input balance is at least this value after aggregate fees.
+        _ensureBalanceIsRedeemable(request.indexIn, request.balancesScaled18[request.indexIn] + amountInScaled18);
 
         return calculatedAmountScaled18;
     }
