@@ -6,10 +6,12 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -48,8 +50,54 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     // the `tokenIn` of a swap.
     bool internal immutable _blockProjectTokenSwapsIn;
 
+    // Vault state used by the redeemability checks.
+    IVault internal immutable _lbpVault;
+    uint256 internal immutable _poolMinimumTotalSupply;
+    uint256 internal immutable _minimumTradeAmount;
+
+    // Minimum non-zero balance a swap may leave behind.
+    uint256 internal immutable _minRedeemableBalanceScaled18;
+
     /// @notice Swaps are disabled except during the sale (i.e., between and start and end times).
     error SwapsDisabled();
+
+    /**
+     * @notice A swap would leave a token balance that cannot be fully redeemed.
+     * @param tokenIndex Index of the affected token
+     * @param endingBalanceScaled18 Resulting balance, or a conservative lower bound
+     * @param minBalanceScaled18 Minimum allowed non-zero balance
+     */
+    error TokenBalanceBlocksRedemption(uint256 tokenIndex, uint256 endingBalanceScaled18, uint256 minBalanceScaled18);
+
+    /**
+     * @notice Initialization would produce a state that cannot be fully redeemed.
+     * @param totalSupply The resulting pool token supply
+     */
+    error InitialStateBlocksRedemption(uint256 totalSupply);
+
+    /**
+     * @notice A proportional add would produce a state that cannot be fully redeemed.
+     * @param totalSupply The resulting pool token supply
+     */
+    error ResultingStateBlocksRedemption(uint256 totalSupply);
+
+    /**
+     * @notice A proportional removal would leave too little circulating supply to redeem.
+     * @param remainingCirculatingSupply The remaining circulating pool token supply
+     */
+    error RemainingSupplyBlocksRedemption(uint256 remainingCirculatingSupply);
+
+    /**
+     * @notice A proportional removal would leave a token balance that cannot be fully redeemed.
+     * @param tokenIndex Index of the affected token
+     * @param remainingBalanceScaled18 The remaining token balance
+     * @param remainingSupply The remaining pool token supply
+     */
+    error RemainingBalanceBlocksRedemption(
+        uint256 tokenIndex,
+        uint256 remainingBalanceScaled18,
+        uint256 remainingSupply
+    );
 
     /// @notice Removing liquidity is not allowed before the end of the sale.
     error RemovingLiquidityNotAllowed();
@@ -71,8 +119,21 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         _;
     }
 
-    constructor(LBPCommonParams memory lbpCommonParams, address trustedRouter) Ownable(lbpCommonParams.owner) {
+    constructor(
+        LBPCommonParams memory lbpCommonParams,
+        address trustedRouter,
+        IVault vault
+    ) Ownable(lbpCommonParams.owner) {
         LBPValidation.validateCommonParams(lbpCommonParams);
+
+        // Cache the Vault minimums used by the redeemability checks.
+        uint256 poolMinimumTotalSupply = vault.getPoolMinimumTotalSupply();
+        uint256 minimumTradeAmount = vault.getMinimumTradeAmount();
+
+        _lbpVault = vault;
+        _poolMinimumTotalSupply = poolMinimumTotalSupply;
+        _minimumTradeAmount = minimumTradeAmount;
+        _minRedeemableBalanceScaled18 = poolMinimumTotalSupply + minimumTradeAmount;
 
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
@@ -120,6 +181,11 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         return _isSwapEnabled();
     }
 
+    /// @inheritdoc ILBPCommon
+    function getMinRedeemableBalance() external view returns (uint256) {
+        return _minRedeemableBalanceScaled18;
+    }
+
     /*******************************************************************************
                                       Pool Hooks
     *******************************************************************************/
@@ -135,7 +201,7 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         address,
         address pool,
         TokenConfig[] memory tokenConfig,
-        LiquidityManagement calldata
+        LiquidityManagement calldata liquidityManagement
     ) public view virtual override returns (bool) {
         // These preconditions are guaranteed by the standard LBPoolFactory, but check anyway.
         InputHelpers.ensureInputLengthMatch(_TWO_TOKENS, tokenConfig.length);
@@ -145,6 +211,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         if (tokenConfig[0].tokenType != TokenType.STANDARD || tokenConfig[1].tokenType != TokenType.STANDARD) {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
+
+        // Redeemability checks assume proportional liquidity operations.
+        LBPValidation.validateLiquidityManagement(liquidityManagement);
 
         return pool == address(this);
     }
@@ -158,6 +227,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
         // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
         hookFlags.shouldCallBeforeInitialize = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
+
+        // Validate redeemability after the Vault has computed the initial supply.
+        hookFlags.shouldCallAfterInitialize = true;
 
         // Required to enforce the liquidity can only be withdrawn after the end of the sale.
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
@@ -181,38 +253,76 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Allow the owner to add liquidity before the start of the sale.
+     * @notice Ensure initialization produces a fully redeemable state.
+     * @param exactAmountsIn The balances stored after initialization
+     * @param bptAmountOut The pool tokens minted to the initializer
+     * @return success Always true if the resulting state is valid
+     */
+    function onAfterInitialize(
+        uint256[] memory exactAmountsIn,
+        uint256 bptAmountOut,
+        bytes memory
+    ) public view virtual override returns (bool) {
+        uint256 totalSupply = bptAmountOut + _poolMinimumTotalSupply;
+
+        if (bptAmountOut == 0 || _isFullyRedeemable(exactAmountsIn, totalSupply) == false) {
+            revert InitialStateBlocksRedemption(totalSupply);
+        }
+
+        return true;
+    }
+
+    /**
+     * @notice Allow the owner to add proportional liquidity before the sale.
      * @param router The router used for the operation
-     * @return success True (allowing the operation to proceed) if the owner is calling through the trusted router
+     * @param kind The liquidity add kind
+     * @param minBptAmountOut The pool tokens to be minted for a proportional add
+     * @param balancesScaled18 The stored balances before the add
+     * @return success True if the operation may proceed
      */
     function onBeforeAddLiquidity(
         address router,
         address,
-        AddLiquidityKind,
+        AddLiquidityKind kind,
         uint256[] memory,
-        uint256,
-        uint256[] memory,
+        uint256 minBptAmountOut,
+        uint256[] memory balancesScaled18,
         bytes memory
     ) public view virtual override onlyBeforeSale returns (bool) {
-        return router == _trustedRouter && ISenderGuard(router).getSender() == owner();
+        if (router != _trustedRouter || ISenderGuard(router).getSender() != owner()) {
+            return false;
+        }
+
+        if (kind == AddLiquidityKind.PROPORTIONAL) {
+            _ensureAddedStateIsRedeemable(minBptAmountOut, balancesScaled18);
+        }
+
+        return true;
     }
 
     /**
-     * @notice Only remove liquidity before the sale (to correct mistakes) or after the sale (withdrawal of proceeds).
-     * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
+     * @notice Allow liquidity removal before or after the sale, but not during it.
+     * @param kind The liquidity removal kind
+     * @param maxBptAmountIn The pool tokens to be burned for a proportional removal
+     * @param balancesScaled18 The stored balances before the removal
+     * @return success True if the operation may proceed
      */
     function onBeforeRemoveLiquidity(
         address,
         address,
-        RemoveLiquidityKind,
-        uint256,
+        RemoveLiquidityKind kind,
+        uint256 maxBptAmountIn,
         uint256[] memory,
-        uint256[] memory,
+        uint256[] memory balancesScaled18,
         bytes memory
     ) public view virtual override returns (bool) {
         // Do not allow removing liquidity during the sale.
         if (block.timestamp >= _startTime && block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
+        }
+
+        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
+            _ensureRemainderIsRedeemable(maxBptAmountIn, balancesScaled18);
         }
 
         return true;
@@ -224,6 +334,129 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     function _isSwapEnabled() internal view returns (bool) {
         return block.timestamp >= _startTime && block.timestamp <= _endTime;
+    }
+
+    /**
+     * @notice Ensure a swap leaves the token balance in a redeemable state.
+     * @param tokenIndex Index of the affected token
+     * @param endingBalanceScaled18 Resulting balance, or a conservative lower bound
+     */
+    function _ensureBalanceIsRedeemable(uint256 tokenIndex, uint256 endingBalanceScaled18) internal view {
+        if (endingBalanceScaled18 != 0 && endingBalanceScaled18 < _minRedeemableBalanceScaled18) {
+            revert TokenBalanceBlocksRedemption(tokenIndex, endingBalanceScaled18, _minRedeemableBalanceScaled18);
+        }
+    }
+
+    /**
+     * @notice Ensure a proportional removal preserves full redeemability.
+     * @param bptAmountIn The pool tokens to be burned
+     * @param balancesScaled18 The stored token balances
+     */
+    function _ensureRemainderIsRedeemable(uint256 bptAmountIn, uint256[] memory balancesScaled18) internal view {
+        uint256 totalSupply = _lbpVault.totalSupply(address(this));
+
+        // Leave invalid burn amounts to the Vault.
+        if (bptAmountIn > totalSupply - _poolMinimumTotalSupply) {
+            return;
+        }
+
+        // Do not restrict operations on an already non-redeemable state.
+        if (_isFullyRedeemable(balancesScaled18, totalSupply) == false) {
+            return;
+        }
+
+        uint256 remainingSupply = totalSupply - bptAmountIn;
+        uint256 remainingCirculatingSupply = remainingSupply - _poolMinimumTotalSupply;
+
+        // A full exit leaves no circulating claim.
+        if (remainingCirculatingSupply == 0) {
+            return;
+        }
+
+        // The remaining circulating supply must itself be redeemable.
+        if (remainingCirculatingSupply < _minimumTradeAmount) {
+            revert RemainingSupplyBlocksRedemption(remainingCirculatingSupply);
+        }
+
+        // The pool token supply can exceed 128 bits, so these products need full-precision division.
+        uint256 numTokens = balancesScaled18.length;
+        for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 balance = balancesScaled18[i];
+            uint256 remainingBalance = balance - Math.mulDiv(balance, bptAmountIn, totalSupply);
+            uint256 amountOut = Math.mulDiv(remainingBalance, remainingCirculatingSupply, remainingSupply);
+
+            // Projected balances are conservative; only an exact zero is exempt.
+            if (remainingBalance != 0 && amountOut < _minimumTradeAmount) {
+                revert RemainingBalanceBlocksRedemption(i, remainingBalance, remainingSupply);
+            }
+        }
+    }
+
+    /**
+     * @notice Ensure a proportional add preserves full redeemability.
+     * @param bptAmountOut The pool tokens to be minted
+     * @param balancesScaled18 The stored token balances before the add
+     */
+    function _ensureAddedStateIsRedeemable(uint256 bptAmountOut, uint256[] memory balancesScaled18) internal view {
+        uint256 totalSupply = _lbpVault.totalSupply(address(this));
+
+        // Do not restrict an add that may repair an already non-redeemable state.
+        if (_isFullyRedeemable(balancesScaled18, totalSupply) == false) {
+            return;
+        }
+
+        uint256 addedSupply = totalSupply + bptAmountOut;
+        uint256 addedCirculatingSupply = addedSupply - _poolMinimumTotalSupply;
+
+        if (addedCirculatingSupply != 0 && addedCirculatingSupply < _minimumTradeAmount) {
+            revert ResultingStateBlocksRedemption(addedSupply);
+        }
+
+        // The pool token supply can exceed 128 bits, so these products need full-precision division.
+        uint256 numTokens = balancesScaled18.length;
+        for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 balance = balancesScaled18[i];
+            uint256 addedBalance = balance + Math.mulDiv(balance, bptAmountOut, totalSupply, Math.Rounding.Ceil);
+            uint256 amountOut = Math.mulDiv(addedBalance, addedCirculatingSupply, addedSupply);
+
+            // Projected balances are conservative; only an exact zero is exempt.
+            if (addedBalance != 0 && amountOut < _minimumTradeAmount) {
+                revert ResultingStateBlocksRedemption(addedSupply);
+            }
+        }
+    }
+
+    /**
+     * @notice Return whether all circulating pool tokens can be redeemed proportionally.
+     * @param balancesScaled18 The stored token balances
+     * @param totalSupply The pool token total supply
+     * @return success True if the circulating supply can be fully redeemed
+     */
+    function _isFullyRedeemable(
+        uint256[] memory balancesScaled18,
+        uint256 totalSupply
+    ) internal view returns (bool success) {
+        uint256 circulatingSupply = totalSupply - _poolMinimumTotalSupply;
+
+        if (circulatingSupply == 0) {
+            return true;
+        }
+
+        if (circulatingSupply < _minimumTradeAmount) {
+            return false;
+        }
+
+        // The pool token supply can exceed 128 bits, so these products need full-precision division.
+        uint256 numTokens = balancesScaled18.length;
+        for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 amountOut = Math.mulDiv(balancesScaled18[i], circulatingSupply, totalSupply);
+
+            if (amountOut != 0 && amountOut < _minimumTradeAmount) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     function _computeScalingFactor(IERC20 token) internal view returns (uint256) {

@@ -98,4 +98,13 @@ interface ILBPCommon is IBasePool {
      * @return isSwapEnabled True if the sale is in progress
      */
     function isSwapEnabled() external view returns (bool isSwapEnabled);
+
+    /**
+     * @notice Get the minimum non-zero real balance a swap may leave for a token.
+     * @dev The value is fixed at deployment from the Vault minimum supply and minimum trade amount. Proportional
+     * removals are checked separately. Weighted LBPs also enforce their per-token minimum balances.
+     *
+     * @return minRedeemableBalance The minimum non-zero real balance after a swap
+     */
+    function getMinRedeemableBalance() external view returns (uint256 minRedeemableBalance);
 }

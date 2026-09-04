@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPCommon.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -33,10 +34,13 @@ library LBPValidation {
     /// @notice The reserve token is the zero address.
     error InvalidReserveToken();
 
+    /// @notice The pool was registered with unsupported liquidity operations.
+    error InvalidLiquidityManagement();
+
     /**
      * @notice Validates common LBP parameters.
      * @dev This should be called by both factories for early validation, and pools for direct deployment protection.
-     * Note that the time is also validated here, and unlike previous versions LBPs, the startTime must be in the
+     * Note that the time is also validated here, and unlike previous versions of LBPs, the startTime must be in the
      * future, due to constraints around funding and initialization.
      *
      * @param lbpCommonParams The common LBP parameters to validate
@@ -47,15 +51,15 @@ library LBPValidation {
             revert InvalidOwner();
         }
 
-        if (lbpCommonParams.projectToken == IERC20(address(0))) {
+        if (address(lbpCommonParams.projectToken) == address(0)) {
             revert InvalidProjectToken();
         }
 
-        if (lbpCommonParams.reserveToken == IERC20(address(0))) {
+        if (address(lbpCommonParams.reserveToken) == address(0)) {
             revert InvalidReserveToken();
         }
 
-        if (lbpCommonParams.projectToken == lbpCommonParams.reserveToken) {
+        if (address(lbpCommonParams.projectToken) == address(lbpCommonParams.reserveToken)) {
             revert TokensMustBeDifferent();
         }
 
@@ -65,6 +69,22 @@ library LBPValidation {
             lbpCommonParams.startTime < block.timestamp + INITIALIZATION_PERIOD
         ) {
             revert GradualValueChange.InvalidStartTime(lbpCommonParams.startTime, lbpCommonParams.endTime);
+        }
+    }
+
+    /**
+     * @notice Validate the liquidity operations enabled for an LBP.
+     * @dev LBPs support proportional adds and removals only.
+     * @param liquidityManagement The liquidity operation flags for the pool
+     */
+    function validateLiquidityManagement(LiquidityManagement memory liquidityManagement) internal pure {
+        if (
+            liquidityManagement.disableUnbalancedLiquidity == false ||
+            liquidityManagement.enableAddLiquidityCustom ||
+            liquidityManagement.enableRemoveLiquidityCustom ||
+            liquidityManagement.enableDonation
+        ) {
+            revert InvalidLiquidityManagement();
         }
     }
 }
