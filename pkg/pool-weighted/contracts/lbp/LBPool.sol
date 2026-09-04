@@ -270,8 +270,7 @@ contract LBPool is ILBPool, LBPCommon, WeightedPool {
             ? (calculatedAmountScaled18, request.amountGivenScaled18)
             : (request.amountGivenScaled18, calculatedAmountScaled18);
 
-        // The request holds the real Vault balances again at this point. Check them as well as the weighted-pool
-        // minimums, which may have used the virtual reserve.
+        // The request holds the real Vault balances again at this point; check the balances the Vault will store.
         _ensureBalanceIsRedeemable(request.indexOut, request.balancesScaled18[request.indexOut] - amountOutScaled18);
 
         // The stored input balance is at least this value after aggregate fees.
