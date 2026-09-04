@@ -566,7 +566,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             pool,
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -589,7 +589,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             pool,
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -609,7 +609,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             address(1), // Wrong pool address
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -632,7 +632,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             pool, // Correct pool address
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -650,9 +650,10 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         assertTrue(flags.shouldCallBeforeAddLiquidity, "shouldCallBeforeAddLiquidity should be true");
         assertTrue(flags.shouldCallBeforeRemoveLiquidity, "shouldCallBeforeRemoveLiquidity should be true");
 
+        assertTrue(flags.shouldCallAfterInitialize, "shouldCallAfterInitialize should be true");
+
         // These should be false
         assertFalse(flags.enableHookAdjustedAmounts, "enableHookAdjustedAmounts should be false");
-        assertFalse(flags.shouldCallAfterInitialize, "shouldCallAfterInitialize should be false");
         assertFalse(flags.shouldCallComputeDynamicSwapFee, "shouldCallComputeDynamicSwapFee should be false");
         assertFalse(flags.shouldCallBeforeSwap, "shouldCallBeforeSwap should be false");
         assertFalse(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be false");

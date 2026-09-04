@@ -640,7 +640,7 @@ contract LBPoolTest is WeightedLBPTest {
             pool,
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -663,7 +663,7 @@ contract LBPoolTest is WeightedLBPTest {
             pool,
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -683,7 +683,7 @@ contract LBPoolTest is WeightedLBPTest {
             address(1), // Wrong pool address
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -706,7 +706,7 @@ contract LBPoolTest is WeightedLBPTest {
             pool, // Correct pool address
             tokenConfig,
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false,
                 enableDonation: false
@@ -714,6 +714,46 @@ contract LBPoolTest is WeightedLBPTest {
         );
 
         assertTrue(success, "onRegister should return true when parameters are valid");
+    }
+
+    // Reject each unsupported liquidity-management flag independently.
+    function testOnRegisterRefusesUnsupportedLiquidityManagement() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        LiquidityManagement[4] memory bad = [
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            }),
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            }),
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: true,
+                enableDonation: false
+            }),
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: true
+            })
+        ];
+
+        for (uint256 i = 0; i < bad.length; ++i) {
+            vm.prank(address(vault));
+            vm.expectRevert(LBPValidation.InvalidLiquidityManagement.selector);
+            IHooks(pool).onRegister(poolFactory, pool, tokenConfig, bad[i]);
+        }
     }
 
     function testGetHookFlags() public view {
@@ -724,9 +764,10 @@ contract LBPoolTest is WeightedLBPTest {
         assertTrue(flags.shouldCallBeforeAddLiquidity, "shouldCallBeforeAddLiquidity should be true");
         assertTrue(flags.shouldCallBeforeRemoveLiquidity, "shouldCallBeforeRemoveLiquidity should be true");
 
+        assertTrue(flags.shouldCallAfterInitialize, "shouldCallAfterInitialize should be true");
+
         // These should be false
         assertFalse(flags.enableHookAdjustedAmounts, "enableHookAdjustedAmounts should be false");
-        assertFalse(flags.shouldCallAfterInitialize, "shouldCallAfterInitialize should be false");
         assertFalse(flags.shouldCallComputeDynamicSwapFee, "shouldCallComputeDynamicSwapFee should be false");
         assertFalse(flags.shouldCallBeforeSwap, "shouldCallBeforeSwap should be false");
         assertFalse(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be false");
