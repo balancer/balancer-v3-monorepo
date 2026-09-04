@@ -56,7 +56,7 @@ contract FixedPriceLBPool is IFixedPriceLBPool, LBPCommon, BalancerPoolToken, Po
         FactoryParams memory factoryParams,
         uint256 projectTokenRate
     )
-        LBPCommon(lbpCommonParams, factoryParams.trustedRouter)
+        LBPCommon(lbpCommonParams, factoryParams.trustedRouter, factoryParams.vault)
         BalancerPoolToken(factoryParams.vault, lbpCommonParams.name, lbpCommonParams.symbol)
         PoolInfo(factoryParams.vault)
         Version(factoryParams.poolVersion)
