@@ -426,7 +426,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
      * comes back as `RevertCodec.ErrorSelectorNotFound`.
      *
      * The buffer calls that wrap an amount the caller named do not use this; the Vault's error suffices there.
-     * `amountGivenRaw` must be nonzero and denominated in the wrapped token, which is what both errors report.
+     * `amountGivenRaw` must be nonzero, and denominated in the wrapped token that both errors name.
      *
      * @param params The buffer operation, whose `amountGivenRaw` is the pool-derived amount of the wrapped token
      * @return amountInRaw The amount taken in: underlying when wrapping, wrapped when unwrapping

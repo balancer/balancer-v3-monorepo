@@ -95,8 +95,8 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). This is a quote, not a simulation:
-     * it passes unlimited maximums, and does not use buffer liquidity. See `addLiquidityProportionalToERC4626Pool`.
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). The query passes unlimited
+     * maximums, and does not use buffer liquidity. See `addLiquidityProportionalToERC4626Pool`.
      *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
@@ -122,7 +122,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      *
      * Wherever `unwrapWrapped` is set, the pool fixes the amount to unwrap: it is that token's share of the burned
      * pool tokens. If the Vault buffer will not unwrap that amount, the call reverts with `UnwrapAmountTooSmall`. A
-     * share of exactly zero is not that case; it is returned as zero of the underlying token.
+     * share of exactly zero is returned as zero of the underlying token, and the call succeeds.
      *
      * This function always takes the ordinary removal path, and never a recovery-mode withdrawal. To withdraw from a
      * paused pool, enable Recovery Mode if it is not already on (`IVaultAdmin.enableRecoveryMode`), call
@@ -148,8 +148,8 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). This is a quote, not a simulation:
-     * it passes zero limits, and does not use buffer liquidity. See `removeLiquidityProportionalFromERC4626Pool`.
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). The query passes zero limits,
+     * and does not use buffer liquidity. See `removeLiquidityProportionalFromERC4626Pool`.
      *
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
@@ -229,8 +229,8 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      *
      * For any token in `tokensToUnwrap`, the pool fixes the amount to unwrap: it is that token's share of the burned
      * pool tokens, at the level of the traversal where the token is found. If the Vault buffer will not unwrap that
-     * amount, the call reverts with `UnwrapAmountTooSmall`. A share of exactly zero is not that case; it is returned
-     * as zero of the underlying token.
+     * amount, the call reverts with `UnwrapAmountTooSmall`. A share of exactly zero is returned as zero of the
+     * underlying token, and the call succeeds.
      *
      * This function always takes the ordinary removal path, for the parent pool and every child pool, and never a
      * recovery-mode withdrawal. To withdraw where a pool is paused, unwind one level at a time, taking for each pool
@@ -259,7 +259,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
-     * @dev This is a quote, not a simulation: it passes zero minimums, and does not use buffer liquidity.
+     * @dev The query passes zero minimums, and does not use buffer liquidity.
      * See `removeLiquidityProportionalNestedPool`.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)

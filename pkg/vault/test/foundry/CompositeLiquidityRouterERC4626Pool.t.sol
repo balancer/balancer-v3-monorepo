@@ -1091,8 +1091,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory recoveryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
         vm.revertToState(snapshot);
 
-        // A recovery withdrawal reads raw balances and applies no rates, so it pays different amounts. Without
-        // that the assertions below would hold whichever path ran.
+        // A recovery withdrawal reads raw balances and applies no rates, so it pays different amounts. The
+        // assertions below rely on that difference.
         assertTrue(
             recoveryAmountsOut[waDaiIdx] != ordinaryAmountsOut[waDaiIdx] ||
                 recoveryAmountsOut[waWethIdx] != ordinaryAmountsOut[waWethIdx],
@@ -1187,7 +1187,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     function testRemoveLiquidityProportionalFromERC4626PoolRateAboveOne() public {
         // A redeem rate well above 1, so each wrapped amount is numerically far below the underlying it redeems
-        // for. `minAmountsOut` is denominated in the underlying, and has to be read that way.
+        // for. `minAmountsOut` is denominated in the underlying.
         _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
         _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
 
