@@ -268,7 +268,7 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
         assertTrue(_ownerCanExit(lbp), "Owner cannot exit after the smallest admitted first purchase");
     }
 
-    function testSeedlessFirstPurchaseInsideTheBandIsRejected() public {
+    function testSeedlessFirstPurchaseBelowTheFloorIsRejected() public {
         address lbp = _buildSeedlessWithWeights(LOW_PROJECT_WEIGHT);
         vault.manualSetStaticSwapFeePercentage(lbp, MIN_WEIGHTED_SWAP_FEE);
 
@@ -284,7 +284,7 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
         router.swapSingleTokenExactIn(lbp, reserveToken, projectToken, purchase, 0, MAX_UINT256, false, "");
     }
 
-    function testSeedlessFirstPurchaseWithAMaximalAggregateFee() public {
+    function testSeedlessFirstPurchaseWithTheLargestAggregateFee() public {
         address lbp = _buildSeedlessWithWeights(LOW_PROJECT_WEIGHT);
         vault.manualSetStaticSwapFeePercentage(lbp, MIN_WEIGHTED_SWAP_FEE);
         vault.manualSetAggregateSwapFeePercentage(lbp, 99.9e16);

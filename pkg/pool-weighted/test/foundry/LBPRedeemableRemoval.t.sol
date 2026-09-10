@@ -59,7 +59,7 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
             );
     }
 
-    function testMaximalBurnIsPermittedAtTheFloorWithNoCarveOut() public {
+    function testLargestBurnIsPermittedAtTheFloor() public {
         address lbp = _buildSeededAtTheFloor();
 
         assertTrue(_fullyRedeemable(lbp), "The largest burn is refused at the floor");
@@ -79,7 +79,7 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         assertTrue(_fullyRedeemable(lbp), "The full exit is refused at the floor");
     }
 
-    function testNinetyNinePointNineNinePercentWithdrawalIsAdmittedOnAHealthyPool() public {
+    function testWithdrawalOf9999BasisPointsIsAdmittedOnAHealthyPool() public {
         address lbp = _buildSeeded(DEFAULT_WEIGHT, true);
         vm.warp(saleEnd + 1);
 
@@ -112,7 +112,7 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         );
     }
 
-    function testBurnRegionsAtTheFloorAreNonMonotone() public {
+    function testAdmittedBurnsAtTheFloorAreNotContiguous() public {
         address lbp = _buildSeededAtTheFloor();
 
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
@@ -154,7 +154,11 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         assertTrue(_removalIsAdmitted(lbp, minimumTradeAmount), "The smallest legal burn is refused");
         assertTrue(_removalIsAdmitted(lbp, largestZeroPayoutBurn), "The largest small burn is refused");
 
-        assertEq((blockingBalance * (largestZeroPayoutBurn + 1)) / totalSupply, 1, "The boundary is not where it is");
+        assertEq(
+            (blockingBalance * (largestZeroPayoutBurn + 1)) / totalSupply,
+            1,
+            "The next burn up does not pay out exactly 1 unit"
+        );
 
         vm.startPrank(bob);
         IERC20(lbp).approve(address(router), MAX_UINT256);
@@ -721,7 +725,7 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         assertTrue(_removalIsAdmitted(lbp, circulating / 2), "A partial withdrawal against a zero reserve is refused");
     }
 
-    function testNonEighteenDecimalPoolIsGovernedByTheInheritedMinimum() public {
+    function testNon18DecimalPoolIsGovernedByTheInheritedMinimum() public {
         uint256 saved = reserveTokenVirtualBalanceNon18;
         reserveTokenVirtualBalanceNon18 = 0;
 
@@ -1113,7 +1117,7 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
         assertLt(balances[reserveIdx], totalSupply, "The reserve ratio is not below 1");
     }
 
-    function testMaximalBurnIsPermittedAtTheFloor() public {
+    function testLargestBurnIsPermittedAtTheFloor() public {
         _buildAtTheFloor();
 
         assertTrue(_fullyRedeemable(pool), "The largest burn is refused at the floor");

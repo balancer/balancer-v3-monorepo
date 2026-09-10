@@ -61,20 +61,40 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         vm.stopPrank();
     }
 
-    function testThresholdIsTightAtTheSmallestRedeemableSupply() public view {
-        uint256 poolMinimumTotalSupply = vault.getPoolMinimumTotalSupply();
-        uint256 smallestRedeemableSupply = poolMinimumTotalSupply + minimumTradeAmount;
-        uint256 circulating = smallestRedeemableSupply - poolMinimumTotalSupply;
+    /**
+     * @dev The floor is the smallest balance a full exit can still pay out, with nothing to spare. A pool funded at
+     * the floor holds the smallest redeemable supply, and exiting it pays exactly the Vault's minimum trade amount,
+     * so any lower balance would pay less than the Vault accepts. `testInitializationBelowFloorIsRefused` covers
+     * the other side.
+     */
+    function testFullExitAtTheFloorPaysTheMinimumTradeAmount() public {
+        address smallPool = _createAndInitWith(0, minRedeemableBalance);
 
         assertEq(
-            (minRedeemableBalance * circulating) / smallestRedeemableSupply,
-            minimumTradeAmount,
-            "The floor does not withdraw exactly the minimum trade amount at the smallest redeemable supply"
+            IERC20(smallPool).totalSupply(),
+            minRedeemableBalance,
+            "The pool was not built at the smallest redeemable supply"
         );
-        assertLt(
-            ((minRedeemableBalance - 1) * circulating) / smallestRedeemableSupply,
+
+        _warpPastSale();
+
+        uint256 ownerBpt = IERC20(smallPool).balanceOf(bob);
+
+        vm.startPrank(bob);
+        IERC20(smallPool).approve(address(router), MAX_UINT256);
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            smallPool,
+            ownerBpt,
+            new uint256[](2),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(
+            amountsOut[projectIdx],
             minimumTradeAmount,
-            "1 below the floor is not rejected at the smallest redeemable supply"
+            "The full exit at the floor does not pay exactly the minimum trade amount"
         );
     }
 
@@ -222,7 +242,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         assertTrue(_ownerCanExit(pool), "Owner cannot exit after an ordinary sale");
     }
 
-    function testElevenDecimalsCanLeaveOneRawUnit() public {
+    function test11DecimalsCanLeaveOneRawUnit() public {
         (address lbp, uint256 newProjectIdx, uint256 seedRaw, IERC20 project) = _buildPoolWithProjectDecimals(11);
 
         _buyExactOut(lbp, reserveToken, project, seedRaw - 1);
@@ -233,14 +253,14 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         assertTrue(_ownerCanExit(lbp), "Owner cannot exit with 1 raw unit of an 11-decimal token left");
     }
 
-    function testTwelveDecimalsCannotLeaveOneRawUnit() public {
+    function test12DecimalsCannotLeaveOneRawUnit() public {
         (address lbp, uint256 newProjectIdx, uint256 seedRaw, IERC20 project) = _buildPoolWithProjectDecimals(12);
 
         _expectBlocksRedemption(newProjectIdx, 1e6);
         _buyExactOut(lbp, reserveToken, project, seedRaw - 1);
     }
 
-    function testThirteenDecimalsCannotLeaveOneRawUnit() public {
+    function test13DecimalsCannotLeaveOneRawUnit() public {
         (address lbp, uint256 newProjectIdx, uint256 seedRaw, IERC20 project) = _buildPoolWithProjectDecimals(13);
 
         _expectBlocksRedemption(newProjectIdx, 1e5);
@@ -498,7 +518,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         assertTrue(_ownerCanExit(pool), "The full exit no longer clears from the floor");
     }
 
-    function testRoundedTwelveDecimalRemainderIsRejected() public {
+    function testRounded12DecimalRemainderIsRejected() public {
         (address lbp, uint256 newProjectIdx, uint256 seedRaw, IERC20 project) = _buildPoolWithProjectDecimals(12);
         uint256 scalingFactor = 1e6;
 
