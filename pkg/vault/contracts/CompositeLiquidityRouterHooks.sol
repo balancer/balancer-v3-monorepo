@@ -358,13 +358,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
 
             if (amountOut > 0) {
-                // The amount unwrapped here is the pool's, not the caller's: it is this token's share of the burned
-                // BPT. The caller asked for the underlying token, and delivering the wrapped token in its place would
-                // return an asset they did not ask for, so an amount the buffer will not unwrap fails the operation.
-                //
-                // The buffer gets no limit of its own. `minAmountOut` is checked at the end of this function, where
-                // the error names the token; handing it over here would preempt the Vault's own check on the
-                // underlying amount, and report a limit where the real reason is the buffer's minimum.
+                // Pass no limit to the buffer: `minAmountOut` is denominated in the underlying token, and is
+                // checked at the end of this function, where the error can name that token.
                 (, actualAmountOut) = _bufferWrapOrUnwrapPoolAmount(
                     BufferWrapOrUnwrapParams({
                         kind: SwapKind.EXACT_IN,
@@ -396,10 +391,7 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     /**
      * @notice Centralized handler for ERC4626 unwrapping operations in nested pools.
      * @dev Adds the token and amount to transient storage. Note that the limit is set to 0 here; this is meant to be
-     * called mid-operation, and assumes final limits will be checked externally. A zero amount registers the
-     * underlying token with a zero amount, without calling the buffer. Callers reach this only for tokens whose
-     * buffer is initialized (the effective token type requires one), so `getERC4626BufferAsset` cannot return the
-     * zero address here.
+     * called mid-operation, and assumes final limits will be checked externally.
      *
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
@@ -407,12 +399,9 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     function _unwrapExactInAndUpdateTokenOutData(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
         uint256 underlyingAmount;
 
-        // The Vault's minimum wrap amount has no zero exemption, so handing the buffer a zero amount would revert
-        // the whole nested operation. Nothing needs to be handed over: a zero amount creates no delta, so there is
-        // no credit left to settle. This matches the flat ERC4626 path, which also skips the call at zero.
+        // The Vault rejects a zero wrap amount, and a zero creates no delta to settle, so skip the buffer call. The
+        // flat ERC4626 path does the same.
         if (wrappedAmount > 0) {
-            // As on the flat path, the amount is the pool's rather than the caller's, and the caller asked for the
-            // underlying token, so an amount the buffer will not unwrap fails the whole traversal.
             (, underlyingAmount) = _bufferWrapOrUnwrapPoolAmount(
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
@@ -424,30 +413,20 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             );
         }
 
-        // Register the token unconditionally. The caller declares the output tokens up front, and the set produced
-        // by the traversal must match that declaration exactly, so a token that produced nothing is still an output
-        // token: returning early here instead would revert `WrongTokensOut`.
+        // Register the token even when it produced nothing: the traversal's output set has to match the tokens the
+        // caller declared, or the operation reverts with `WrongTokensOut`.
         _updateSwapTokensOut(_vault.getERC4626BufferAsset(wrappedToken), underlyingAmount);
     }
 
     /**
-     * @notice Wraps or unwraps through the Vault buffer, where the amount comes from a pool and not from the caller.
-     * @dev Proportional operations fix the amount of each token from the pool's own balances, so the caller cannot
-     * choose it: on a removal it is that token's share of the burned pool tokens, and on an addition it is what the
-     * pool requires for the pool tokens requested. The Vault refuses wrap and unwrap amounts below its minimum wrap
-     * amount, applying that minimum both to the amount it is given and to the amount it calculates, so the smallest
-     * amount it will accept is a property of the wrapper: it moves with the wrapper's rate, and it is not the same in
-     * the two directions. This router does not predict it. It hands the amount over, and reports the Vault's own
-     * verdict in terms of the operation the caller asked for, naming the wrapped token and the amount the pool fixed,
-     * where the Vault's error names the token alone. Every other failure means something else, and is bubbled up
-     * unchanged, with one mechanical exception: revert data too short to carry a selector (empty included, which is
-     * also what an out-of-gas sub-call produces) is reported as `RevertCodec.ErrorSelectorNotFound`.
+     * @notice Wraps or unwraps through the Vault buffer, where the pool fixes the amount and the caller cannot.
+     * @dev The Vault's own `WrapAmountTooSmall` names only the token, which is not enough to act on when the caller
+     * never chose the amount, so it is re-raised as `RequiredWrapAmountTooSmall` or `UnwrapAmountTooSmall`, naming
+     * the amount as well. Every other revert is bubbled up unchanged, except that data too short to hold a selector
+     * comes back as `RevertCodec.ErrorSelectorNotFound`.
      *
-     * The two buffer calls in this contract that wrap an amount the caller named do not use this, and should not: an
-     * amount the caller chose is not one this router should describe as the pool's. Callers pass a nonzero
-     * `amountGivenRaw`, denominated in the wrapped token, which is what both errors name: a zero is skipped at the
-     * call sites rather than handed over here, and a call site whose given amount were the underlying would need
-     * different reporting.
+     * The buffer calls that wrap an amount the caller named do not use this; the Vault's error suffices there.
+     * `amountGivenRaw` must be nonzero and denominated in the wrapped token, which is what both errors report.
      *
      * @param params The buffer operation, whose `amountGivenRaw` is the pool-derived amount of the wrapped token
      * @return amountInRaw The amount taken in: underlying when wrapping, wrapped when unwrapping
@@ -473,7 +452,6 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 );
             }
 
-            // Every other failure means something else, so it is not this router's to reinterpret.
             RevertCodec.bubbleUpRevert(returnData);
         }
     }

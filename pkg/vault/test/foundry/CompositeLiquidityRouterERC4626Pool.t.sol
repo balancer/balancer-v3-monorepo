@@ -1003,11 +1003,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshotState();
 
-        // The composite router has no Recovery Mode handling: an unpaused pool in Recovery Mode is served by the
-        // ordinary removal path and pays exactly what that path pays. The `recoveryMode` variant is the control on
-        // that, and it cannot show more than the fixture allows: the Vault forgoes yield fees while a pool is in
-        // Recovery Mode, so the flag would move the amounts for a pool holding yield-fee-paying tokens, and this
-        // fixture holds none. What the variant asserts is the path, not the arithmetic.
+        // An unpaused pool in Recovery Mode takes the ordinary removal path, so the expected amounts come from
+        // that path either way. This fixture holds no yield-fee-paying tokens, so the flag does not move them.
         _prankStaticCall();
         uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
             pool,
@@ -1067,14 +1064,12 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     /***************************************************************************
-                   Recovery Mode is not a composite-router operation
+                                  Recovery Mode
     ***************************************************************************/
 
-    // The composite router carries no Recovery Mode handling. Where the pool is unpaused, the ordinary removal path
-    // works and is the one taken; where the pool is paused, the call reverts, and the caller withdraws the pool's
-    // registered tokens with `Router.removeLiquidityRecovery`, then redeems the ERC4626 shares directly against each
-    // wrapper. That costs an extra transaction and loses no reach, and it keeps the buffer's minimum wrap amount and
-    // the (independent) buffer pause flag out of the emergency withdrawal path.
+    // The composite router has no Recovery Mode handling. An unpaused pool takes the ordinary removal path; a paused
+    // pool reverts, and the caller withdraws with `Router.removeLiquidityRecovery`, then redeems the ERC4626 shares
+    // against each wrapper.
 
     function testRemoveLiquidityProportionalFromERC4626PoolRecoveryModeUsesOrdinaryPath() public {
         uint256 exactBptAmountIn = bufferInitialAmount / 2;
@@ -1096,8 +1091,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory recoveryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
         vm.revertToState(snapshot);
 
-        // A recovery withdrawal reads raw balances and applies no rates, so it does not pay what the ordinary path
-        // pays. That is what makes the assertions below discriminating rather than incidentally true.
+        // A recovery withdrawal reads raw balances and applies no rates, so it pays different amounts. Without
+        // that the assertions below would hold whichever path ran.
         assertTrue(
             recoveryAmountsOut[waDaiIdx] != ordinaryAmountsOut[waDaiIdx] ||
                 recoveryAmountsOut[waWethIdx] != ordinaryAmountsOut[waWethIdx],
@@ -1145,7 +1140,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // The query reverts with the same error, so a caller learns this without spending a transaction.
+        // The query reverts with the same error.
         _prankStaticCall();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
         queryClrRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
@@ -1171,14 +1166,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeDaiBalance = dai.balanceOf(bob);
         uint256 beforeWethBalance = weth.balanceOf(bob);
 
-        // Step one: the plain Router returns the pool's registered tokens, which for an ERC4626 pool are the wrappers.
+        // Step 1: the plain Router returns the pool's registered tokens, which for an ERC4626 pool are the wrappers.
         vm.prank(bob);
         uint256[] memory wrappedAmountsOut = router.removeLiquidityRecovery(pool, exactBptAmountIn, new uint256[](2));
 
         assertEq(wrappedAmountsOut[waDaiIdx], expectedWrappedAmountsOut[waDaiIdx], "Wrong waDAI amount out");
         assertEq(wrappedAmountsOut[waWethIdx], expectedWrappedAmountsOut[waWethIdx], "Wrong waWETH amount out");
 
-        // Step two: an ERC4626 share redeems against its own protocol, with no Vault involvement of any kind.
+        // Step 2: the shares redeem against the wrapper, with no Vault involvement.
         vm.startPrank(bob);
         uint256 daiAmountOut = waDAI.redeem(wrappedAmountsOut[waDaiIdx], bob, bob);
         uint256 wethAmountOut = waWETH.redeem(wrappedAmountsOut[waWethIdx], bob, bob);
@@ -1191,8 +1186,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityProportionalFromERC4626PoolRateAboveOne() public {
-        // A redeem rate well above one, where each wrapped amount is numerically far below the underlying it
-        // redeems for, so a limit measured on the wrong axis would reject a withdrawal the caller is entitled to.
+        // A redeem rate well above 1, so each wrapped amount is numerically far below the underlying it redeems
+        // for. `minAmountsOut` is denominated in the underlying, and has to be read that way.
         _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
         _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
 
@@ -1231,10 +1226,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityProportionalFromERC4626PoolLimitTooHighOnUnwrappedToken() public {
-        // The counterpart of the test above: a limit one wei above what the caller actually receives has to reject
-        // the call. The buffer is handed no limit, so the rejection comes from the check at the end of
-        // `_processTokenOutExactIn`, and the error names the token the caller was owed. That is the enforcement the
-        // limits rely on being unconditional, so it needs a test that names it.
+        // The counterpart of the test above: a limit 1 wei above what the caller receives rejects the call. The
+        // buffer is handed no limit, so the check at the end of `_processTokenOutExactIn` is what rejects it, and
+        // the error names the underlying token.
         _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
         _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
 
@@ -1275,9 +1269,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityProportionalFromERC4626PoolRecoveryModeQueryIsExecutable() public {
-        // The router's own query is what a caller derives `minAmountsOut` from. Feeding its result straight back
-        // into the operation it quoted has to work, which is the shape reported as a quote-versus-execute mismatch.
-        // Recovery Mode does not change that: the query and the operation both take the ordinary removal path.
+        // A caller derives `minAmountsOut` from the router's own query, so the query result has to be executable.
+        // Recovery Mode does not change that: query and operation both take the ordinary removal path.
         _raiseRedeemRate(waDAI, 2 * FixedPoint.ONE);
         _raiseRedeemRate(waWETH, 2 * FixedPoint.ONE);
 
@@ -2134,8 +2127,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     /**
      * @dev Raises a wrapper's redeem rate to approximately `newRate`. Reverts if `newRate` is not above the current.
-     * `ERC4626TestToken.mockRate` is not usable here: it raises a rate by minting the underlying, and WETH cannot be
-     * minted, so this donates through `_donateUnderlying`, which handles a WETH-backed wrapper as well.
+     * `ERC4626TestToken.mockRate` would be simpler, but it mints the underlying, and WETH cannot be minted.
      */
     function _raiseRedeemRate(ERC4626TestToken wrapper, uint256 newRate) internal {
         uint256 targetAssets = wrapper.totalSupply().mulDown(newRate);

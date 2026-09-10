@@ -28,11 +28,6 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
      * the "parent" pool, and also make sure limits are set properly.
      *
-     * Here the caller names each amount, so an amount the Vault buffer will not wrap is reported as the Vault's own
-     * `WrapAmountTooSmall`, naming the token, and the remedy is to name a larger amount. The proportional operations
-     * report that condition differently only because there the amount comes from the pool and the caller cannot set
-     * it directly.
-     *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
      * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
@@ -72,23 +67,14 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * @notice Add proportional amounts of tokens to an ERC4626 pool through the buffer.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
      * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
-     * the "parent" pool, and also make sure limits are set properly. Note that `maxAmountsIn` is denominated in the
-     * tokens the sender actually pays, and not in the pool's own tokens: the underlying token (e.g., DAI) wherever
-     * `wrapUnderlying` is set, and the wrapped token (e.g., waDAI) elsewhere. These are the same denominations as the
-     * returned `amountsIn`, so a limit can be derived directly from a query result.
+     * the "parent" pool, and also make sure limits are set properly. `maxAmountsIn` is denominated in the tokens the
+     * sender pays: the underlying token (e.g., DAI) wherever `wrapUnderlying` is set, and the wrapped token
+     * (e.g., waDAI) elsewhere. The returned `amountsIn` use the same denominations, so a query result can be passed
+     * back in as limits.
      *
-     * Wherever `wrapUnderlying` is set, the amount wrapped is what the pool requires for `exactBptAmountOut`, and not
-     * an amount the caller chose. Where the Vault buffer will not wrap it the call reverts with
-     * `RequiredWrapAmountTooSmall`, which names the token and the amount, and nothing else is charged in its place.
-     * The buffer applies its minimum to the wrapped amount it is given and again to the underlying amount it
-     * calculates, testing the caller's limit between the two, so a limit that token cannot meet is reported as
-     * `SwapLimit` ahead of the second of those but not of the first. A failed call leaves the sender holding their own
-     * tokens. Requesting more pool tokens always raises the required amount, so it clears this for any wrapper as long
-     * as `maxAmountsIn` covers the larger cost; clearing `wrapUnderlying` for that token pays it wrapped instead.
-     * Requesting no pool tokens at all makes no buffer call and charges nothing.
-     *
-     * Note that each token's whole `maxAmountsIn` entry is taken from the sender up front and the unused part is
-     * returned at the end, so the sender must hold and have approved the limit rather than the eventual cost.
+     * Wherever `wrapUnderlying` is set, the pool fixes the amount to wrap, so the caller reaches it only through
+     * `exactBptAmountOut`. If the Vault buffer will not wrap that amount, the call reverts with
+     * `RequiredWrapAmountTooSmall`.
      *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
@@ -109,12 +95,8 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Like the operation it quotes, it
-     * reverts `RequiredWrapAmountTooSmall` for a token whose required amount is too small to wrap. It is a quote and
-     * not a simulation: it passes unlimited maximums, so it will not report a limit the caller would have hit, and it
-     * returns the buffer's calculated amount without exercising the buffer's liquidity, so it cannot report a failure
-     * that arises only where the buffer has to mint through the wrapper itself.
-     * See `addLiquidityProportionalToERC4626Pool`.
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). This is a quote, not a simulation:
+     * it passes unlimited maximums, and does not use buffer liquidity. See `addLiquidityProportionalToERC4626Pool`.
      *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
@@ -133,31 +115,19 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Note that `minAmountsOut` is
-     * denominated in the tokens the sender actually receives, and not in the pool's own tokens: the underlying token
-     * (e.g., DAI) wherever `unwrapWrapped` is set, and the wrapped token (e.g., waDAI) elsewhere. These are the same
-     * denominations as the returned `amountsOut`, so a limit can be derived directly from a query result.
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). `minAmountsOut` is denominated in
+     * the tokens the sender receives: the underlying token (e.g., DAI) wherever `unwrapWrapped` is set, and the
+     * wrapped token (e.g., waDAI) elsewhere. The returned `amountsOut` use the same denominations, so a query result
+     * can be passed back in as limits.
      *
-     * Wherever `unwrapWrapped` is set, the amount unwrapped is that token's share of the burned pool tokens, and not
-     * an amount the caller chose. Where the Vault buffer will not unwrap it the call reverts with
-     * `UnwrapAmountTooSmall`, which names the token and the amount, and the wrapped token is never delivered in its
-     * place. The buffer applies its minimum twice, to the wrapped amount it is given and again to the underlying
-     * amount it calculates, and it is given no limit of its own, so a `minAmountsOut` entry the withdrawal cannot
-     * meet is reported afterwards as `AmountOutBelowMin`, which names the token. Clearing `unwrapWrapped` for that
-     * token always works and pays it wrapped, as does `Router.removeLiquidityProportional`; burning more pool tokens
-     * works only where the pool holds enough of that token for a larger share to clear the buffer's minimum, which
-     * is not true of every pool. An amount of exactly zero is not this case: it is returned as zero of the underlying
-     * token, and the withdrawal succeeds.
+     * Wherever `unwrapWrapped` is set, the pool fixes the amount to unwrap: it is that token's share of the burned
+     * pool tokens. If the Vault buffer will not unwrap that amount, the call reverts with `UnwrapAmountTooSmall`. A
+     * share of exactly zero is not that case; it is returned as zero of the underlying token.
      *
-     * This function does not perform recovery-mode withdrawal. The ordinary removal path is always taken, so the
-     * call reverts wherever that path would: when the pool or the Vault is paused, when a rate provider or a pool
-     * hook fails, or when the burn is small enough that a token's share is below the Vault's minimum trade amount
-     * (`TradeAmountTooSmall`); the remedy there is to burn more. Pool hooks apply on this path, so where the pool
-     * enables hook-adjusted amounts, the amounts paid are the hook's; `Router.removeLiquidityRecovery` makes no
-     * hook calls at all. To withdraw in such a state, put the pool in Recovery Mode if it is not already
-     * (`IVaultAdmin.enableRecoveryMode`, which is permissionless while the pool or the Vault is paused), call
-     * `Router.removeLiquidityRecovery` for the pool's registered tokens, and redeem the ERC4626 shares directly
-     * against each wrapper. Note that the recovery withdrawal takes no `wethIsEth`, so it pays WETH, not ETH.
+     * This function always takes the ordinary removal path, and never a recovery-mode withdrawal. To withdraw from a
+     * paused pool, enable Recovery Mode if it is not already on (`IVaultAdmin.enableRecoveryMode`), call
+     * `Router.removeLiquidityRecovery` for the pool's registered tokens, then redeem the ERC4626 shares against each
+     * wrapper. That path takes no `wethIsEth`, so it pays WETH.
      *
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
@@ -178,12 +148,8 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Like the operation it quotes, this
-     * does not perform recovery-mode withdrawal, and it reverts `UnwrapAmountTooSmall` for a token whose share is too
-     * small to unwrap. It is a quote and not a simulation: it passes zero limits, so it will not report a limit the
-     * caller would have hit, and it returns the buffer's calculated amount without exercising the buffer's liquidity,
-     * so it cannot report a failure that arises only where the buffer has to redeem through the wrapper itself.
-     * See `removeLiquidityProportionalFromERC4626Pool`.
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). This is a quote, not a simulation:
+     * it passes zero limits, and does not use buffer liquidity. See `removeLiquidityProportionalFromERC4626Pool`.
      *
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
@@ -211,11 +177,6 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * or nested pools contain ERC4626 tokens that appear in the `tokensToWrap` list, they will be wrapped and their
      * underlying tokens pulled as input, and expected to appear in `tokensIn`. Otherwise, they will be treated as
      * regular tokens.
-     *
-     * Here the caller names each amount, so an amount the Vault buffer will not wrap is reported as the Vault's own
-     * `WrapAmountTooSmall`, naming the token, and the remedy is to name a larger amount, or to leave that token out
-     * of `tokensToWrap` and pay it wrapped instead. The proportional operations report that condition differently
-     * only because there the amount comes from the pool and the caller cannot set it directly.
      *
      * NB: Pools with "overlapping" tokens (i.e., both the parent and a child pool contain one or more of the tokens in
      * `tokensIn`), are not supported! The gas cost to explicitly detect this rare edge case would be prohibitive, so
@@ -266,26 +227,16 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
      * or nested pools contain ERC4626 tokens that appear in the `tokensToUnwrap` list, they will be unwrapped and
      * their underlying tokens sent to the output. Otherwise, they will be treated as regular tokens.
      *
-     * For any token in `tokensToUnwrap`, the amount unwrapped is that token's share of the burned pool tokens at the
-     * level of the traversal where it is found, and not an amount the caller chose. Where the Vault buffer will not
-     * unwrap it the call reverts, and the wrapped token is never delivered in its place: with `UnwrapAmountTooSmall`,
-     * which names the token and the amount, and which the proportional removal from an ERC4626 pool raises for the
-     * same condition. Leaving that token out of `tokensToUnwrap` always works and pays it wrapped; burning more
-     * parent pool tokens works only where the pools hold enough of that token for a larger share to clear the
-     * buffer's minimum, which is not true of every pool. An amount of exactly zero is not this case: that token is
-     * returned as zero of its underlying token, and the withdrawal succeeds.
+     * For any token in `tokensToUnwrap`, the pool fixes the amount to unwrap: it is that token's share of the burned
+     * pool tokens, at the level of the traversal where the token is found. If the Vault buffer will not unwrap that
+     * amount, the call reverts with `UnwrapAmountTooSmall`. A share of exactly zero is not that case; it is returned
+     * as zero of the underlying token.
      *
-     * This function does not perform recovery-mode withdrawal. The ordinary removal path is always taken, for the
-     * parent pool and for every child pool, so the call reverts wherever that path would: when any of those pools or
-     * the Vault is paused, when a rate provider or a pool hook fails, or when a burn is small enough that a token's
-     * share is below the Vault's minimum trade amount (`TradeAmountTooSmall`); the remedy there is to burn more.
-     * Each pool's hooks apply on this path, so where a pool enables hook-adjusted amounts, the amounts paid are the
-     * hook's; `Router.removeLiquidityRecovery` makes no hook calls at all. To withdraw in such a state, unwind one
-     * level at a time, taking for each pool whichever path its own state allows: `Router.removeLiquidityProportional`
-     * where the pool is healthy, or `Router.removeLiquidityRecovery` where it is not, preceded by
-     * `IVaultAdmin.enableRecoveryMode` if that pool is not in Recovery Mode already (permissionless while it or the
-     * Vault is paused). The parent pays child pool BPT as an ordinary ERC20; redeem any ERC4626 shares directly
-     * against their wrappers at the end.
+     * This function always takes the ordinary removal path, for the parent pool and every child pool, and never a
+     * recovery-mode withdrawal. To withdraw where a pool is paused, unwind one level at a time, taking for each pool
+     * whichever path its own state allows: `Router.removeLiquidityProportional`, or `Router.removeLiquidityRecovery`
+     * preceded by `IVaultAdmin.enableRecoveryMode`. The parent pays child pool BPT as an ordinary ERC20; redeem any
+     * ERC4626 shares against their wrappers at the end.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
@@ -308,11 +259,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
 
     /**
      * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
-     * @dev Like the operation it quotes, this does not perform recovery-mode withdrawal, and it reverts
-     * `UnwrapAmountTooSmall` for a token whose share is too small to unwrap. It is a quote and not a simulation: it
-     * passes zero minimums, so it will not report a limit the caller would have hit, and it returns the buffer's
-     * calculated amount without exercising the buffer's liquidity, so it cannot report a failure that arises only
-     * where the buffer has to redeem through the wrapper itself.
+     * @dev This is a quote, not a simulation: it passes zero minimums, and does not use buffer liquidity.
      * See `removeLiquidityProportionalNestedPool`.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
