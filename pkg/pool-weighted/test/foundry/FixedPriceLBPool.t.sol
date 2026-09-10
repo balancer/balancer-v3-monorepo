@@ -561,17 +561,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
-        IHooks(pool).onRegister(
-            poolFactory,
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
+        IHooks(pool).onRegister(poolFactory, pool, tokenConfig, _defaultLiquidityManagement());
     }
 
     function testOnRegisterNonStandardToken() public {
@@ -584,17 +574,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
-        IHooks(pool).onRegister(
-            poolFactory,
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
+        IHooks(pool).onRegister(poolFactory, pool, tokenConfig, _defaultLiquidityManagement());
     }
 
     function testOnRegisterWrongPool() public {
@@ -608,12 +588,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             poolFactory,
             address(1), // Wrong pool address
             tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
+            _defaultLiquidityManagement()
         );
 
         assertFalse(success, "onRegister should return false when pool address doesn't match");
@@ -631,12 +606,7 @@ contract FixedPriceLBPoolTest is BaseLBPTest, FixedPriceLBPoolContractsDeployer 
             poolFactory, // Correct factory address
             pool, // Correct pool address
             tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
+            _defaultLiquidityManagement()
         );
 
         assertTrue(success, "onRegister should return true when parameters are valid");

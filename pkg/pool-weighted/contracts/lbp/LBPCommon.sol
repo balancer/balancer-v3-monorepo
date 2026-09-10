@@ -274,6 +274,9 @@ abstract contract LBPCommon is ILBPCommon, Ownable2Step, BaseHooks {
 
     /**
      * @notice Allow the owner to add proportional liquidity before the sale.
+     * @dev The timing is enforced by `onlyBeforeSale`, which reverts with `AddingLiquidityNotAllowed` from the sale
+     * start onward. Every LBP type shares this function and permits proportional adds only.
+     *
      * @param router The router used for the operation
      * @param kind The liquidity add kind
      * @param minBptAmountOut The pool tokens to be minted for a proportional add

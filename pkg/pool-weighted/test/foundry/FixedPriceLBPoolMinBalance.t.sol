@@ -74,7 +74,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         assertLt(
             ((minRedeemableBalance - 1) * circulating) / smallestRedeemableSupply,
             minimumTradeAmount,
-            "One below the floor is not rejected at the smallest redeemable supply"
+            "1 below the floor is not rejected at the smallest redeemable supply"
         );
     }
 
@@ -86,7 +86,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         );
     }
 
-    function testExactOutAllowsZeroOrBalanceAtOrAboveFloor() public {
+    function testExactOutAllowsZeroOrBalanceAtOrAboveRedeemableFloor() public {
         uint256 balance = 10 * minRedeemableBalance;
         address smallPool = _createAndInitWith(0, balance);
         _warpIntoSale();
@@ -95,11 +95,18 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
             _exactOutIsAdmitted(smallPool, balance - minRedeemableBalance),
             "The largest partial buy is refused"
         );
-        assertFalse(_exactOutIsAdmitted(smallPool, balance - minRedeemableBalance + 1), "The hole does not start here");
-        assertFalse(_exactOutIsAdmitted(smallPool, balance - 1), "The hole does not run to the top");
+        assertFalse(
+            _exactOutIsAdmitted(smallPool, balance - minRedeemableBalance + 1),
+            "Pool left in a state that cannot be redeemed (minRedeemableBalance - 1)"
+        );
+        assertFalse(
+            _exactOutIsAdmitted(smallPool, balance - 1),
+            "Pool left in a state that cannot be redeemed (1 wei)"
+        );
         assertTrue(_exactOutIsAdmitted(smallPool, balance), "Buying the whole balance is refused");
 
-        assertEq(minRedeemableBalance - 1, 1_999_999, "Unexpected width for the admissible gap");
+        // The rejected range runs from 1 wei up to `minRedeemableBalance - 1`.
+        assertEq(minRedeemableBalance - 1, 1_999_999, "The rejected range is the wrong width");
     }
 
     function testEndingBalanceZeroIsAccepted() public {
@@ -140,7 +147,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         _warpIntoSale();
         _buyProjectDownTo(pool, minRedeemableBalance + 1);
 
-        assertTrue(_ownerCanExit(pool), "Owner cannot exit one above the floor");
+        assertTrue(_ownerCanExit(pool), "Owner cannot exit 1 above the floor");
     }
 
     function testProjectResidualBelowMinimumTradeAmountIsRejected() public {
@@ -221,9 +228,9 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         _buyExactOut(lbp, reserveToken, project, seedRaw - 1);
 
         uint256 endingBalance = vault.getCurrentLiveBalances(lbp)[newProjectIdx];
-        assertEq(endingBalance, 1e7, "Unexpected scaled18 value for one raw unit at eleven decimals");
-        assertGe(endingBalance, minRedeemableBalance, "One raw unit at eleven decimals is below the floor");
-        assertTrue(_ownerCanExit(lbp), "Owner cannot exit with one raw unit of an eleven-decimal token left");
+        assertEq(endingBalance, 1e7, "Wrong scaled18 value for 1 raw unit at 11 decimals");
+        assertGe(endingBalance, minRedeemableBalance, "One raw unit at 11 decimals is below the floor");
+        assertTrue(_ownerCanExit(lbp), "Owner cannot exit with 1 raw unit of an 11-decimal token left");
     }
 
     function testTwelveDecimalsCannotLeaveOneRawUnit() public {
@@ -510,7 +517,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         uint256 remainingSupply = totalSupply / balance;
         uint256 burn = totalSupply - remainingSupply;
 
-        assertEq(balance - (balance * burn) / totalSupply, 1, "The projected remainder is not one unit");
+        assertEq(balance - (balance * burn) / totalSupply, 1, "The projected remainder is not 1 unit");
 
         assertGe((balance * burn) / totalSupply, minimumTradeAmount, "The Vault would have refused this anyway");
 
@@ -535,7 +542,7 @@ contract FixedPriceLBPoolMinBalanceTest is BaseLBPTest, FixedPriceLBPoolContract
         router.removeLiquidityProportional(lbp, burn, new uint256[](2), false, bytes(""));
         vm.stopPrank();
 
-        assertTrue(_ownerCanExit(lbp), "The full exit is refused on the twelve-decimal pool");
+        assertTrue(_ownerCanExit(lbp), "The full exit is refused on the 12-decimal pool");
     }
 
     function _create(IERC20 project, IERC20 reserve, uint256 staticSwapFee) internal returns (address newPool) {

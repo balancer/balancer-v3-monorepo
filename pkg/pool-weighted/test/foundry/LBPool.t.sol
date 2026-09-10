@@ -635,17 +635,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
-        IHooks(pool).onRegister(
-            poolFactory,
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
+        IHooks(pool).onRegister(poolFactory, pool, tokenConfig, _defaultLiquidityManagement());
     }
 
     function testOnRegisterNonStandardToken() public {
@@ -658,17 +648,7 @@ contract LBPoolTest is WeightedLBPTest {
         // Mock vault call to onRegister
         vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
-        IHooks(pool).onRegister(
-            poolFactory,
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
+        IHooks(pool).onRegister(poolFactory, pool, tokenConfig, _defaultLiquidityManagement());
     }
 
     function testOnRegisterWrongPool() public {
@@ -682,12 +662,7 @@ contract LBPoolTest is WeightedLBPTest {
             poolFactory,
             address(1), // Wrong pool address
             tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
+            _defaultLiquidityManagement()
         );
 
         assertFalse(success, "onRegister should return false when pool address doesn't match");
@@ -705,12 +680,7 @@ contract LBPoolTest is WeightedLBPTest {
             poolFactory, // Correct factory address
             pool, // Correct pool address
             tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
+            _defaultLiquidityManagement()
         );
 
         assertTrue(success, "onRegister should return true when parameters are valid");
@@ -722,32 +692,19 @@ contract LBPoolTest is WeightedLBPTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        LiquidityManagement[4] memory bad = [
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: true,
-                enableDonation: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: true
-            })
-        ];
+        LiquidityManagement[4] memory bad;
+
+        bad[0] = _defaultLiquidityManagement();
+        bad[0].disableUnbalancedLiquidity = false;
+
+        bad[1] = _defaultLiquidityManagement();
+        bad[1].enableAddLiquidityCustom = true;
+
+        bad[2] = _defaultLiquidityManagement();
+        bad[2].enableRemoveLiquidityCustom = true;
+
+        bad[3] = _defaultLiquidityManagement();
+        bad[3].enableDonation = true;
 
         for (uint256 i = 0; i < bad.length; ++i) {
             vm.prank(address(vault));

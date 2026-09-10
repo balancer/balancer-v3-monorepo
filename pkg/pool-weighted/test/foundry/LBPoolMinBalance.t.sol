@@ -183,7 +183,7 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
 
         uint256 lowest = _lowestReachableProjectBalance(lbp);
 
-        assertEq(lowest, minRedeemableBalance, "Exact-in can still reach a balance below the floor at 1 percent");
+        assertEq(lowest, minRedeemableBalance, "Exact-in can still reach a balance below the floor at 1%");
         assertTrue(_ownerCanExit(lbp), "Owner cannot exit at the lowest reachable balance");
     }
 
@@ -214,7 +214,7 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
 
         uint256 lowest = _lowestReachableProjectBalance(lbp);
 
-        assertGe(lowest, minRedeemableBalance, "Exact-in reached a balance below the floor at 30 percent");
+        assertGe(lowest, minRedeemableBalance, "Exact-in reached a balance below the floor at 30%");
         assertTrue(_ownerCanExit(lbp), "Owner cannot exit at the lowest reachable balance");
     }
 
@@ -428,11 +428,11 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
             ""
         );
 
-        uint256 maximalAmountIn = vault.getCurrentLiveBalances(lbp)[reserveIdx].mulDown(30e16);
+        uint256 largestAmountIn = vault.getCurrentLiveBalances(lbp)[reserveIdx].mulDown(30e16);
 
         vm.prank(alice);
         vm.expectPartialRevert(LBPCommon.TokenBalanceBlocksRedemption.selector);
-        router.swapSingleTokenExactIn(lbp, reserveToken, projectToken, maximalAmountIn, 0, MAX_UINT256, false, "");
+        router.swapSingleTokenExactIn(lbp, reserveToken, projectToken, largestAmountIn, 0, MAX_UINT256, false, "");
 
         assertTrue(_ownerCanExit(lbp), "Owner cannot withdraw from a balance sitting on the floor");
     }
@@ -478,10 +478,10 @@ contract LBPoolMinBalanceTest is WeightedLBPTest {
         uint256 remainingProject = endingProject - (endingProject * burn) / totalSupply;
         uint256 remainingReserve = endingReserve - (endingReserve * burn) / totalSupply;
 
-        assertLt(remainingProject, minRedeemableBalance, "The remainder would not be inside the band");
+        assertLt(remainingProject, minRedeemableBalance, "The remainder is not below the redeemable floor");
 
-        uint256 maximalBurn = totalSupply - vault.getPoolMinimumTotalSupply();
-        uint256 residueAfterAFullExit = endingReserve - (endingReserve * maximalBurn) / totalSupply;
+        uint256 largestBurn = totalSupply - vault.getPoolMinimumTotalSupply();
+        uint256 residueAfterAFullExit = endingReserve - (endingReserve * largestBurn) / totalSupply;
 
         assertGt(remainingReserve, residueAfterAFullExit, "Partial withdrawal does not leave additional reserve");
 

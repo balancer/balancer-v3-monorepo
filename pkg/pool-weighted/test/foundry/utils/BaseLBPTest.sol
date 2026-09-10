@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
@@ -100,6 +101,17 @@ abstract contract BaseLBPTest is BaseVaultTest, WeightedPoolContractsDeployer {
         vm.startPrank(bob); // Bob is the owner of the pool.
         _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
+    }
+
+    /// @dev The registration flags every LBP factory sets. Anything else is rejected at registration.
+    function _defaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
+        return
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            });
     }
 
     function _createLBPool(
