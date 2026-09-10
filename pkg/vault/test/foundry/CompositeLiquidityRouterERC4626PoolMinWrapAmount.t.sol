@@ -19,35 +19,20 @@ import { CompositeLiquidityRouterMinWrapAmountBase } from "./utils/CompositeLiqu
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
 /**
- * @notice Proportional liquidity on an ERC4626 pool at the Vault minimums the deployed Vaults actually report.
- * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`; this suite covers the flat entry points, on the
- * way out and on the way in, across the band in which the buffer refuses a non-zero amount.
+ * @notice Proportional liquidity on an ERC4626 pool at the production Vault minimums.
+ * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`. This suite covers the flat entry points in both
+ * directions: `UnwrapAmountTooSmall` on the way out, `RequiredWrapAmountTooSmall` on the way in.
  *
- * The amount handed to the buffer is the pool's rather than the caller's in both directions: on a removal it is that
- * token's share of the burned pool tokens, and on an addition it is what the pool requires for the pool tokens
- * requested. Where the buffer will not serve it, the router reports the refusal in the terms of the operation the
- * caller asked for: `UnwrapAmountTooSmall` for a removal, naming the amount that was available, and
- * `RequiredWrapAmountTooSmall` for an addition, naming the amount the pool required. Neither substitutes an asset,
- * and neither takes more than the caller allowed.
- *
- * Note that the boundary is a property of the wrapper and is not `getMinimumWrapAmount()`, and that it is not the
- * same in the two directions. `erc4626BufferWrapOrUnwrap` applies that minimum twice: to the amount it is given, and
- * to the amount it calculates. Unwrapping calculates `previewRedeem(amount - 1) - 1`, so at a redeem rate of exactly
- * one the first accepted amount is two above the stated minimum; wrapping calculates `previewMint(amount + 1) + 1`,
- * which is the larger number at that same rate, so the boundary is the stated minimum itself. A rate below one
- * pushes both boundaries well above the stated minimum, and a rate above one leaves the wrap boundary where it is
- * while lowering the unwrap boundary to the stated minimum. All of these are exercised below.
+ * The two boundaries differ. Unwrapping calculates `previewRedeem(amount - 1) - 1` and wrapping calculates
+ * `previewMint(amount + 1) + 1`, and the Vault applies its minimum to that result as well as to the amount given,
+ * so which of the two checks reaches the minimum first depends on the wrapper's rate. See `_FIRST_ACCEPTED_RAW`.
  */
 contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquidityRouterMinWrapAmountBase {
     /***************************************************************************
-                        The band: what a caller sees, and why
+                              Proportional remove
     ***************************************************************************/
 
-    /**
-     * @dev Every non-zero amount the buffer will not unwrap fails as a router error naming the token and the amount,
-     * rather than as the Vault's `WrapAmountTooSmall`, which names only the token. The two amounts at the stated
-     * minimum itself are the reason a router-side check against `getMinimumWrapAmount()` would be wrong.
-     */
+    /// @dev Every non-zero share the buffer will not unwrap reverts with `UnwrapAmountTooSmall`, and nothing moves.
     function testSubMinimumUnwrapRevertsWithRouterError() public {
         uint256[4] memory rawTargets = [
             uint256(1),
@@ -57,20 +42,20 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         ];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
-            assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTargets[i], "Setup: wrong raw wa6 amount");
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
+            assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTargets[i], "Setup: wrong raw waUSDC6 amount");
 
             uint256 snapshotId = vm.snapshotState();
 
             uint256 bptBefore = BalancerPoolToken(pool).balanceOf(lp);
-            uint256 wa6Before = _wa6.balanceOf(lp);
+            uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
             uint256 usdcBefore = usdc6Decimals.balanceOf(lp);
 
             vm.prank(lp);
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -83,22 +68,20 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            // Nothing partial is left behind, and in particular no wrapped token is handed over in place of the
-            // underlying the caller asked for.
             assertEq(BalancerPoolToken(pool).balanceOf(lp), bptBefore, "BPT was burned");
-            assertEq(_wa6.balanceOf(lp), wa6Before, "The wrapped token was delivered");
+            assertEq(_waUSDC6.balanceOf(lp), waUSDC6Before, "The wrapped token was delivered");
             assertEq(usdc6Decimals.balanceOf(lp), usdcBefore, "The underlying token was delivered");
 
             vm.revertToState(snapshotId);
         }
     }
 
-    /// @dev The query reverts with the identical error, so a caller learns this without spending a transaction.
+    /// @dev The query reverts with the same error as the operation it quotes.
     function testSubMinimumUnwrapQueryMatchesExecution() public {
         uint256[2] memory rawTargets = [uint256(1), _FIRST_ACCEPTED_RAW - 1];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
 
             uint256 snapshotId = vm.snapshotState();
 
@@ -106,7 +89,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -123,27 +106,24 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev A redeem rate below one moves the boundary far above the Vault's stated minimum, because the second check
-     * applies to the underlying output. At a rate of one half, a raw wrapped amount of 15000 clears the stated minimum
-     * of 10000 and is still refused, since it redeems for roughly 7500. This is the case a router-side check written
-     * against `getMinimumWrapAmount()` would wave through, and it is why the failure is read from the Vault's own
-     * verdict rather than predicted here.
+     * @dev A redeem rate below 1 raises the boundary, since the check on the underlying output is the tighter one.
+     * At a rate of 0.5, 15000 wrapped clears the stated minimum of 10000 but redeems to only ~7500, which does not.
      */
     function testBelowParRateRefusesAmountAboveTheStatedMinimum() public {
-        _wa6.mockRate(FixedPoint.ONE / 2);
-        assertLt(_wa6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
+        _waUSDC6.mockRate(FixedPoint.ONE / 2);
+        assertLt(_waUSDC6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
 
         uint256 rawTarget = 15000;
         assertGt(rawTarget, vault.getMinimumWrapAmount(), "Setup: the target is not above the stated minimum");
 
-        uint256 bptIn = _burnForRawWa6(rawTarget);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTarget, "Setup: wrong raw wa6 amount");
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
+        assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTarget, "Setup: wrong raw waUSDC6 amount");
 
         vm.prank(lp);
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -158,15 +138,15 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev A redeem rate above one goes the other way: the second check is slack, so the first accepted amount falls
-     * back to the Vault's stated minimum, two below what the same pool accepts at a rate of one.
+     * @dev A redeem rate above 1 goes the other way: the check on the underlying output is slack, so the boundary
+     * falls back to the stated minimum, 2 below what the same pool accepts at a rate of 1.
      */
     function testRateAboveOneMovesTheBoundaryToTheStatedMinimum() public {
-        _wa6.mockRate(2 * FixedPoint.ONE);
-        assertGt(_wa6.getRate(), FixedPoint.ONE, "Setup: the rate did not rise above one");
+        _waUSDC6.mockRate(2 * FixedPoint.ONE);
+        assertGt(_waUSDC6.getRate(), FixedPoint.ONE, "Setup: the rate did not rise above one");
 
-        uint256 refusedBptIn = _burnForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT - 1);
-        uint256 acceptedBptIn = _burnForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT);
+        uint256 refusedBptIn = _burnForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT - 1);
+        uint256 acceptedBptIn = _burnForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT);
 
         uint256 snapshotId = vm.snapshotState();
 
@@ -174,7 +154,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 PRODUCTION_MIN_WRAP_AMOUNT - 1
             )
         );
@@ -189,7 +169,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
 
         vm.revertToState(snapshotId);
 
-        // At a rate of one this same amount reverts; see `testSubMinimumUnwrapRevertsWithRouterError`.
+        // At a rate of 1 this same amount reverts; see `testSubMinimumUnwrapRevertsWithRouterError`.
         vm.prank(lp);
         uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
             pool,
@@ -200,19 +180,19 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertGt(amountsOut[_wa6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The stated minimum was not accepted");
+        assertGt(amountsOut[_waUsdc6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The stated minimum was not accepted");
     }
 
     /***************************************************************************
                                     Boundaries
     ***************************************************************************/
 
-    /// @dev Zero is not the failing case: it is returned as zero of the underlying, and the withdrawal succeeds.
+    /// @dev A zero share is returned as zero of the underlying token, and the withdrawal succeeds.
     function testZeroUnwrapShareSucceeds() public {
-        uint256 bptIn = _burnForRawWa6(0);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], 0, "Setup: wa6 share should be exactly zero");
+        uint256 bptIn = _burnForRawWaUsdc6(0);
+        assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], 0, "Setup: waUSDC6 share should be exactly zero");
 
-        uint256 wa6Before = _wa6.balanceOf(lp);
+        uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
 
         vm.prank(lp);
         uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
@@ -224,17 +204,17 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsOut[_wa6Idx], 0, "Zero share should report zero");
+        assertEq(amountsOut[_waUsdc6Idx], 0, "Zero share should report zero");
         assertGt(amountsOut[_waDaiIdx], 0, "DAI amount should be non-zero");
-        assertEq(_wa6.balanceOf(lp), wa6Before, "The wrapped token was delivered for the zero share");
+        assertEq(_waUSDC6.balanceOf(lp), waUSDC6Before, "The wrapped token was delivered for the zero share");
     }
 
-    /// @dev A zero share is still measured against the caller's own limit, on the underlying axis.
+    /// @dev A zero share is still measured against `minAmountsOut`, in the underlying token.
     function testZeroUnwrapShareWithNonZeroLimitReverts() public {
-        uint256 bptIn = _burnForRawWa6(0);
+        uint256 bptIn = _burnForRawWaUsdc6(0);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[_wa6Idx] = 1;
+        minAmountsOut[_waUsdc6Idx] = 1;
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AmountOutBelowMin.selector, address(usdc6Decimals), 0, 1));
@@ -249,23 +229,21 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev A caller's own limit does not mask the reason. Where the wrapped amount clears the Vault's stated minimum
-     * but the underlying it redeems to does not, the buffer carries no limit of its own, so the refusal is what the
-     * caller is told, even where their `minAmountsOut` entry would have failed too. The limit itself is checked after
-     * the unwrap; `testZeroUnwrapShareWithNonZeroLimitReverts` covers that.
+     * @dev The buffer is handed no limit, so a share it refuses is reported as `UnwrapAmountTooSmall` even when
+     * `minAmountsOut` would also have failed. `minAmountsOut` is checked after the unwrap, not before.
      */
     function testSubMinimumUnderlyingIsReportedAheadOfTheLimit() public {
-        uint256 bptIn = _burnForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT);
+        uint256 bptIn = _burnForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[_wa6Idx] = PRODUCTION_MIN_WRAP_AMOUNT;
+        minAmountsOut[_waUsdc6Idx] = PRODUCTION_MIN_WRAP_AMOUNT;
 
-        // The unwrap deducts two wei, so the underlying falls two below the minimum and misses the limit as well.
+        // The unwrap deducts 2 wei, so the underlying falls below both the minimum and the limit.
         vm.prank(lp);
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 PRODUCTION_MIN_WRAP_AMOUNT
             )
         );
@@ -279,13 +257,13 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         );
     }
 
-    /// @dev The first accepted amount, and an ordinary amount above it. The unwrap deducts two wei.
+    /// @dev The first accepted amount, and an ordinary amount above it. The unwrap deducts 2 wei.
     function testAcceptedAmountsAreUnaffected() public {
         uint256[2] memory rawTargets = [_FIRST_ACCEPTED_RAW, uint256(20000)];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
-            assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTargets[i], "Setup: wrong raw wa6 amount");
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
+            assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTargets[i], "Setup: wrong raw waUSDC6 amount");
 
             uint256 snapshotId = vm.snapshotState();
 
@@ -299,7 +277,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            assertEq(amountsOut[_wa6Idx], rawTargets[i] - 2, "USDC-6 amount is wrong");
+            assertEq(amountsOut[_waUsdc6Idx], rawTargets[i] - 2, "USDC-6 amount is wrong");
             assertGt(amountsOut[_waDaiIdx], 0, "DAI amount should be non-zero");
 
             vm.revertToState(snapshotId);
@@ -308,7 +286,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
 
     /// @dev `minAmountsOut` is denominated in what the caller receives, so a query result is directly reusable.
     function testQueryResultIsExecutableAsLimits() public {
-        uint256 bptIn = _burnForRawWa6(20000);
+        uint256 bptIn = _burnForRawWaUsdc6(20000);
 
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
@@ -331,7 +309,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsOut[_wa6Idx], queried[_wa6Idx], "USDC-6 amount does not match the query");
+        assertEq(amountsOut[_waUsdc6Idx], queried[_waUsdc6Idx], "USDC-6 amount does not match the query");
         assertEq(amountsOut[_waDaiIdx], queried[_waDaiIdx], "DAI amount does not match the query");
     }
 
@@ -339,12 +317,12 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
                                     Controls
     ***************************************************************************/
 
-    /// @dev The documented remedy, executed: clearing the flag returns the same value as the wrapped token.
+    /// @dev Clearing the unwrap flag pays the same share as the wrapped token, with no buffer call.
     function testUnwrapFlagClearedIsUnaffected() public {
         uint256 rawTarget = _FIRST_ACCEPTED_RAW - 1;
-        uint256 bptIn = _burnForRawWa6(rawTarget);
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
 
-        uint256 wa6Before = _wa6.balanceOf(lp);
+        uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
 
         vm.prank(lp);
         uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
@@ -356,13 +334,13 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsOut[_wa6Idx], rawTarget, "The wrapped token should be paid in full");
-        assertEq(_wa6.balanceOf(lp) - wa6Before, rawTarget, "The wrapped token did not arrive");
+        assertEq(amountsOut[_waUsdc6Idx], rawTarget, "The wrapped token should be paid in full");
+        assertEq(_waUSDC6.balanceOf(lp) - waUSDC6Before, rawTarget, "The wrapped token did not arrive");
     }
 
-    /// @dev A failure that is not this one keeps the Vault's own error rather than being reported as too small.
+    /// @dev Any other buffer failure keeps the Vault's own error.
     function testOtherBufferFailuresAreNotReinterpreted() public {
-        uint256 bptIn = _burnForRawWa6(20000);
+        uint256 bptIn = _burnForRawWaUsdc6(20000);
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -379,15 +357,11 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         );
     }
 
-    /**
-     * @dev A failure carrying no selector to read is not this one either. The wrapper is made to revert with no
-     * data at all, which is what an out-of-gas sub-call also produces; the point of the assertion is that the
-     * operation does not come back as a too-small amount, since nothing established that.
-     */
+    /// @dev Revert data with no selector to read comes back as `ErrorSelectorNotFound`, not as a too-small amount.
     function testShortRevertDataIsNotReinterpreted() public {
-        uint256 bptIn = _burnForRawWa6(20000);
+        uint256 bptIn = _burnForRawWaUsdc6(20000);
 
-        vm.mockCallRevert(address(_wa6), abi.encodeWithSelector(IERC4626.previewRedeem.selector), bytes(""));
+        vm.mockCallRevert(address(_waUSDC6), abi.encodeWithSelector(IERC4626.previewRedeem.selector), bytes(""));
 
         vm.prank(lp);
         vm.expectRevert(RevertCodec.ErrorSelectorNotFound.selector);
@@ -402,28 +376,26 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev The reinterpretation is a selector match on the revert data, so a nonconforming wrapper that reverts with
-     * the Vault's `WrapAmountTooSmall` selector out of one of its own calls is reported as a refusal, naming the
-     * pool-derived amount. The operation reverts either way and the amount is real; the caveat is for retry logic
-     * keyed on the error, since a condition the wrapper invented does not clear at larger amounts the way a true
-     * refusal does.
+     * @dev The router matches on the revert selector, so a wrapper that raises `WrapAmountTooSmall` from one of its
+     * own calls is reported as a refusal too. The operation reverts either way, but retry logic keyed on the error
+     * should know that a larger amount will not help in that case.
      */
     function testWrapperSpoofedSelectorIsReportedAsARefusal() public {
         uint256 rawTarget = 20000;
-        uint256 bptIn = _burnForRawWa6(rawTarget);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTarget, "Setup: wrong raw wa6 amount");
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
+        assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTarget, "Setup: wrong raw waUSDC6 amount");
 
         vm.mockCallRevert(
-            address(_wa6),
+            address(_waUSDC6),
             abi.encodeWithSelector(IERC4626.previewRedeem.selector),
-            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, address(_wa6))
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, address(_waUSDC6))
         );
 
         vm.prank(lp);
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -438,15 +410,13 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev Where a share is worth less than one raw unit of the underlying, the Vault's own arithmetic reverts
-     * before either minimum has anything to say: it computes the output as `previewRedeem(amount - 1) - 1`, which
-     * underflows when the preview returns zero. That is the Vault's, not this router's, and it must stay visible
-     * as what it is rather than be reported as an amount too small to unwrap.
+     * @dev A share worth less than 1 raw unit of the underlying underflows the Vault's `previewRedeem(amount - 1) - 1`
+     * before either minimum applies. That panic stays visible as a panic.
      */
     function testArithmeticPanicIsNotReinterpreted() public {
-        uint256 bptIn = _burnForRawWa6(20000);
+        uint256 bptIn = _burnForRawWaUsdc6(20000);
 
-        vm.mockCall(address(_wa6), abi.encodeWithSelector(IERC4626.previewRedeem.selector), abi.encode(uint256(0)));
+        vm.mockCall(address(_waUSDC6), abi.encodeWithSelector(IERC4626.previewRedeem.selector), abi.encode(uint256(0)));
 
         vm.prank(lp);
         vm.expectRevert(stdError.arithmeticError);
@@ -460,10 +430,10 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         );
     }
 
-    /// @dev The prepaid variant shares this path exactly; only how the BPT is approved differs.
+    /// @dev The prepaid variant shares this path; only how the BPT is approved differs.
     function testPrepaidRouterBehavesIdentically() public {
         uint256 rawTarget = _FIRST_ACCEPTED_RAW - 1;
-        uint256 bptIn = _burnForRawWa6(rawTarget);
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
 
         vm.startPrank(lp);
         BalancerPoolToken(pool).approve(address(prepaidCompositeLiquidityRouter), bptIn);
@@ -471,7 +441,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -486,20 +456,16 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.stopPrank();
     }
 
-    /**
-     * @dev The nested remove path is a separate entry point onto the same pool, and it reports the same condition the
-     * same way: the same token, the same amount, the same error. Driven from the same pool at the same burn as
-     * `testSubMinimumUnwrapRevertsWithRouterError`, so the entry point is the only variable.
-     */
+    /// @dev The nested entry point reports the same token, amount and error, at the same pool and the same burn.
     function testNestedPathReportsTheSameError() public {
         uint256 rawTarget = _FIRST_ACCEPTED_RAW - 1;
-        uint256 bptIn = _burnForRawWa6(rawTarget);
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
         bytes memory expectedError = abi.encodeWithSelector(
             ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-            address(_wa6),
+            address(_waUSDC6),
             rawTarget
         );
 
@@ -532,11 +498,9 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev Recovery Mode does not widen what this router can reach. The composite router carries no Recovery Mode
-     * handling, so an unpaused pool in Recovery Mode is served by the ordinary removal path, which applies the
-     * Vault's trade-amount floor; a recovery withdrawal applies no floor at all. So a burn small enough to put the
-     * 18-decimal token inside the sub-minimum band never reaches the buffer through this router, and the amount is
-     * reachable only through the plain Router, which does not unwrap.
+     * @dev A pool in Recovery Mode still takes the ordinary removal path, which applies the Vault's minimum trade
+     * amount. A recovery withdrawal applies no such minimum, so amounts below it are reachable only through the
+     * plain Router, which pays the wrapped token rather than unwrapping.
      */
     function testRecoveryModeDoesNotWidenTheBand() public {
         vault.manualEnableRecoveryMode(pool);
@@ -548,7 +512,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         uint256[] memory recoveryAmountsOut = router.queryRemoveLiquidityRecovery(pool, bptIn);
         vm.revertToState(snapshotId);
 
-        // The amount really is inside the band: non-zero, and below anything the buffer would unwrap.
+        // The amount is non-zero and below anything the buffer would unwrap.
         assertGt(recoveryAmountsOut[_waDaiIdx], 0, "Setup: the waDAI amount is zero");
         assertLt(
             recoveryAmountsOut[_waDaiIdx],
@@ -556,9 +520,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             "Setup: the waDAI amount is not in the band"
         );
 
-        // Through the composite router the burn is rejected by the ordinary path's trade-amount floor, before any
-        // buffer call. Before Recovery Mode handling was removed from this router, the same call reached the buffer
-        // and failed there instead.
+        // The composite router rejects the burn on the ordinary path's minimum trade amount, before any buffer call.
         vm.prank(lp);
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
@@ -570,8 +532,8 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        // The capability is not lost: the plain Router pays the registered wrapped tokens, with no floor and no
-        // buffer call, and an ERC4626 share redeems against its own protocol afterward.
+        // The plain Router pays the registered wrapped tokens, with no minimum and no buffer call. The shares
+        // redeem against the wrapper afterwards.
         vm.prank(lp);
         uint256[] memory wrappedAmountsOut = router.removeLiquidityRecovery(pool, bptIn, new uint256[](2));
 
@@ -579,27 +541,25 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /***************************************************************************
-                    Proportional add: the amount the pool requires
+                                Proportional add
     ***************************************************************************/
 
     /**
-     * @dev The mirror of the removal case. The wrapped amount here is not one the caller chose either: it is what the
-     * pool requires for the pool tokens requested, and the caller reaches it only through `exactBptAmountOut`. Where
-     * the buffer will not wrap it, the operation fails with a router error naming the token and that amount, rather
-     * than with the Vault's `WrapAmountTooSmall`, which names only the token.
+     * @dev The mirror of the removal case: the pool fixes the amount to wrap, and the caller reaches it only through
+     * `exactBptAmountOut`. An amount the buffer will not wrap reverts with `RequiredWrapAmountTooSmall`.
      */
     function testSubMinimumWrapRevertsWithRouterError() public {
         uint256[3] memory rawTargets = [uint256(1), PRODUCTION_MIN_WRAP_AMOUNT - 2, PRODUCTION_MIN_WRAP_AMOUNT - 1];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptOut = _mintForRawWa6(rawTargets[i]);
+            uint256 bptOut = _mintForRawWaUsdc6(rawTargets[i]);
             uint256[] memory required = _rawAmountsIn(bptOut);
-            assertEq(required[_wa6Idx], rawTargets[i], "Setup: wrong required raw wa6 amount");
+            assertEq(required[_waUsdc6Idx], rawTargets[i], "Setup: wrong required raw waUSDC6 amount");
 
             uint256 snapshotId = vm.snapshotState();
 
             uint256 bptBefore = BalancerPoolToken(pool).balanceOf(lp);
-            uint256 wa6Before = _wa6.balanceOf(lp);
+            uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
             uint256 usdcBefore = usdc6Decimals.balanceOf(lp);
             uint256 daiBefore = dai.balanceOf(lp);
 
@@ -607,7 +567,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -620,10 +580,8 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            // The caller keeps their own assets: nothing was charged, in either denomination, and no wrapped token
-            // was taken in place of the underlying they offered.
             assertEq(BalancerPoolToken(pool).balanceOf(lp), bptBefore, "Pool tokens were minted");
-            assertEq(_wa6.balanceOf(lp), wa6Before, "The wrapped token was charged");
+            assertEq(_waUSDC6.balanceOf(lp), waUSDC6Before, "The wrapped token was charged");
             assertEq(usdc6Decimals.balanceOf(lp), usdcBefore, "The underlying token was charged");
             assertEq(dai.balanceOf(lp), daiBefore, "The other token was charged");
 
@@ -631,12 +589,12 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         }
     }
 
-    /// @dev The query reverts with the identical error, so a caller learns this without spending a transaction.
+    /// @dev The query reverts with the same error as the operation it quotes.
     function testSubMinimumWrapQueryMatchesExecution() public {
         uint256[2] memory rawTargets = [uint256(1), PRODUCTION_MIN_WRAP_AMOUNT - 1];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptOut = _mintForRawWa6(rawTargets[i]);
+            uint256 bptOut = _mintForRawWaUsdc6(rawTargets[i]);
 
             uint256 snapshotId = vm.snapshotState();
 
@@ -644,7 +602,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -661,23 +619,21 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev This path's boundary is a property of the wrapper too, and it moves the other way from the removal path's.
-     * Wrapping costs `previewMint(amount + 1) + 1` of the underlying, so a rate below one makes the underlying cost
-     * the smaller number, and the Vault's second check applies to it: at a rate of one half a required amount of 15000
-     * clears the stated minimum of 10000 and is still refused, and the first accepted amount is about twice the
-     * stated minimum. This is the case a router-side check against `getMinimumWrapAmount()` would wave through.
+     * @dev Wrapping costs `previewMint(amount + 1) + 1` of the underlying, so at a rate below 1 the underlying cost
+     * is the smaller number and the check on it is the tighter one. At a rate of 0.5, a required 15000 clears the
+     * stated minimum of 10000 but costs only ~5000, and the first accepted amount is about twice the minimum.
      */
     function testBelowParRateRefusesWrapAmountAboveTheStatedMinimum() public {
-        _wa6.mockRate(FixedPoint.ONE / 2);
-        assertLt(_wa6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
+        _waUSDC6.mockRate(FixedPoint.ONE / 2);
+        assertLt(_waUSDC6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
 
         uint256 refusedTarget = 15000;
         assertGt(refusedTarget, vault.getMinimumWrapAmount(), "Setup: the target is not above the stated minimum");
 
-        uint256 refusedBptOut = _mintForRawWa6(refusedTarget);
+        uint256 refusedBptOut = _mintForRawWaUsdc6(refusedTarget);
         uint256[] memory refusedRequired = _rawAmountsIn(refusedBptOut);
         uint256[] memory refusedMaxAmountsIn = _generousMaxAmountsIn(refusedRequired);
-        assertEq(refusedRequired[_wa6Idx], refusedTarget, "Setup: wrong required raw wa6 amount");
+        assertEq(refusedRequired[_waUsdc6Idx], refusedTarget, "Setup: wrong required raw waUSDC6 amount");
 
         uint256 snapshotId = vm.snapshotState();
 
@@ -685,7 +641,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 refusedTarget
             )
         );
@@ -701,10 +657,10 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.revertToState(snapshotId);
 
         // Roughly twice the stated minimum, which is where the underlying cost first reaches it.
-        uint256 acceptedBptOut = _mintForRawWa6(19995);
+        uint256 acceptedBptOut = _mintForRawWaUsdc6(19995);
         uint256[] memory acceptedRequired = _rawAmountsIn(acceptedBptOut);
         uint256[] memory acceptedMaxAmountsIn = _generousMaxAmountsIn(acceptedRequired);
-        assertEq(acceptedRequired[_wa6Idx], 19995, "Setup: wrong accepted raw wa6 amount");
+        assertEq(acceptedRequired[_waUsdc6Idx], 19995, "Setup: wrong accepted raw waUSDC6 amount");
 
         vm.prank(lp);
         uint256[] memory amountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
@@ -716,19 +672,19 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsIn[_wa6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The accepted amount cost the wrong underlying");
+        assertEq(amountsIn[_waUsdc6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The accepted amount cost the wrong underlying");
     }
 
     /**
-     * @dev A rate above one goes the other way: the underlying cost is the larger number, so the second check is
-     * slack and the boundary is the Vault's stated minimum, which is also where it sits at a rate of exactly one.
+     * @dev A rate above 1 goes the other way: the underlying cost is the larger number, so the check on it is slack
+     * and the boundary is the stated minimum, which is where it also sits at a rate of 1.
      */
     function testRateAboveOneLeavesTheWrapBoundaryAtTheStatedMinimum() public {
-        _wa6.mockRate(2 * FixedPoint.ONE);
-        assertGt(_wa6.getRate(), FixedPoint.ONE, "Setup: the rate did not rise above one");
+        _waUSDC6.mockRate(2 * FixedPoint.ONE);
+        assertGt(_waUSDC6.getRate(), FixedPoint.ONE, "Setup: the rate did not rise above one");
 
-        uint256 refusedBptOut = _mintForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT - 1);
-        uint256 acceptedBptOut = _mintForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT);
+        uint256 refusedBptOut = _mintForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT - 1);
+        uint256 acceptedBptOut = _mintForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT);
 
         uint256[] memory refusedMaxAmountsIn = _generousMaxAmountsIn(_rawAmountsIn(refusedBptOut));
         uint256[] memory acceptedMaxAmountsIn = _generousMaxAmountsIn(_rawAmountsIn(acceptedBptOut));
@@ -739,7 +695,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 PRODUCTION_MIN_WRAP_AMOUNT - 1
             )
         );
@@ -764,24 +720,22 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertGt(amountsIn[_wa6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The stated minimum was not accepted");
+        assertGt(amountsIn[_waUsdc6Idx], PRODUCTION_MIN_WRAP_AMOUNT, "The stated minimum was not accepted");
     }
 
     /**
-     * @dev The router error is not the only way this band fails, and the interface says so. The buffer tests the
-     * caller's own limit before applying the minimum to the amount it calculates, so where the required wrapped
-     * amount clears the stated minimum but the underlying it costs does not, a caller whose `maxAmountsIn` is below
-     * that cost is told `SwapLimit` instead. The caller's limit stays authoritative either way.
+     * @dev On the add path the buffer does hold the caller's limit, and tests it before applying the minimum to the
+     * underlying cost. A `maxAmountsIn` below that cost is therefore reported as `SwapLimit`.
      */
     function testWrapLimitIsReportedFirst() public {
-        _wa6.mockRate(FixedPoint.ONE / 2);
+        _waUSDC6.mockRate(FixedPoint.ONE / 2);
 
-        uint256 bptOut = _mintForRawWa6(PRODUCTION_MIN_WRAP_AMOUNT);
+        uint256 bptOut = _mintForRawWaUsdc6(PRODUCTION_MIN_WRAP_AMOUNT);
         uint256[] memory required = _rawAmountsIn(bptOut);
 
         // 10000 shares cost 5002 underlying at this rate, which is below the stated minimum.
         uint256[] memory maxAmountsIn = _generousMaxAmountsIn(required);
-        maxAmountsIn[_wa6Idx] = 5000;
+        maxAmountsIn[_waUsdc6Idx] = 5000;
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, 5002, 5000));
@@ -796,13 +750,12 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev Zero is not reachable one token at a time on this path: the proportional math rounds up, so a token's share
-     * is zero only when every share is, which is to say when no pool tokens were requested. That case makes no buffer
-     * call at all and moves nothing, which is what the non-zero test in front of the wrap is for.
+     * @dev The proportional add math rounds up, so a single token's required amount is zero only when every token's
+     * is: when no pool tokens were requested. That makes no buffer call and moves nothing.
      */
     function testZeroPoolTokensOutIsANoOp() public {
         uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[_wa6Idx] = 1e6;
+        maxAmountsIn[_waUsdc6Idx] = 1e6;
         maxAmountsIn[_waDaiIdx] = 1e18;
 
         uint256 bptBefore = BalancerPoolToken(pool).balanceOf(lp);
@@ -819,21 +772,21 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsIn[_wa6Idx], 0, "The wrapped token charged something");
+        assertEq(amountsIn[_waUsdc6Idx], 0, "The wrapped token charged something");
         assertEq(amountsIn[_waDaiIdx], 0, "The other token charged something");
         assertEq(BalancerPoolToken(pool).balanceOf(lp), bptBefore, "Pool tokens were minted");
         assertEq(usdc6Decimals.balanceOf(lp), usdcBefore, "The underlying token was charged");
         assertEq(dai.balanceOf(lp), daiBefore, "The other underlying token was charged");
     }
 
-    /// @dev The first accepted amount and one above it, which cost what they cost before: two wei over the amount.
+    /// @dev The first accepted amount, and an ordinary amount above it. The wrap adds 2 wei.
     function testAcceptedAddsAreUnaffected() public {
         uint256[2] memory rawTargets = [PRODUCTION_MIN_WRAP_AMOUNT, uint256(20000)];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptOut = _mintForRawWa6(rawTargets[i]);
+            uint256 bptOut = _mintForRawWaUsdc6(rawTargets[i]);
             uint256[] memory required = _rawAmountsIn(bptOut);
-            assertEq(required[_wa6Idx], rawTargets[i], "Setup: wrong required raw wa6 amount");
+            assertEq(required[_waUsdc6Idx], rawTargets[i], "Setup: wrong required raw waUSDC6 amount");
 
             uint256 snapshotId = vm.snapshotState();
 
@@ -850,27 +803,26 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            // Wrapping adds one wei to the amount given and one to the preview result.
-            assertEq(amountsIn[_wa6Idx], rawTargets[i] + 2, "The wrapped token cost the wrong underlying");
+            assertEq(amountsIn[_waUsdc6Idx], rawTargets[i] + 2, "The wrapped token cost the wrong underlying");
 
-            // Nothing beyond what the token cost is kept: the rest of the limit comes back.
+            // The unused part of the limit comes back.
             assertEq(usdcBefore - usdc6Decimals.balanceOf(lp), rawTargets[i] + 2, "More than the cost was charged");
 
             vm.revertToState(snapshotId);
         }
     }
 
-    /// @dev The documented remedy, executed: clearing the flag pays the wrapper directly, with no buffer call.
+    /// @dev Clearing the wrap flag pays the wrapped token directly, with no buffer call.
     function testWrapFlagClearedIsUnaffected() public {
         uint256 rawTarget = PRODUCTION_MIN_WRAP_AMOUNT - 1;
-        uint256 bptOut = _mintForRawWa6(rawTarget);
+        uint256 bptOut = _mintForRawWaUsdc6(rawTarget);
         uint256[] memory required = _rawAmountsIn(bptOut);
 
         // The pool init spent every share the sender held, so paying the wrapper needs some minted first.
         vm.prank(lp);
-        _wa6.deposit(2 * required[_wa6Idx], lp);
+        _waUSDC6.deposit(2 * required[_waUsdc6Idx], lp);
 
-        uint256 wa6Before = _wa6.balanceOf(lp);
+        uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
 
         // Exact limits: nothing is wrapped, so the token costs precisely what the pool requires.
         vm.prank(lp);
@@ -883,13 +835,13 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsIn[_wa6Idx], rawTarget, "The wrapped token should be charged in full");
-        assertEq(wa6Before - _wa6.balanceOf(lp), rawTarget, "The wrapped token was not taken");
+        assertEq(amountsIn[_waUsdc6Idx], rawTarget, "The wrapped token should be charged in full");
+        assertEq(waUSDC6Before - _waUSDC6.balanceOf(lp), rawTarget, "The wrapped token was not taken");
     }
 
-    /// @dev A failure that is not this one keeps the Vault's own error rather than being reported as too small.
+    /// @dev Any other buffer failure keeps the Vault's own error.
     function testAddOtherBufferFailuresAreNotReinterpreted() public {
-        uint256 bptOut = _mintForRawWa6(20000);
+        uint256 bptOut = _mintForRawWaUsdc6(20000);
         uint256[] memory required = _rawAmountsIn(bptOut);
 
         vm.prank(admin);
@@ -909,7 +861,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
 
     /// @dev `maxAmountsIn` is denominated in what the caller pays, so a query result is directly reusable.
     function testAddQueryResultIsExecutableAsLimits() public {
-        uint256 bptOut = _mintForRawWa6(20000);
+        uint256 bptOut = _mintForRawWaUsdc6(20000);
 
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
@@ -932,24 +884,24 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
             bytes("")
         );
 
-        assertEq(amountsIn[_wa6Idx], queried[_wa6Idx], "USDC-6 amount does not match the query");
+        assertEq(amountsIn[_waUsdc6Idx], queried[_waUsdc6Idx], "USDC-6 amount does not match the query");
         assertEq(amountsIn[_waDaiIdx], queried[_waDaiIdx], "DAI amount does not match the query");
     }
 
-    /// @dev The prepaid variant shares this path exactly; only how the tokens arrive differs.
+    /// @dev The prepaid variant shares this path; only how the tokens arrive differs.
     function testPrepaidRouterAddBehavesIdentically() public {
         uint256 rawTarget = PRODUCTION_MIN_WRAP_AMOUNT - 1;
-        uint256 bptOut = _mintForRawWa6(rawTarget);
+        uint256 bptOut = _mintForRawWaUsdc6(rawTarget);
         uint256[] memory maxAmountsIn = _generousMaxAmountsIn(_rawAmountsIn(bptOut));
 
         vm.startPrank(lp);
-        usdc6Decimals.transfer(address(vault), maxAmountsIn[_wa6Idx]);
+        usdc6Decimals.transfer(address(vault), maxAmountsIn[_waUsdc6Idx]);
         dai.transfer(address(vault), maxAmountsIn[_waDaiIdx]);
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -965,27 +917,22 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /***************************************************************************
-                            The five buffer call sites
+                                 Buffer call sites
     ***************************************************************************/
 
-    /**
-     * @dev Every proportional operation that hands the buffer a pool-derived amount reports a refusal in the terms of
-     * the operation the caller asked for, and none of them leaks the Vault's buffer error. The amounts differ because
-     * the boundaries differ: an unwrap is refused two above the Vault's stated minimum at this wrapper's rate, and a
-     * wrap is refused one below it, which is exactly why the router does not compare against a threshold of its own.
-     */
+    /// @dev All three call sites that hand the buffer a pool-derived amount raise a router error, not the Vault's.
     function testEveryPoolDerivedCallSiteReportsARouterError() public {
         uint256 unwrapTarget = _FIRST_ACCEPTED_RAW - 1;
         uint256 wrapTarget = PRODUCTION_MIN_WRAP_AMOUNT - 1;
 
         bytes memory unwrapError = abi.encodeWithSelector(
             ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-            address(_wa6),
+            address(_waUSDC6),
             unwrapTarget
         );
 
         // Proportional remove from the ERC4626 pool.
-        uint256 bptIn = _burnForRawWa6(unwrapTarget);
+        uint256 bptIn = _burnForRawWaUsdc6(unwrapTarget);
         uint256 snapshotId = vm.snapshotState();
 
         vm.prank(lp);
@@ -1019,14 +966,14 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.revertToState(snapshotId);
 
         // Proportional add to the same pool, at its own boundary.
-        uint256 bptOut = _mintForRawWa6(wrapTarget);
+        uint256 bptOut = _mintForRawWaUsdc6(wrapTarget);
         uint256[] memory maxAmountsIn = _generousMaxAmountsIn(_rawAmountsIn(bptOut));
 
         vm.prank(lp);
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.RequiredWrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 wrapTarget
             )
         );
@@ -1041,16 +988,14 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev The other two call sites, and the rule that they are not the first three. Both wrap an amount the caller
-     * named, so both keep the Vault's `WrapAmountTooSmall`: the remedy there is simply a larger amount, and the
-     * router has nothing to add. One wei is below the Vault's minimum whichever way it measures, so it reaches the
-     * refusal without depending on the wrapper's rate.
+     * @dev The other two call sites wrap an amount the caller named, so both keep the Vault's `WrapAmountTooSmall`.
+     * 1 wei is below the minimum either way it is measured, so this does not depend on the wrapper's rate.
      */
     function testCallerNamedCallSitesKeepTheVaultError() public {
-        bytes memory vaultError = abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, address(_wa6));
+        bytes memory vaultError = abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, address(_waUSDC6));
 
         uint256[] memory exactAmountsIn = new uint256[](2);
-        exactAmountsIn[_wa6Idx] = 1;
+        exactAmountsIn[_waUsdc6Idx] = 1;
         exactAmountsIn[_waDaiIdx] = 1e18;
 
         uint256 snapshotId = vm.snapshotState();
@@ -1081,7 +1026,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         nestedAmountsIn[daiIdx] = 1e18;
 
         address[] memory tokensToWrap = new address[](2);
-        tokensToWrap[0] = address(_wa6);
+        tokensToWrap[0] = address(_waUSDC6);
         tokensToWrap[1] = address(waDAI);
 
         vm.prank(lp);
@@ -1109,7 +1054,7 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.revertToState(snapshotId);
     }
 
-    /// @dev True when a proportional mint of `bptOut` is above the Vault's scaled18 trade minimum for every token.
+    /// @dev True when a proportional mint of `bptOut` clears the Vault's minimum trade amount for every token.
     function _mintIsReachable(uint256 bptOut) private returns (bool reachable) {
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
@@ -1121,14 +1066,14 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
         vm.revertToState(snapshotId);
     }
 
-    /// @dev Largest `bptOut` whose required raw wa6 amount is at most `targetRaw`.
-    function _mintForRawWa6(uint256 targetRaw) private returns (uint256) {
+    /// @dev Largest `bptOut` whose required raw waUSDC6 amount is at most `targetRaw`.
+    function _mintForRawWaUsdc6(uint256 targetRaw) private returns (uint256) {
         uint256 low = 1;
         uint256 high = 1e24;
 
         while (low < high) {
             uint256 mid = (low + high + 1) / 2;
-            if (_mintIsReachable(mid) == false || _rawAmountsIn(mid)[_wa6Idx] <= targetRaw) {
+            if (_mintIsReachable(mid) == false || _rawAmountsIn(mid)[_waUsdc6Idx] <= targetRaw) {
                 low = mid;
             } else {
                 high = mid - 1;
@@ -1141,11 +1086,11 @@ contract CompositeLiquidityRouterERC4626PoolMinWrapAmountTest is CompositeLiquid
     /// @dev Limits well above what the tokens cost, so the caller's limit is never what fails.
     function _generousMaxAmountsIn(uint256[] memory required) private view returns (uint256[] memory maxAmountsIn) {
         maxAmountsIn = new uint256[](2);
-        maxAmountsIn[_wa6Idx] = required[_wa6Idx] * 4 + 1e6;
+        maxAmountsIn[_waUsdc6Idx] = required[_waUsdc6Idx] * 4 + 1e6;
         maxAmountsIn[_waDaiIdx] = required[_waDaiIdx] * 4 + 1e18;
     }
 
-    /// @dev Raw amounts a recovery withdrawal of `bptIn` would return. It applies no trade-amount floor.
+    /// @dev Raw amounts a recovery withdrawal of `bptIn` would return. It applies no minimum trade amount.
     function _rawAmountsOutRecovery(uint256 bptIn) private returns (uint256[] memory amountsOut) {
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();

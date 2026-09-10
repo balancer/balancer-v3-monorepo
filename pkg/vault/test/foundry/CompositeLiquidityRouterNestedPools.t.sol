@@ -1424,10 +1424,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check returned token amounts.
         assertEq(amountsOut.length, 5, "amountsOut length is wrong");
 
-        // The composite router has no Recovery Mode handling, so none of these flags selects a different withdrawal:
-        // the parent and both children are removed through the ordinary path in every combination, and the same
-        // tolerance has to hold for all eight. In this fixture the flags are inert by construction, every token being
-        // 18-decimal, STANDARD and yield-fee exempt, so what the fuzzed flags assert is the path, not the arithmetic.
+        // The composite router has no Recovery Mode handling, so the parent and both children take the ordinary
+        // path whatever these flags are set to, and the same tolerance holds for all eight combinations. Every
+        // token here is 18-decimal, STANDARD and yield-fee exempt, so the flags do not move the amounts either.
         uint256 tolerance = MAX_ROUND_ERROR;
 
         assertApproxEqAbs(
@@ -1549,14 +1548,12 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     /***************************************************************************
-                   Recovery Mode is not a composite-router operation
+                                  Recovery Mode
     ***************************************************************************/
 
-    // Where the parent pool is paused, the composite call reverts and the caller unwinds in ordinary steps instead:
+    // Where the parent pool is paused, the composite call reverts and the caller unwinds one level at a time:
     // `Router.removeLiquidityRecovery` on the parent returns its registered tokens, child BPT among them as a plain
-    // ERC20, and each child is then removed on its own. A healthy child needs no Recovery Mode of its own, which is
-    // why the removed branch conferred no privilege a caller lacks: it only ever used recovery removal on a child
-    // that was already in Recovery Mode, and never enabled it.
+    // ERC20, and each child is then removed on its own.
 
     function testRemoveLiquidityNestedPoolPausedParentReverts() public {
         uint256 exactBptIn = BalancerPoolToken(parentPool).totalSupply() / 10;
@@ -1586,7 +1583,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // The query reverts with the same error, so a caller learns this without spending a transaction.
+        // The query reverts with the same error.
         _prankStaticCall();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, parentPool));
         compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
@@ -1611,7 +1608,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 usdcBefore = usdc.balanceOf(lp);
         uint256 wethBefore = weth.balanceOf(lp);
 
-        // Step one: the parent's registered tokens, with child BPT delivered as an ordinary ERC20.
+        // Step 1: the parent's registered tokens, with child BPT delivered as an ordinary ERC20.
         vm.prank(lp);
         uint256[] memory parentAmountsOut = router.removeLiquidityRecovery(
             parentPool,
@@ -1629,7 +1626,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertGt(childABptOut, 0, "No childPoolA BPT was returned");
         assertEq(IERC20(childPoolA).balanceOf(lp) - childABptBefore, childABptOut, "LP: wrong childPoolA BPT balance");
 
-        // Step two: the child is healthy, unpaused and not in Recovery Mode, so the ordinary path unwinds it.
+        // Step 2: the child is unpaused and not in Recovery Mode, so the ordinary path unwinds it.
         assertFalse(vault.isPoolInRecoveryMode(childPoolA), "childPoolA is in Recovery Mode");
 
         vm.prank(lp);
@@ -2549,31 +2546,30 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
                       Remove liquidity with a zero-amount unwrap
     *******************************************************************************/
 
-    // The Vault's minimum wrap amount has no zero exemption, so handing the buffer an exactly zero amount reverts
-    // the whole nested withdrawal. These tests use a 6-decimal wrapper, whose raw proportional output rounds to zero
-    // at burns that still pay the 18-decimal tokens in full. The pools are built on demand rather than in `setUp`,
-    // since nothing else uses them.
+    // The Vault rejects a zero wrap amount, so the router skips the buffer call instead of handing one over. These
+    // tests use a 6-decimal wrapper, whose raw proportional output rounds to zero at burns that still pay the
+    // 18-decimal tokens in full. The pools are built on demand, since nothing else uses them.
 
-    // Burn 1/1e7 of the supply: the wa6 token holds 1e6 raw, so its proportional output rounds to zero, while
+    // Burn 1/1e7 of the supply: the waUSDC6 token holds 1e6 raw, so its proportional output rounds to zero, while
     // the 18-decimal tokens (1e6 * 1e18 raw) still return 1e17.
     uint256 private constant _ZERO_SHARE_BURN_DIVISOR = 1e7;
-    // Burn 1/1e3 of the supply, which puts the wa6 share well above the buffer minimum. Used as the control.
+    // Burn 1/1e3 of the supply, which puts the waUSDC6 share well above the buffer minimum. Used as the control.
     uint256 private constant _NON_ZERO_SHARE_BURN_DIVISOR = 1e3;
 
-    uint256 private constant _WA6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
+    uint256 private constant _WA_USDC6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
     uint256 private constant _WA18_POOL_BALANCE = 1e6 * 1e18;
-    uint256 private constant _WA6_BUFFER_UNDERLYING = 1e5 * 1e6;
+    uint256 private constant _WA_USDC6_BUFFER_UNDERLYING = 1e5 * 1e6;
 
     // Plain USDC-6 balance for the pool that also holds it as the wrapper's underlying.
     uint256 private constant _USDC6_POOL_BALANCE = 1e12;
 
-    ERC4626TestToken private _wa6;
-    // [wa6, waDAI]: the zero share is a parent pool token.
+    ERC4626TestToken private _waUSDC6;
+    // [waUSDC6, waDAI]: the zero share is a parent pool token.
     address private _zeroShareParentPool;
-    // [wa6, waWETH], nested in [_zeroShareChildPool, waDAI]: the zero share is a child pool token.
+    // [waUSDC6, waWETH], nested in [_zeroShareChildPool, waDAI]: the zero share is a child pool token.
     address private _zeroShareChildPool;
     address private _zeroShareNestedPool;
-    // [wa6, usdc6Decimals, waDAI]: the zero share's underlying is also a plain pool token.
+    // [waUSDC6, usdc6Decimals, waDAI]: the zero share's underlying is also a plain pool token.
     address private _zeroShareDupUnderlyingPool;
 
     function testRemoveLiquidityNestedPoolZeroUnwrapParentToken() public {
@@ -2599,7 +2595,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // The zero share reports zero and transfers nothing; it does not fail the withdrawal.
+        // The zero share reports zero and transfers nothing.
         assertEq(amountsOut[usdc6Idx], 0, "Zero share should report zero");
         assertEq(usdc6Decimals.balanceOf(lp), lpUsdc6Before, "LP USDC-6 balance should not move");
 
@@ -2681,12 +2677,12 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         (, address[] memory tokensToUnwrap) = _zeroShareParentTokenLists();
 
         // The traversal registers the underlying of each unwrapped parent token, in pool registration order.
-        (uint256 wa6Idx, uint256 waDaiIdx_) = getSortedIndexes(address(_wa6), address(waDAI));
+        (uint256 waUsdc6Idx, uint256 waDaiIdx_) = getSortedIndexes(address(_waUSDC6), address(waDAI));
         address[] memory actualTokensOut = new address[](2);
-        actualTokensOut[wa6Idx] = address(usdc6Decimals);
+        actualTokensOut[waUsdc6Idx] = address(usdc6Decimals);
         actualTokensOut[waDaiIdx_] = address(dai);
 
-        // Omitting the zero share's underlying must fail: it produces no output, but it is still an output token.
+        // The zero share produces no output, but it is still an output token, so omitting it fails.
         address[] memory shortTokensOut = new address[](1);
         shortTokensOut[0] = address(dai);
 
@@ -2719,8 +2715,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[usdc6Idx] = 1;
 
-        // A caller who set a limit on the zero share still fails, and with the limit error, not the buffer's.
-        // This matches the flat ERC4626 path, whose zero guard produces exactly the same outcome.
+        // A limit on the zero share fails with the limit error, not the buffer's. The flat ERC4626 path does the
+        // same.
         vm.startPrank(lp);
         _removeLiquidityProportionalNestedPool(
             _zeroShareParentPool,
@@ -2757,7 +2753,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // Control: an amount comfortably above the buffer minimum is unaffected by the zero handling.
+        // Control: an amount comfortably above the buffer minimum.
         assertGt(amountsOut[usdc6Idx], 0, "USDC-6 amount should be non-zero");
         assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
         assertEq(usdc6Decimals.balanceOf(lp), lpUsdc6Before + amountsOut[usdc6Idx], "LP USDC-6 balance is wrong");
@@ -2768,7 +2764,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         uint256 exactBptIn = BalancerPoolToken(_zeroShareDupUnderlyingPool).totalSupply() / _ZERO_SHARE_BURN_DIVISOR;
 
-        // The wa6 token is unwrapped into USDC-6, which the pool also holds directly, so the traversal registers
+        // The waUSDC6 token is unwrapped into USDC-6, which the pool also holds directly, so the traversal registers
         // USDC-6 twice and the produced set has two members for three pool tokens.
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
@@ -2777,7 +2773,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensOut[daiIdx] = address(dai);
 
         address[] memory tokensToUnwrap = new address[](2);
-        tokensToUnwrap[0] = address(_wa6);
+        tokensToUnwrap[0] = address(_waUSDC6);
         tokensToUnwrap[1] = address(waDAI);
 
         // What the pool itself returns for this burn, in pool registration order.
@@ -2792,9 +2788,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vm.revertToState(snapshotId);
 
         uint256[] memory poolTokenIndexes = getSortedIndexes(
-            [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray()
+            [address(_waUSDC6), address(usdc6Decimals), address(waDAI)].toMemoryArray()
         );
-        assertEq(rawAmountsOut[poolTokenIndexes[0]], 0, "Setup: wa6 share should be exactly zero");
+        assertEq(rawAmountsOut[poolTokenIndexes[0]], 0, "Setup: waUSDC6 share should be exactly zero");
         assertGt(rawAmountsOut[poolTokenIndexes[1]], 0, "Setup: plain USDC-6 amount should be non-zero");
 
         vm.startPrank(lp);
@@ -2809,8 +2805,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         vm.stopPrank();
 
-        // Registering the zero adds nothing to the accumulator the plain token already wrote, and does not
-        // enlarge the produced set.
+        // Registering the zero adds nothing to what the plain token already wrote, and does not enlarge the set.
         assertEq(
             amountsOut[usdc6Idx],
             rawAmountsOut[poolTokenIndexes[1]],
@@ -2831,7 +2826,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensOut[daiIdx] = address(dai);
 
         tokensToUnwrap = new address[](2);
-        tokensToUnwrap[0] = address(_wa6);
+        tokensToUnwrap[0] = address(_waUSDC6);
         tokensToUnwrap[1] = address(waDAI);
     }
 
@@ -2846,25 +2841,31 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensOut[2] = address(dai);
 
         tokensToUnwrap = new address[](3);
-        tokensToUnwrap[0] = address(_wa6);
+        tokensToUnwrap[0] = address(_waUSDC6);
         tokensToUnwrap[1] = address(waWETH);
         tokensToUnwrap[2] = address(waDAI);
     }
 
     function _createZeroSharePools() private {
-        _wa6 = createERC4626("Wrapped USDC-6", "wa6", 6, usdc6Decimals);
+        _waUSDC6 = createERC4626("Wrapped USDC-6", "waUSDC6", 6, usdc6Decimals);
 
         // The wrapper is created after `setUp` ran its approvals, so it needs its own.
-        approveForWrapper(_wa6, usdc6Decimals);
+        approveForWrapper(_waUSDC6, usdc6Decimals);
 
-        (_zeroShareChildPool, ) = _createPool([address(_wa6), address(waWETH)].toMemoryArray(), "zeroShareChildPool");
-        (_zeroShareParentPool, ) = _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "zeroShareParentPool");
+        (_zeroShareChildPool, ) = _createPool(
+            [address(_waUSDC6), address(waWETH)].toMemoryArray(),
+            "zeroShareChildPool"
+        );
+        (_zeroShareParentPool, ) = _createPool(
+            [address(_waUSDC6), address(waDAI)].toMemoryArray(),
+            "zeroShareParentPool"
+        );
         (_zeroShareNestedPool, ) = _createPool(
             [_zeroShareChildPool, address(waDAI)].toMemoryArray(),
             "zeroShareNestedPool"
         );
         (_zeroShareDupUnderlyingPool, ) = _createPool(
-            [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
+            [address(_waUSDC6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
             "zeroShareDupUnderlyingPool"
         );
 
@@ -2874,19 +2875,24 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         approveForPool(IERC20(_zeroShareDupUnderlyingPool));
 
         vm.startPrank(lp);
-        _wa6.deposit(_WA6_BUFFER_UNDERLYING + 3 * _WA6_POOL_BALANCE, lp);
-        bufferRouter.initializeBuffer(_wa6, _WA6_BUFFER_UNDERLYING, _wa6.previewDeposit(_WA6_BUFFER_UNDERLYING), 0);
+        _waUSDC6.deposit(_WA_USDC6_BUFFER_UNDERLYING + 3 * _WA_USDC6_POOL_BALANCE, lp);
+        bufferRouter.initializeBuffer(
+            _waUSDC6,
+            _WA_USDC6_BUFFER_UNDERLYING,
+            _waUSDC6.previewDeposit(_WA_USDC6_BUFFER_UNDERLYING),
+            0
+        );
 
         _initPoolUnsorted(
             _zeroShareParentPool,
-            [address(_wa6), address(waDAI)].toMemoryArray(),
-            [_WA6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
+            [address(_waUSDC6), address(waDAI)].toMemoryArray(),
+            [_WA_USDC6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
 
         uint256 childBptOut = _initPoolUnsorted(
             _zeroShareChildPool,
-            [address(_wa6), address(waWETH)].toMemoryArray(),
-            [_WA6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
+            [address(_waUSDC6), address(waWETH)].toMemoryArray(),
+            [_WA_USDC6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
 
         _initPoolUnsorted(
@@ -2897,8 +2903,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         _initPoolUnsorted(
             _zeroShareDupUnderlyingPool,
-            [address(_wa6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
-            [_WA6_POOL_BALANCE, _USDC6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
+            [address(_waUSDC6), address(usdc6Decimals), address(waDAI)].toMemoryArray(),
+            [_WA_USDC6_POOL_BALANCE, _USDC6_POOL_BALANCE, _WA18_POOL_BALANCE].toMemoryArray()
         );
         vm.stopPrank();
     }

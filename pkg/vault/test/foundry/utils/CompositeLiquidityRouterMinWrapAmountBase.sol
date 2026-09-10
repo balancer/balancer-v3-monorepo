@@ -12,24 +12,26 @@ import { BaseVaultTest } from "./BaseVaultTest.sol";
 
 /**
  * @notice Shared fixture for the composite router suites that run at the production Vault minimums.
- * @dev `BaseVaultTest` defaults to a minimum wrap amount of 1 and no minimum trade amount, so no other composite
- * router suite can reach the band in which the buffer refuses a non-zero amount. Suites extending this one raise
- * both to the production values and share one pool: a 6-decimal wrapper, whose raw proportional share can round to
- * zero or into the refused band at burns that still pay the 18-decimal token in full, paired with an 18-decimal one.
+ * @dev `BaseVaultTest` defaults to a minimum wrap amount of 1 and no minimum trade amount, which are too low to
+ * refuse anything. Suites extending this one raise both to the production values, and share a pool of a 6-decimal
+ * wrapper and an 18-decimal one. The 6-decimal wrapper is what makes the small amounts reachable: its raw
+ * proportional share is small at burns that still pay the 18-decimal token in full.
  */
 abstract contract CompositeLiquidityRouterMinWrapAmountBase is BaseVaultTest {
     using ArrayHelpers for *;
 
-    // Smallest raw wrapped amount the buffer accepts, at a redeem rate of exactly one.
+    // Smallest raw wrapped amount the buffer accepts, at a redeem rate of 1. The Vault applies its minimum to the
+    // amount it is given and again to the amount it calculates, and an EXACT_IN unwrap calculates
+    // `previewRedeem(amount - 1) - 1`, so the minimum itself falls 2 short. Other rates move the boundary.
     uint256 internal constant _FIRST_ACCEPTED_RAW = PRODUCTION_MIN_WRAP_AMOUNT + 2;
 
-    uint256 internal constant _WA6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
+    uint256 internal constant _WA_USDC6_POOL_BALANCE = 1e6; // 1.0 unit of a 6-decimal wrapper
     uint256 internal constant _WADAI_POOL_BALANCE = 1e6 * 1e18;
-    uint256 internal constant _WA6_BUFFER_UNDERLYING = 1e5 * 1e6;
+    uint256 internal constant _WA_USDC6_BUFFER_UNDERLYING = 1e5 * 1e6;
 
-    ERC4626TestToken internal _wa6;
+    ERC4626TestToken internal _waUSDC6;
 
-    uint256 internal _wa6Idx;
+    uint256 internal _waUsdc6Idx;
     uint256 internal _waDaiIdx;
 
     function setUp() public virtual override {
@@ -42,24 +44,29 @@ abstract contract CompositeLiquidityRouterMinWrapAmountBase is BaseVaultTest {
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
-        _wa6 = createERC4626("Wrapped USDC-6", "wa6", 6, usdc6Decimals);
+        _waUSDC6 = createERC4626("Wrapped USDC-6", "waUSDC6", 6, usdc6Decimals);
 
-        (_wa6Idx, _waDaiIdx) = getSortedIndexes(address(_wa6), address(waDAI));
+        (_waUsdc6Idx, _waDaiIdx) = getSortedIndexes(address(_waUSDC6), address(waDAI));
 
-        return _createPool([address(_wa6), address(waDAI)].toMemoryArray(), "minWrapPool");
+        return _createPool([address(_waUSDC6), address(waDAI)].toMemoryArray(), "minWrapPool");
     }
 
     function initPool() internal override {
         // The wrapper is created inside `createPool`, after the base approvals ran, so it needs its own.
-        approveForWrapper(_wa6, usdc6Decimals);
+        approveForWrapper(_waUSDC6, usdc6Decimals);
 
         vm.startPrank(lp);
-        _wa6.deposit(_WA6_BUFFER_UNDERLYING + _WA6_POOL_BALANCE, lp);
-        bufferRouter.initializeBuffer(_wa6, _WA6_BUFFER_UNDERLYING, _wa6.previewDeposit(_WA6_BUFFER_UNDERLYING), 0);
-        bufferRouter.initializeBuffer(waDAI, _WA6_BUFFER_UNDERLYING * 1e12, waDAI.previewDeposit(1e5 * 1e18), 0);
+        _waUSDC6.deposit(_WA_USDC6_BUFFER_UNDERLYING + _WA_USDC6_POOL_BALANCE, lp);
+        bufferRouter.initializeBuffer(
+            _waUSDC6,
+            _WA_USDC6_BUFFER_UNDERLYING,
+            _waUSDC6.previewDeposit(_WA_USDC6_BUFFER_UNDERLYING),
+            0
+        );
+        bufferRouter.initializeBuffer(waDAI, _WA_USDC6_BUFFER_UNDERLYING * 1e12, waDAI.previewDeposit(1e5 * 1e18), 0);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[_wa6Idx] = _WA6_POOL_BALANCE;
+        amountsIn[_waUsdc6Idx] = _WA_USDC6_POOL_BALANCE;
         amountsIn[_waDaiIdx] = _WADAI_POOL_BALANCE;
 
         _initPool(pool, amountsIn, 0);
@@ -84,7 +91,7 @@ abstract contract CompositeLiquidityRouterMinWrapAmountBase is BaseVaultTest {
         tokensOut[daiIdx] = address(dai);
 
         tokensToUnwrap = new address[](2);
-        tokensToUnwrap[0] = address(_wa6);
+        tokensToUnwrap[0] = address(_waUSDC6);
         tokensToUnwrap[1] = address(waDAI);
     }
 
@@ -96,14 +103,14 @@ abstract contract CompositeLiquidityRouterMinWrapAmountBase is BaseVaultTest {
         vm.revertToState(snapshotId);
     }
 
-    /// @dev Largest `bptIn` whose raw wa6 output is at most `targetRaw`.
-    function _burnForRawWa6(uint256 targetRaw) internal returns (uint256) {
+    /// @dev Largest `bptIn` whose raw waUSDC6 output is at most `targetRaw`.
+    function _burnForRawWaUsdc6(uint256 targetRaw) internal returns (uint256) {
         uint256 low = PRODUCTION_MIN_TRADE_AMOUNT;
         uint256 high = BalancerPoolToken(pool).balanceOf(lp);
 
         while (low < high) {
             uint256 mid = (low + high + 1) / 2;
-            if (_rawAmountsOut(mid)[_wa6Idx] <= targetRaw) {
+            if (_rawAmountsOut(mid)[_waUsdc6Idx] <= targetRaw) {
                 low = mid;
             } else {
                 high = mid - 1;

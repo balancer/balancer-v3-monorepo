@@ -17,29 +17,14 @@ import { CompositeLiquidityRouterMinWrapAmountBase } from "./utils/CompositeLiqu
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
 /**
- * @notice Nested-pool unwrap behavior at the Vault minimums the deployed Vaults actually report.
- * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`; this suite drives the nested remove entry point
- * across the band in which the buffer rejects a non-zero amount, and records where that path changes behavior and
- * where it does not.
- *
- * At a redeem rate of exactly one, which is what this suite's wrapper carries, the first accepted raw amount is
- * two above the Vault's stated minimum rather than equal to it, because `erc4626BufferWrapOrUnwrap` applies that
- * minimum twice: once to the amount given, and once to the calculated output, which for an EXACT_IN unwrap is
- * `previewRedeem(amount - 1) - 1`. At a rate comfortably above one the second check is slack and the first
- * accepted amount falls back to the stated minimum; below one it rises well above it, which is exercised here.
- * The boundary is therefore a property of the wrapper rather than a constant, so never write a router-side check
- * against `getMinimumWrapAmount()` alone.
- *
- * The amount is the pool's rather than the caller's at both levels of the traversal, and the caller declares the
- * output tokens up front, so an amount the buffer will not unwrap fails with `UnwrapAmountTooSmall` naming the
- * token and that amount, which is what proportional removal from an ERC4626 pool reports for the same condition.
- * A parent pool is set up alongside the pool this suite removes from, so both of the traversal's unwrap call
- * sites are covered: the token in the pool the caller names, and the token in a child pool below it.
+ * @notice Nested-pool unwrap behavior at the production Vault minimums.
+ * @dev The fixture is `CompositeLiquidityRouterMinWrapAmountBase`, with a parent pool added on top of it so that
+ * both unwrap call sites are covered: the token in the pool the caller names, and the token in a child pool.
  */
 contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquidityRouterMinWrapAmountBase {
     using ArrayHelpers for *;
 
-    // A parent pool holding `pool` as a child, so the traversal reaches the unwrap at the child level as well.
+    // Holds `pool` as a child, so an unwrap can happen at the child level.
     address private _parentPool;
 
     function setUp() public override {
@@ -68,10 +53,10 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         vm.stopPrank();
     }
 
-    /// @dev Zero is the case the guard covers, and it is covered at the real minimum, not just the test default.
+    /// @dev A zero share reports zero and the withdrawal succeeds, at the production minimum as at the default.
     function testNestedZeroUnwrapAtProductionMinimum() public {
-        uint256 bptIn = _burnForRawWa6(0);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], 0, "Setup: wa6 share should be exactly zero");
+        uint256 bptIn = _burnForRawWaUsdc6(0);
+        assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], 0, "Setup: waUSDC6 share should be exactly zero");
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
@@ -92,31 +77,32 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev Everything between zero and the first accepted amount still reverts, and the zero guard does not change
-     * that. Unlike zero, these amounts carry a wrapped credit that has no other consumer, so they cannot simply be
-     * skipped. The failure is reported as `UnwrapAmountTooSmall`, naming the token and the amount the pool produced,
-     * which is what the flat ERC4626 remove path reports for the same condition.
+     * @dev Sub-minimum waUSDC6 shares revert with `UnwrapAmountTooSmall(waUSDC6, amount)`, and no balance moves. The
+     * sampled amounts cover both rejection paths: 1 and 9999 fail the Vault's check on the amount given, while the
+     * two just below `_FIRST_ACCEPTED_RAW` clear that and fail the check on the underlying they redeem to. Unlike a
+     * zero share (`testNestedZeroUnwrapAtProductionMinimum`), these carry a wrapped credit with no other consumer,
+     * so the router cannot skip them.
      */
     function testNestedSubMinimumBandRevertsWithRouterError() public {
         uint256[4] memory rawTargets = [uint256(1), 9999, _FIRST_ACCEPTED_RAW - 2, _FIRST_ACCEPTED_RAW - 1];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
-            assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTargets[i], "Setup: wrong raw wa6 amount");
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
+            assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTargets[i], "Setup: wrong raw waUSDC6 amount");
 
             (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
             uint256 snapshotId = vm.snapshotState();
 
             uint256 bptBefore = BalancerPoolToken(pool).balanceOf(lp);
-            uint256 wa6Before = _wa6.balanceOf(lp);
+            uint256 waUSDC6Before = _waUSDC6.balanceOf(lp);
             uint256 usdcBefore = usdc6Decimals.balanceOf(lp);
 
             vm.prank(lp);
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -130,21 +116,20 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            // Nothing partial is left behind, and the wrapped token is not delivered in place of the underlying.
             assertEq(BalancerPoolToken(pool).balanceOf(lp), bptBefore, "BPT was burned");
-            assertEq(_wa6.balanceOf(lp), wa6Before, "The wrapped token was delivered");
+            assertEq(_waUSDC6.balanceOf(lp), waUSDC6Before, "The wrapped token was delivered");
             assertEq(usdc6Decimals.balanceOf(lp), usdcBefore, "The underlying token was delivered");
 
             vm.revertToState(snapshotId);
         }
     }
 
-    /// @dev The query reverts with the identical error, so a caller learns this without spending a transaction.
+    /// @dev The query reverts with the same error as the operation it quotes.
     function testNestedSubMinimumQueryMatchesExecution() public {
         uint256[2] memory rawTargets = [uint256(1), _FIRST_ACCEPTED_RAW - 1];
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
 
             (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
@@ -154,7 +139,7 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                    address(_wa6),
+                    address(_waUSDC6),
                     rawTargets[i]
                 )
             );
@@ -172,20 +157,20 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev This path's boundary is a property of the wrapper, exactly as the flat path's is. At a redeem rate of one
-     * half a raw wrapped amount of 15000 clears the Vault's stated minimum of 10000 and is still refused, because the
-     * minimum is applied again to the underlying it redeems to. A router-side check written against
-     * `getMinimumWrapAmount()` would wave this through.
+     * @dev The boundary depends on the wrapper's rate, not on the Vault's constant alone. At a redeem rate of 0.5,
+     * 15000 wrapped clears the stated minimum of 10000 but redeems to only ~7498 underlying, which does not, and the
+     * Vault applies the minimum to both. A router-side pre-check against `getMinimumWrapAmount()` would let this
+     * through, and the Vault would reject it anyway.
      */
     function testNestedBelowParRateRefusesAmountAboveTheStatedMinimum() public {
-        _wa6.mockRate(FixedPoint.ONE / 2);
-        assertLt(_wa6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
+        _waUSDC6.mockRate(FixedPoint.ONE / 2);
+        assertLt(_waUSDC6.getRate(), FixedPoint.ONE, "Setup: the rate did not fall below one");
 
         uint256 rawTarget = 15000;
         assertGt(rawTarget, vault.getMinimumWrapAmount(), "Setup: the target is not above the stated minimum");
 
-        uint256 bptIn = _burnForRawWa6(rawTarget);
-        assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTarget, "Setup: wrong raw wa6 amount");
+        uint256 bptIn = _burnForRawWaUsdc6(rawTarget);
+        assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTarget, "Setup: wrong raw waUSDC6 amount");
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
@@ -193,7 +178,7 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -209,14 +194,13 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
     }
 
     /**
-     * @dev The traversal reaches this unwrap at two levels, and both report the same way. Here the wrapper sits in a
-     * child pool rather than in the pool the caller names, so the amount is the child's share of what the parent's
-     * own removal produced.
+     * @dev This test unwraps a token at the child level, which should revert with the same router error raised
+     * when the unwrap happens in the parent pool (the pool parameter passed by the caller).
      */
     function testNestedChildLevelSubMinimumRevertsWithRouterError() public {
         uint256 rawTarget = _FIRST_ACCEPTED_RAW - 1;
-        uint256 parentBptIn = _burnParentForRawWa6(rawTarget);
-        assertEq(_childRawWa6Out(parentBptIn), rawTarget, "Setup: wrong raw wa6 amount at the child level");
+        uint256 parentBptIn = _burnParentForRawWaUsdc6(rawTarget);
+        assertEq(_childRawWaUsdc6Out(parentBptIn), rawTarget, "Setup: wrong raw waUSDC6 amount at the child level");
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _parentTokenLists();
 
@@ -224,7 +208,7 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICompositeLiquidityRouterErrors.UnwrapAmountTooSmall.selector,
-                address(_wa6),
+                address(_waUSDC6),
                 rawTarget
             )
         );
@@ -239,9 +223,9 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         );
     }
 
-    /// @dev A failure that is not this one keeps the Vault's own error rather than being reported as too small.
+    /// @dev Any other buffer failure keeps the Vault's own error.
     function testNestedOtherBufferFailuresAreNotReinterpreted() public {
-        uint256 bptIn = _burnForRawWa6(20000);
+        uint256 bptIn = _burnForRawWaUsdc6(20000);
 
         (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
@@ -261,15 +245,15 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         );
     }
 
-    /// @dev The boundary itself, and an ordinary amount above it. Both unaffected by the zero handling.
+    /// @dev The boundary itself, and an ordinary amount above it.
     function testNestedBoundaryAcceptedAmount() public {
         uint256[2] memory rawTargets = [_FIRST_ACCEPTED_RAW, uint256(20000)];
 
         (uint256 usdc6Idx, uint256 daiIdx) = getSortedIndexes(address(usdc6Decimals), address(dai));
 
         for (uint256 i = 0; i < rawTargets.length; ++i) {
-            uint256 bptIn = _burnForRawWa6(rawTargets[i]);
-            assertEq(_rawAmountsOut(bptIn)[_wa6Idx], rawTargets[i], "Setup: wrong raw wa6 amount");
+            uint256 bptIn = _burnForRawWaUsdc6(rawTargets[i]);
+            assertEq(_rawAmountsOut(bptIn)[_waUsdc6Idx], rawTargets[i], "Setup: wrong raw waUSDC6 amount");
 
             (address[] memory tokensOut, address[] memory tokensToUnwrap) = _tokenLists();
 
@@ -285,7 +269,7 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
                 bytes("")
             );
 
-            // The unwrap deducts two wei: one from the amount given, one from the preview result.
+            // The unwrap deducts 2 wei: 1 from the amount given, 1 from the preview result.
             assertEq(amountsOut[usdc6Idx], rawTargets[i] - 2, "USDC-6 amount is wrong");
             assertGt(amountsOut[daiIdx], 0, "DAI amount should be non-zero");
             vm.revertToState(snapshotId);
@@ -304,8 +288,8 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         tokensToUnwrap = unwrapList;
     }
 
-    /// @dev Raw wa6 the child pool would produce for a proportional burn of `parentBptIn` of the parent pool.
-    function _childRawWa6Out(uint256 parentBptIn) private returns (uint256) {
+    /// @dev Raw waUSDC6 the child pool would produce for a proportional burn of `parentBptIn` of the parent pool.
+    function _childRawWaUsdc6Out(uint256 parentBptIn) private returns (uint256) {
         uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory parentAmountsOut = router.queryRemoveLiquidityProportional(
@@ -325,17 +309,17 @@ contract CompositeLiquidityRouterNestedPoolsMinWrapAmountTest is CompositeLiquid
         );
         vm.revertToState(snapshotId);
 
-        return childAmountsOut[_wa6Idx];
+        return childAmountsOut[_waUsdc6Idx];
     }
 
-    /// @dev Largest parent-pool `bptIn` whose child-level raw wa6 output is at most `targetRaw`.
-    function _burnParentForRawWa6(uint256 targetRaw) private returns (uint256) {
+    /// @dev Largest parent-pool `bptIn` whose child-level raw waUSDC6 output is at most `targetRaw`.
+    function _burnParentForRawWaUsdc6(uint256 targetRaw) private returns (uint256) {
         uint256 low = PRODUCTION_MIN_TRADE_AMOUNT;
         uint256 high = BalancerPoolToken(_parentPool).balanceOf(lp);
 
         while (low < high) {
             uint256 mid = (low + high + 1) / 2;
-            if (_childRawWa6Out(mid) <= targetRaw) {
+            if (_childRawWaUsdc6Out(mid) <= targetRaw) {
                 low = mid;
             } else {
                 high = mid - 1;
