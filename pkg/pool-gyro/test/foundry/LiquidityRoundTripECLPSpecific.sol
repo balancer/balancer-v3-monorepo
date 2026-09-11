@@ -27,16 +27,16 @@ import { BaseECLPSpecificTest } from "./utils/BaseECLPSpecificTest.sol";
  * `[alpha, beta] = [0.980392156862745098, 1.000000630371029932]`, so in any state the pool can reach, one unit of
  * token 0 is worth between 0.9804 and 1.0000007 units of token 1, and the pool starts at exactly 1.
  *
-     * The 1:1 sum understates the attacker's gain in two cases. When the price is above 1 and the attacker ends up
-     * holding more token 0, the error is at most `beta - 1` (6.3e-7). When the price is below 1 and the attacker ends
-     * up holding less token 0, the error is at most `1 - alpha` (1.96e-2), four orders of magnitude larger. The second
-     * case is the ordinary one: selling token 0 both reduces the holding and pushes the price down.
-     *
-     * What keeps the error under the fee is the trade cap, not the width of the price interval. Every operation here
-     * is capped at 10% of the token 0 balance, which holds the price within 6.3e-8 of 1, so the error is ~6.3e-4 of
-     * the 1e-4 swap fee the attacker pays. Widening that cap breaks the argument: at 20x the token 0 balance the
-     * error is an eighth of the fee, and at 2000x it is ten times the fee.
-     * No tolerance is added on top: the assertions below are exact.
+ * The 1:1 sum understates the attacker's gain in two cases. When the price is above 1 and the attacker ends up
+ * holding more token 0, the error is at most `beta - 1` (6.3e-7). When the price is below 1 and the attacker ends
+ * up holding less token 0, the error is at most `1 - alpha` (1.96e-2), four orders of magnitude larger. The second
+ * case is the ordinary one: selling token 0 both reduces the holding and pushes the price down.
+ *
+ * What keeps the error under the fee is the trade cap, not the width of the price interval. Every operation here
+ * is capped at 10% of the token 0 balance, which holds the price within 6.3e-8 of 1, so the error is ~6.3e-4 of
+ * the 1e-4 swap fee the attacker pays. Widening that cap breaks the argument: at 20x the token 0 balance the
+ * error is an eighth of the fee, and at 2000x it is ten times the fee.
+ * No tolerance is added on top: the assertions below are exact.
  */
 contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {
     // Fraction of the pool's total supply that the "existing LP" attacker of test 2 holds before the attack starts.
