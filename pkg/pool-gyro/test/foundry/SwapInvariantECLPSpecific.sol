@@ -37,7 +37,6 @@ contract SwapInvariantECLPSpecificTest is BaseECLPSpecificTest {
         // (the pool starts near `beta`), so it is what limits the reachable trade size whichever way the swap goes.
         swapAmountScaled18 = bound(swapAmountScaled18, _MIN_SWAP_SCALED18, balance0Scaled18 / 10);
         uint256 amountInRaw = _toRawAmount(swapAmountScaled18, swap0To1 ? setup.decimals0 : setup.decimals1);
-        vm.assume(amountInRaw > 0);
 
         uint256 invariantBefore = _computeInvariant(setup.pool);
 
