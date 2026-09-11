@@ -28,8 +28,8 @@ import { BaseECLPSpecificTest } from "./utils/BaseECLPSpecificTest.sol";
  * token 0 is worth between 0.9804 and 1.0000007 units of token 1, and the pool starts at exactly 1.
  *
  * The residual ambiguity of the 1:1 sum is therefore at most 6.3e-7 relative (`beta - 1`), in the direction that
- * favours an attacker who ends up long token 0. That is more than two orders of magnitude smaller than the 1e-4 swap
- * fee every attacker in these sequences has to pay, so the conclusion is not load-bearing on the valuation choice.
+ * favors an attacker who ends up long token 0. That is more than two orders of magnitude smaller than the 1e-4 swap
+ * fee every attacker in these sequences has to pay, so the conclusion does not depend on the valuation choice.
  * No tolerance is added on top: the assertions below are exact.
  */
 contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {

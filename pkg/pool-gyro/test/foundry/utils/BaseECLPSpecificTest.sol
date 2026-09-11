@@ -45,9 +45,11 @@ abstract contract BaseECLPSpecificTest is BaseVaultTest {
     uint8 internal constant _MAX_DECIMALS = 18;
 
     // Balance bounds for token 0 (scaled 18-decimal values). Token 1 is ~9999x larger (see
-    // `_PRICE_ONE_BALANCE_RATIO`), so the upper bound is what keeps the sum of the balances below `_MAX_BALANCES`
-    // (1e34). The lower bound keeps the token 0 raw amount at 6 decimals at or above 1e10 units, so that the
-    // truncation performed by `_toRawAmount` perturbs the balance ratio by at most ~1e-10 in relative terms.
+    // `_PRICE_ONE_BALANCE_RATIO`), so the upper bound is set by what the LP can hold: at 1e26 the token 1 balance
+    // is ~1e30, against the 1e32 minted by `_TOKEN_MINT_AMOUNT`. That leaves `_MAX_BALANCES` (1e34) four orders of
+    // magnitude away, so it is never reached. The lower bound keeps the token 0 raw amount at 6 decimals at or
+    // 1e10 units, so that the truncation performed by `_toRawAmount` perturbs the balance ratio by at most ~1e-10
+    // in relative terms.
     uint256 internal constant _MIN_BALANCE0_SCALED18 = 1e22;
     uint256 internal constant _MAX_BALANCE0_SCALED18 = 1e26;
 
@@ -62,8 +64,11 @@ abstract contract BaseECLPSpecificTest is BaseVaultTest {
      * Derived from the virtual offset form used by `GyroECLPMath.virtualOffset0/1`, where
      * `(A^-1 tau) = (lambda*c*tau.x + s*tau.y, -lambda*s*tau.x + c*tau.y)`, and
      * `x(p)/r = (A^-1 tauBeta)_x - (A^-1 tau(p))_x`, `y(p)/r = (A^-1 tauAlpha)_y - (A^-1 tau(p))_y`.
-     * Since `c == s`, `tau(1) = (0, 1)`, which gives `x(1)/r = 0.0200582737739962149...` and
-     * `y(1)/r = 200.5626794660776018...`, hence `y/x = 9998.99999999448846341...`.
+     * Since `c == s`, `tau(1) = (0, 1)`, which gives `x(1)/r = 0.02005827377399621`, `y(1)/r = 200.56267946607760`
+     * and `y/x = 9998.99999999448846`. Note the stored `tauAlpha` and `tauBeta` are normalized so that the squared
+     * length of tau equals `dSq` rather than 1, while `tau(1)` above is not, so the last digits of the ratio depend
+     * on which convention is applied. The two differ by 2.0e-17 in relative terms, which is 1.26e-5 wei of price:
+     * far below the ~45 wei of rounding the initialization already carries.
      */
     uint256 internal constant _PRICE_ONE_BALANCE_RATIO = 9998999999994488463412;
 
@@ -118,7 +123,7 @@ abstract contract BaseECLPSpecificTest is BaseVaultTest {
     }
 
     function createPoolFactory() internal override returns (address) {
-        return address(new GyroECLPPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+        return address(deployGyroECLPPoolFactory(IVault(address(vault))));
     }
 
     /**

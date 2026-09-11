@@ -378,7 +378,9 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
      * @notice Add liquidity proportionally and immediately take it back out, by any actor.
      * @dev An atomic round trip must never return more of either token than it consumed.
      *
-     * Note this is deliberately checked *atomically* rather than as a standing per-actor property. A global
+     * Note this is deliberately checked *atomically* rather than as a standing per-actor property. Atomic here means
+     * one fuzz call, not one Vault session: the add and the remove are separate router calls, so the Vault's
+     * roundtrip swap fee never applies to this sequence, and the path being tested is the one without it. A global
      * "no actor ever ends up with more of both tokens" property is not an invariant of the pool: one actor can
      * move the price with a large swap and a second actor can then legitimately end up ahead in both tokens, and
      * an LP legitimately accrues swap fees. Only value conservation across the whole pool is invariant, and that
@@ -505,8 +507,15 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
     }
 
     function _assertPoolBalances(uint256 expected0, uint256 expected1) internal view {
-        assert(_poolBalance(0) == expected0);
-        assert(_poolBalance(1) == expected1);
+        (uint256 balance0, uint256 balance1) = _poolBalances();
+        assert(balance0 == expected0);
+        assert(balance1 == expected1);
+    }
+
+    // New helper; could put down with others.
+    function _poolBalances() internal view returns (uint256, uint256) {
+        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        return (balancesRaw[0], balancesRaw[1]);
     }
 
     function _snapshot(address actor) internal view returns (Snapshot memory snapshot) {
