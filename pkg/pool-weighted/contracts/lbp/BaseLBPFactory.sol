@@ -82,7 +82,7 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
     ) internal pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](_TWO_TOKENS);
 
-        (tokenConfig[0].token, tokenConfig[1].token) = projectToken < reserveToken
+        (tokenConfig[0].token, tokenConfig[1].token) = address(projectToken) < address(reserveToken)
             ? (projectToken, reserveToken)
             : (reserveToken, projectToken);
     }
@@ -96,6 +96,9 @@ abstract contract BaseLBPFactory is IPoolVersion, BasePoolFactory, ReentrancyGua
         PoolRoleAccounts memory roleAccounts;
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.disableUnbalancedLiquidity = true;
+
+        // Validate the registration flags before passing them to the Vault.
+        LBPValidation.validateLiquidityManagement(liquidityManagement);
 
         // This account can change the static swap fee for the pool.
         roleAccounts.swapFeeManager = lbpCommonParams.owner;

@@ -71,6 +71,14 @@ interface IFixedPriceLBPool is ILBPCommon {
     error TokenSwapsInUnsupported();
 
     /**
+     * @notice A swap would take more of the outgoing token than the pool holds.
+     * @dev Fixed-price math does not cap `amountOut` to the available balance.
+     * @param amountOutScaled18 The amount the swap would remove, as an 18-decimal FixedPoint value
+     * @param balanceScaled18 The available balance, as an 18-decimal FixedPoint value
+     */
+    error SwapAmountExceedsBalance(uint256 amountOutScaled18, uint256 balanceScaled18);
+
+    /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic LBP parameters
      */

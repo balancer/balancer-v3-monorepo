@@ -177,6 +177,6 @@ abstract contract BasePoolFactory is
      * @return liquidityManagement Liquidity management flags, all initialized to false
      */
     function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory liquidityManagement) {
-        // solhint-disable-previous-line no-empty-blocks
+        return liquidityManagement;
     }
 }
