@@ -74,7 +74,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         address lbp = _buildSeededAtTheFloor();
 
         uint256 nearTotal = _burnLeaving(lbp, minimumTradeAmount);
-        assertFalse(_removalIsAdmitted(lbp, nearTotal), "The near-total withdrawal is admitted at the floor");
+        assertFalse(_removalSucceeds
+        (lbp, nearTotal), "The near-total withdrawal is admitted at the floor");
 
         assertTrue(_fullyRedeemable(lbp), "The full exit is refused at the floor");
     }
@@ -86,7 +87,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
         uint256 burn = (circulating * 9999) / 10000;
 
-        assertTrue(_removalIsAdmitted(lbp, burn), "A 99.99% withdrawal is refused on a healthy pool");
+        assertTrue(_removalSucceeds
+        (lbp, burn), "A 99.99% withdrawal is refused on a healthy pool");
 
         _remove(lbp, burn);
         assertTrue(_fullyRedeemable(lbp), "The remainder cannot be redeemed after a 99.99% withdrawal");
@@ -107,7 +109,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         vm.stopPrank();
 
         assertTrue(
-            _removalIsAdmitted(lbp, _burnLeaving(lbp, minimumTradeAmount)),
+            _removalSucceeds
+            (lbp, _burnLeaving(lbp, minimumTradeAmount)),
             "Leaving exactly the minimum trade amount outstanding is refused"
         );
     }
@@ -117,26 +120,35 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
 
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
 
-        assertTrue(_removalIsAdmitted(lbp, circulating), "The largest burn is refused");
+        assertTrue(_removalSucceeds
+        (lbp, circulating), "The largest burn is refused");
 
-        assertFalse(_removalIsAdmitted(lbp, _burnLeaving(lbp, 1)), "Leaving 1 pool token is admitted");
+        assertFalse(_removalSucceeds
+        (lbp, _burnLeaving(lbp, 1)), "Leaving 1 pool token is admitted");
         assertFalse(
-            _removalIsAdmitted(lbp, _burnLeaving(lbp, minimumTradeAmount - 1)),
+            _removalSucceeds
+            (lbp, _burnLeaving(lbp, minimumTradeAmount - 1)),
             "Leaving 1 below the minimum trade amount is admitted"
         );
         assertFalse(
-            _removalIsAdmitted(lbp, _burnLeaving(lbp, minimumTradeAmount)),
+            _removalSucceeds
+            (lbp, _burnLeaving(lbp, minimumTradeAmount)),
             "Leaving exactly the minimum trade amount is admitted"
         );
 
-        assertFalse(_removalIsAdmitted(lbp, (circulating * 3) / 4), "Burning 75% is admitted");
-        assertFalse(_removalIsAdmitted(lbp, circulating / 2), "Burning 50% is admitted");
-        assertFalse(_removalIsAdmitted(lbp, circulating / 4), "Burning a quarter is admitted");
+        assertFalse(_removalSucceeds
+        (lbp, (circulating * 3) / 4), "Burning 75% is admitted");
+        assertFalse(_removalSucceeds
+        (lbp, circulating / 2), "Burning 50% is admitted");
+        assertFalse(_removalSucceeds
+        (lbp, circulating / 4), "Burning 25% is admitted");
 
         uint256 largestSmallBurn = _largestZeroPayoutBurn(lbp, projectIdx);
         assertGt(largestSmallBurn, minimumTradeAmount, "No burn is small enough to test");
-        assertTrue(_removalIsAdmitted(lbp, minimumTradeAmount), "The smallest legal burn is refused");
-        assertTrue(_removalIsAdmitted(lbp, largestSmallBurn), "The largest small burn is refused");
+        assertTrue(_removalSucceeds
+        (lbp, minimumTradeAmount), "The smallest legal burn is refused");
+        assertTrue(_removalSucceeds
+        (lbp, largestSmallBurn), "The largest small burn is refused");
 
         _remove(lbp, largestSmallBurn);
         assertTrue(_fullyRedeemable(lbp), "An admitted partial burn left a state that is not fully redeemable");
@@ -151,8 +163,10 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
 
         assertGt(largestZeroPayoutBurn, minimumTradeAmount, "No burn is small enough to test");
 
-        assertTrue(_removalIsAdmitted(lbp, minimumTradeAmount), "The smallest legal burn is refused");
-        assertTrue(_removalIsAdmitted(lbp, largestZeroPayoutBurn), "The largest small burn is refused");
+        assertTrue(_removalSucceeds
+        (lbp, minimumTradeAmount), "The smallest legal burn is refused");
+        assertTrue(_removalSucceeds
+        (lbp, largestZeroPayoutBurn), "The largest small burn is refused");
 
         assertEq(
             (blockingBalance * (largestZeroPayoutBurn + 1)) / totalSupply,
@@ -207,7 +221,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
 
         for (uint256 i = 0; i < 20; ++i) {
             uint256 burn = _largestZeroPayoutBurn(lbp, projectIdx);
-            if (burn < minimumTradeAmount || _removalIsAdmitted(lbp, burn) == false) {
+            if (burn < minimumTradeAmount || _removalSucceeds
+            (lbp, burn) == false) {
                 break;
             }
             _remove(lbp, burn);
@@ -255,7 +270,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
 
         for (uint256 percent = 1; percent <= 100; ++percent) {
-            assertTrue(_removalIsAdmitted(lbp, (circulating * percent) / 100), "A healthy-pool withdrawal was refused");
+            assertTrue(_removalSucceeds
+            (lbp, (circulating * percent) / 100), "A healthy-pool withdrawal was refused");
         }
     }
 
@@ -272,7 +288,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
 
         for (uint256 percent = 1; percent <= 100; ++percent) {
-            assertTrue(_removalIsAdmitted(lbp, (circulating * percent) / 100), "A mid-sale withdrawal was refused");
+            assertTrue(_removalSucceeds
+            (lbp, (circulating * percent) / 100), "A mid-sale withdrawal was refused");
         }
     }
 
@@ -295,8 +312,10 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
 
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
 
-        assertTrue(_removalIsAdmitted(lbp, circulating / 4), "A pre-sale correction was refused");
-        assertTrue(_removalIsAdmitted(lbp, circulating), "A pre-sale full withdrawal was refused");
+        assertTrue(_removalSucceeds
+        (lbp, circulating / 4), "A pre-sale correction was refused");
+        assertTrue(_removalSucceeds
+        (lbp, circulating), "A pre-sale full withdrawal was refused");
     }
 
     function testInitializingBelowTheSmallestBurnableSupplyIsRefused() public {
@@ -545,7 +564,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         assertGe((balances[reserveIdx] * majority) / totalSupply, minimumTradeAmount, "Reserve payout is too small");
 
         for (uint256 percent = 1; percent <= 100; ++percent) {
-            assertFalse(_removalIsAdmitted(lbp, (majority * percent) / 100), "A majority fraction was admitted");
+            assertFalse(_removalSucceeds
+            (lbp, (majority * percent) / 100), "A majority fraction was admitted");
         }
 
         uint256 minority = IERC20(lbp).balanceOf(alice);
@@ -572,7 +592,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         router.removeLiquidityProportional(lbp, ownerPosition, new uint256[](2), false, bytes(""));
         vm.stopPrank();
 
-        assertTrue(_removalIsAdmitted(lbp, ownerPosition - 1), "Stranding 1 pool token does not clear it");
+        assertTrue(_removalSucceeds
+        (lbp, ownerPosition - 1), "Stranding 1 pool token does not clear it");
     }
 
     function testFloorStateRejectsNonRedeemablePartialBurns() public {
@@ -587,7 +608,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
         uint256 refused;
         for (uint256 percent = 50; percent < 100; ++percent) {
-            if (_removalIsAdmitted(lbp, (circulating * percent) / 100) == false) {
+            if (_removalSucceeds
+            (lbp, (circulating * percent) / 100) == false) {
                 ++refused;
             }
         }
@@ -722,7 +744,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         assertTrue(_fullyRedeemable(lbp), "A seedless pool with a zero real reserve cannot be exited");
 
         uint256 circulating = IERC20(lbp).totalSupply() - poolMinimumTotalSupply;
-        assertTrue(_removalIsAdmitted(lbp, circulating / 2), "A partial withdrawal against a zero reserve is refused");
+        assertTrue(_removalSucceeds
+        (lbp, circulating / 2), "A partial withdrawal against a zero reserve is refused");
     }
 
     function testNon18DecimalPoolIsGovernedByTheInheritedMinimum() public {
@@ -851,7 +874,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
         return (totalSupply - 1) / balance;
     }
 
-    function _removalIsAdmitted(address lbp, uint256 burn) internal returns (bool ok) {
+    function _removalSucceeds
+    (address lbp, uint256 burn) internal returns (bool ok) {
         uint256 snapshotId = vm.snapshotState();
 
         vm.startPrank(bob);
@@ -891,7 +915,8 @@ contract LBPoolRedeemableRemovalTest is WeightedLBPTest {
     }
 
     function _fullyRedeemable(address lbp) internal returns (bool ok) {
-        return _removalIsAdmitted(lbp, IERC20(lbp).totalSupply() - poolMinimumTotalSupply);
+        return _removalSucceeds
+        (lbp, IERC20(lbp).totalSupply() - poolMinimumTotalSupply);
     }
 
     function _forceBalance(address lbp, uint256 tokenIndex, uint256 balanceScaled18) internal {
@@ -1128,7 +1153,8 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
 
         uint256 nearTotal = _burnLeaving(pool, minimumTradeAmount);
 
-        assertFalse(_removalIsAdmitted(pool, nearTotal), "The near-total withdrawal is admitted at the floor");
+        assertFalse(_removalSucceeds
+        (pool, nearTotal), "The near-total withdrawal is admitted at the floor");
         assertTrue(_fullyRedeemable(pool), "The full exit is refused at the floor");
     }
 
@@ -1137,10 +1163,13 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
 
         uint256 circulating = IERC20(pool).totalSupply() - poolMinimumTotalSupply;
 
-        assertFalse(_removalIsAdmitted(pool, circulating / 2), "Burning 50% is admitted at the floor");
-        assertFalse(_removalIsAdmitted(pool, (circulating * 3) / 5), "Burning 60% is admitted at the floor");
+        assertFalse(_removalSucceeds
+        (pool, circulating / 2), "Burning 50% is admitted at the floor");
+        assertFalse(_removalSucceeds
+        (pool, (circulating * 3) / 5), "Burning 60% is admitted at the floor");
         assertFalse(
-            _removalIsAdmitted(pool, _burnLeaving(pool, minimumTradeAmount - 1)),
+            _removalSucceeds
+            (pool, _burnLeaving(pool, minimumTradeAmount - 1)),
             "Leaving sub-minimum pool tokens is admitted"
         );
     }
@@ -1151,7 +1180,8 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
         uint256 circulating = IERC20(pool).totalSupply() - poolMinimumTotalSupply;
 
         for (uint256 percent = 1; percent <= 100; ++percent) {
-            assertTrue(_removalIsAdmitted(pool, (circulating * percent) / 100), "A healthy withdrawal was refused");
+            assertTrue(_removalSucceeds
+            (pool, (circulating * percent) / 100), "A healthy withdrawal was refused");
         }
     }
 
@@ -1326,7 +1356,8 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
         return (totalSupply - 1) / balance;
     }
 
-    function _removalIsAdmitted(address lbp, uint256 burn) internal returns (bool ok) {
+    function _removalSucceeds
+    (address lbp, uint256 burn) internal returns (bool ok) {
         uint256 snapshotId = vm.snapshotState();
 
         vm.startPrank(bob);
@@ -1351,7 +1382,8 @@ contract FixedPriceLBPoolRedeemableRemovalTest is BaseLBPTest, FixedPriceLBPoolC
     }
 
     function _fullyRedeemable(address lbp) internal returns (bool ok) {
-        return _removalIsAdmitted(lbp, IERC20(lbp).totalSupply() - poolMinimumTotalSupply);
+        return _removalSucceeds
+        (lbp, IERC20(lbp).totalSupply() - poolMinimumTotalSupply);
     }
 
     function _forceBalance(address lbp, uint256 tokenIndex, uint256 balanceScaled18) internal {
