@@ -41,15 +41,7 @@ contract SwapInvariantECLPSpecificTest is BaseECLPSpecificTest {
         uint256 invariantBefore = _computeInvariant(setup.pool);
 
         vm.prank(lp);
-        try
-            router.swapSingleTokenExactIn(setup.pool, tokenIn, tokenOut, amountInRaw, 0, MAX_UINT256, false, bytes(""))
-        {
-            // Swap succeeded; fall through to the invariant check.
-        } catch {
-            // The trade is not reachable for these balances (e.g. it would drain the outgoing token). Reject the run
-            // rather than asserting on a state that never changed.
-            vm.assume(false);
-        }
+        router.swapSingleTokenExactIn(setup.pool, tokenIn, tokenOut, amountInRaw, 0, MAX_UINT256, false, bytes(""));
 
         uint256 invariantAfter = _computeInvariant(setup.pool);
 
@@ -76,27 +68,20 @@ contract SwapInvariantECLPSpecificTest is BaseECLPSpecificTest {
         // Cap the trade at 10% of the token 0 balance, for the same reason as in the EXACT_IN test.
         swapAmountScaled18 = bound(swapAmountScaled18, _MIN_SWAP_SCALED18, balance0Scaled18 / 10);
         uint256 amountOutRaw = _toRawAmount(swapAmountScaled18, swap0To1 ? setup.decimals1 : setup.decimals0);
-        vm.assume(amountOutRaw > 0);
 
         uint256 invariantBefore = _computeInvariant(setup.pool);
 
         vm.prank(lp);
-        try
-            router.swapSingleTokenExactOut(
-                setup.pool,
-                tokenIn,
-                tokenOut,
-                amountOutRaw,
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        {
-            // Swap succeeded; fall through to the invariant check.
-        } catch {
-            vm.assume(false);
-        }
+        router.swapSingleTokenExactOut(
+            setup.pool,
+            tokenIn,
+            tokenOut,
+            amountOutRaw,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         uint256 invariantAfter = _computeInvariant(setup.pool);
 

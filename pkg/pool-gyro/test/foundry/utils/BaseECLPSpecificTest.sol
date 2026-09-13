@@ -16,6 +16,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol";
 import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
+import { GyroEclpPoolDeployer } from "./GyroEclpPoolDeployer.sol";
 
 /**
  * @notice Shared fixture for tests that pin one specific E-CLP configuration and start at a spot price of 1.
@@ -27,7 +28,7 @@ import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
  * depends only on the ratio between the two balances; that ratio is the constant `_PRICE_ONE_BALANCE_RATIO` for
  * these parameters. Only the liquidity scale is fuzzed, and the second balance is derived from the first.
  */
-abstract contract BaseECLPSpecificTest is BaseVaultTest {
+abstract contract BaseECLPSpecificTest is BaseVaultTest, GyroEclpPoolDeployer {
     using CastingHelpers for address[];
 
     /// @dev Everything a test needs to know about a freshly created pool, in the Vault's token order.
@@ -48,8 +49,8 @@ abstract contract BaseECLPSpecificTest is BaseVaultTest {
     // `_PRICE_ONE_BALANCE_RATIO`), so the upper bound is set by what the LP can hold: at 1e26 the token 1 balance
     // is ~1e30, against the 1e32 minted by `_TOKEN_MINT_AMOUNT`. That leaves `_MAX_BALANCES` (1e34) four orders of
     // magnitude away, so it is never reached. The lower bound keeps the token 0 raw amount at 6 decimals at or
-    // 1e10 units, so that the truncation performed by `_toRawAmount` perturbs the balance ratio by at most ~1e-10
-    // in relative terms.
+    // above 1e10 units, so that the truncation performed by `_toRawAmount` perturbs the balance ratio by at most
+    // ~1e-10 in relative terms.
     uint256 internal constant _MIN_BALANCE0_SCALED18 = 1e22;
     uint256 internal constant _MAX_BALANCE0_SCALED18 = 1e26;
 

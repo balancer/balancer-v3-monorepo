@@ -32,7 +32,7 @@ import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
  *  - Atomic round trips (swap out and back, add then remove) never return more than they consumed.
  *  - The Vault is solvent: its real token balances cover the balances it accounts to the pool.
  *  - BPT total supply equals the sum of all balances that can hold it.
- *  - The spot price stays inside `[alpha, beta]`.
+ *  - The unclamped spot price stays inside `[alpha, beta]`, up to rounding.
  */
 contract DrainECLPSpecificMedusa is BaseMedusaTest {
     using FixedPoint for uint256;
@@ -85,9 +85,15 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
     uint256 internal constant MAX_REMOVE_PROPORTIONAL_RATIO = 50e16; // 50% of the actor's BPT
     uint256 internal constant MAX_REMOVE_SINGLE_RATIO = 20e16; // 20% of the supply backed by that token
 
-    // Liveness check: the LP redeems this share of its BPT, and only when the pool is not degenerate.
+    // Liveness check: the LP redeems this share of its BPT, whenever the redeemed amounts do not round to zero.
     uint256 internal constant LIVENESS_BPT_RATIO = 1e15; // 0.1% of the LP's BPT
-    uint256 internal constant LIVENESS_MIN_BALANCE = 1e12;
+
+    // Rounding slack for the unclamped spot price, in wei of an 18-decimal price. The offsets and the invariant
+    // it is computed from are each rounded, which moved the price by up to 45 wei at initialization in the Foundry
+    // suite (see `BaseECLPSpecificTest`). Driving the pool to within a few million wei of either endpoint with
+    // repeated 20% swaps left the unclamped price 3 wei inside `beta` and 4 wei inside `alpha`, so this slack is
+    // never consumed in practice, and a real excursion outside the interval is orders of magnitude larger.
+    uint256 internal constant SPOT_PRICE_TOLERANCE = 1000;
 
     uint256 internal _initialBptRate;
 
@@ -145,12 +151,26 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
         return bpt.totalSupply() == sum;
     }
 
-    /// @notice The spot price must stay inside the configured price interval.
+    /**
+     * @notice The spot price must stay inside the configured price interval, up to rounding.
+     * @dev `GyroECLPMath.computePrice`, the production path, clamps its own result to `[alpha, beta]`, so a check
+     * built on it cannot fail. This property reads the unclamped price from `GyroECLPMath.calcSpotPrice0in1`
+     * instead, fed with the invariant recomputed from the current balances.
+     *
+     * `calcSpotPrice0in1` reverts in two places: when the price on the circle equals `lambda`, which zeroes the
+     * denominator of the conversion back to the ellipse, and when `vec.y` is zero, which is a price on the circle of
+     * infinity. With `c == s`, the ellipse price is `(1 + u) / (1 - u)` for a price on the circle of `u * lambda`, so
+     * the interval `[alpha, beta]` maps to prices on the circle between about -2.97 and 9.5e-5, against a `lambda`
+     * of 300. A revert therefore means the price is far outside the interval, and it is left to fail the property
+     * rather than caught.
+     */
     function property_spotPriceWithinBounds() public view returns (bool) {
         (, , , uint256[] memory balancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
-        uint256 spotPrice = _computeSpotPrice(balancesLiveScaled18);
+        uint256 spotPrice = _computeUnclampedSpotPrice(balancesLiveScaled18);
 
-        return spotPrice >= uint256(PARAMS_ALPHA) && spotPrice <= uint256(PARAMS_BETA);
+        return
+            spotPrice + SPOT_PRICE_TOLERANCE >= uint256(PARAMS_ALPHA) &&
+            spotPrice <= uint256(PARAMS_BETA) + SPOT_PRICE_TOLERANCE;
     }
 
     /// @notice Override to create the pinned E-CLP pool.
@@ -245,7 +265,8 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
 
     /**
      * @notice Swap out and straight back in, in either direction, by any actor.
-     * @dev A round trip must never leave the actor with more of the input token than it started with.
+     * @dev A round trip must never leave the actor with more of the input token than it started with. Atomic here
+     * means one fuzz call: the two swaps are separate router calls, each in its own Vault session.
      */
     function roundTripSwap(uint256 amountIn, uint256 direction, uint256 actorSeed) external {
         (uint256 indexIn, uint256 indexOut) = _direction(direction);
@@ -370,8 +391,11 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
 
         assert(IERC20(address(pool)).balanceOf(actor) == snapshot.actorBpt - exactBptIn);
         assert(IERC20(address(pool)).totalSupply() == snapshot.totalSupply - exactBptIn);
-        assert(_poolBalance(tokenIndex) == (tokenIndex == 0 ? snapshot.pool0 : snapshot.pool1) - amountOut);
-        assert(_poolBalance(1 - tokenIndex) == (tokenIndex == 0 ? snapshot.pool1 : snapshot.pool0));
+
+        (uint256 expected0, uint256 expected1) = tokenIndex == 0
+            ? (snapshot.pool0 - amountOut, snapshot.pool1)
+            : (snapshot.pool0, snapshot.pool1 - amountOut);
+        _assertPoolBalances(expected0, expected1);
     }
 
     /**
@@ -411,14 +435,17 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
 
     /**
      * @notice Liveness: a proportional exit by the LP must never revert, whatever the pool state.
-     * @dev Proportional exits do not move the price, so no reachable state may lock an LP out of one. The pool has
-     * to be non-degenerate for the redeemed amounts to round to something nonzero, hence the balance guard.
+     * @dev Proportional exits do not move the price, so no reachable state may lock an LP out of one. Each amount
+     * out is `poolBalance * exactBptIn / totalSupply`, so the guard below skips the states where that rounds to
+     * zero for either token, which is the only reason a redeemed amount could come back empty.
      */
     function lpCanAlwaysExitProportionally() external {
-        if (_poolBalance(0) < LIVENESS_MIN_BALANCE || _poolBalance(1) < LIVENESS_MIN_BALANCE) return;
-
         uint256 exactBptIn = IERC20(address(pool)).balanceOf(lp).mulDown(LIVENESS_BPT_RATIO);
         if (exactBptIn < MIN_AMOUNT) return;
+
+        uint256 totalSupply = IERC20(address(pool)).totalSupply();
+        (uint256 balance0, uint256 balance1) = _poolBalances();
+        if (balance0 * exactBptIn < totalSupply || balance1 * exactBptIn < totalSupply) return;
 
         medusa.prank(lp);
         try router.removeLiquidityProportional(address(pool), exactBptIn, new uint256[](2), false, bytes("")) returns (
@@ -512,24 +539,15 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
         assert(balance1 == expected1);
     }
 
-    // New helper; could put down with others.
-    function _poolBalances() internal view returns (uint256, uint256) {
-        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        return (balancesRaw[0], balancesRaw[1]);
-    }
-
     function _snapshot(address actor) internal view returns (Snapshot memory snapshot) {
-        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-
-        snapshot.pool0 = balancesRaw[0];
-        snapshot.pool1 = balancesRaw[1];
+        (snapshot.pool0, snapshot.pool1) = _poolBalances();
         snapshot.actor0 = _token0.balanceOf(actor);
         snapshot.actor1 = _token1.balanceOf(actor);
         snapshot.actorBpt = IERC20(address(pool)).balanceOf(actor);
         snapshot.totalSupply = IERC20(address(pool)).totalSupply();
     }
 
-    function _computeSpotPrice(uint256[] memory balancesScaled18) internal pure returns (uint256) {
+    function _computeUnclampedSpotPrice(uint256[] memory balancesScaled18) internal view returns (uint256) {
         IGyroECLPPool.EclpParams memory params = IGyroECLPPool.EclpParams({
             alpha: PARAMS_ALPHA,
             beta: PARAMS_BETA,
@@ -548,14 +566,19 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
             dSq: DERIVED_DSQ
         });
 
-        (int256 a, int256 b) = GyroECLPMath.computeOffsetFromBalances(balancesScaled18, params, derivedParams);
+        int256 invariant = int256(pool.computeInvariant(balancesScaled18, Rounding.ROUND_DOWN));
 
-        return GyroECLPMath.computePrice(balancesScaled18, params, a, b);
+        return GyroECLPMath.calcSpotPrice0in1(balancesScaled18, params, derivedParams, invariant);
     }
 
     function _poolBalance(uint256 index) internal view returns (uint256) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
         return balancesRaw[index];
+    }
+
+    function _poolBalances() internal view returns (uint256, uint256) {
+        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
+        return (balancesRaw[0], balancesRaw[1]);
     }
 
     function _tokenAt(uint256 index) internal view returns (IERC20) {
@@ -575,6 +598,7 @@ contract DrainECLPSpecificMedusa is BaseMedusaTest {
 
     function _boundLocal(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
         if (max <= min) return min;
-        return min + (x % (max - min + 1));
+        uint256 span = max - min;
+        return span == type(uint256).max ? min + x : min + (x % (span + 1));
     }
 }

@@ -15,7 +15,9 @@ import { BaseECLPSpecificTest } from "./utils/BaseECLPSpecificTest.sol";
  * flash-loan-shaped ordering), and a plain proportional add -> remove round trip. All three additionally assert that
  * the BPT rate (`vault.getBptRate`, i.e. pool invariant divided by total supply) never decreases across the whole
  * sequence, which is what actually means "the LPs that stayed in the pool were not diluted". That is the same
- * property the Medusa campaigns track as `property_currentBptRate`, read through the same Vault getter.
+ * property the Medusa campaigns track as `property_currentBptRate`, read through the same Vault getter, and it
+ * carries the same one wei of slack: recomputing the invariant from scratch on the reduced balances rounds down,
+ * which a single `removeLiquidityProportional` from the initial state is enough to trigger.
  *
  * The pool configuration, the price-1 initialization and the state readers live in `BaseECLPSpecificTest`.
  *
@@ -36,7 +38,7 @@ import { BaseECLPSpecificTest } from "./utils/BaseECLPSpecificTest.sol";
  * is capped at 10% of the token 0 balance, which holds the price within 6.3e-8 of 1, so the error is ~6.3e-4 of
  * the 1e-4 swap fee the attacker pays. Widening that cap breaks the argument: at 20x the token 0 balance the
  * error is an eighth of the fee, and at 2000x it is ten times the fee.
- * No tolerance is added on top: the assertions below are exact.
+ * No tolerance is added on top: the value assertions below are exact.
  */
 contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {
     // Fraction of the pool's total supply that the "existing LP" attacker of test 2 holds before the attack starts.
@@ -92,7 +94,7 @@ contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {
         uint256 valueAfter = _attackerValueScaled18(setup);
 
         assertLe(valueAfter, valueBefore, "Add -> swap -> remove was profitable");
-        assertGe(vault.getBptRate(setup.pool), bptRateBefore, "BPT rate decreased over add -> swap -> remove");
+        assertGe(vault.getBptRate(setup.pool) + 1, bptRateBefore, "BPT rate decreased over add -> swap -> remove");
     }
 
     /**
@@ -138,7 +140,7 @@ contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {
         uint256 valueAfter = _attackerValueScaled18(setup);
 
         assertLe(valueAfter, valueBefore, "Remove -> swap -> add was profitable");
-        assertGe(vault.getBptRate(setup.pool), bptRateBefore, "BPT rate decreased over remove -> swap -> add");
+        assertGe(vault.getBptRate(setup.pool) + 1, bptRateBefore, "BPT rate decreased over remove -> swap -> add");
     }
 
     /**
@@ -180,7 +182,11 @@ contract LiquidityRoundTripECLPSpecificTest is BaseECLPSpecificTest {
 
         assertLe(amountsOut[0], amountsIn[0], "Proportional round trip returned more of token 0 than it took");
         assertLe(amountsOut[1], amountsIn[1], "Proportional round trip returned more of token 1 than it took");
-        assertGe(vault.getBptRate(setup.pool), bptRateBefore, "BPT rate decreased over the proportional round trip");
+        assertGe(
+            vault.getBptRate(setup.pool) + 1,
+            bptRateBefore,
+            "BPT rate decreased over the proportional round trip"
+        );
     }
 
     /**
