@@ -17,4 +17,24 @@ interface ICompositeLiquidityRouterErrors {
      * @param duplicateToken The address of the duplicate token
      */
     error DuplicateTokenIn(address duplicateToken);
+
+    /**
+     * @notice A token's proportional share was too small for the Vault buffer to unwrap.
+     * @dev Raised by the proportional removal paths, where the pool fixes the amount and the caller cannot set it.
+     * Burning more pool tokens raises the share; leaving the token unwrapped pays it as the wrapped token instead.
+     *
+     * @param wrappedToken The ERC4626 token that could not be unwrapped
+     * @param wrappedAmount The share of `wrappedToken` the pool returned
+     */
+    error UnwrapAmountTooSmall(address wrappedToken, uint256 wrappedAmount);
+
+    /**
+     * @notice The amount of a token the pool required was too small for the Vault buffer to wrap.
+     * @dev Raised by the proportional add path, where the pool fixes the amount and the caller cannot set it.
+     * Requesting more pool tokens raises the required amount; clearing the wrap flag pays the wrapped token instead.
+     *
+     * @param wrappedToken The ERC4626 token that could not be wrapped
+     * @param wrappedAmount The amount of `wrappedToken` the pool requires
+     */
+    error RequiredWrapAmountTooSmall(address wrappedToken, uint256 wrappedAmount);
 }

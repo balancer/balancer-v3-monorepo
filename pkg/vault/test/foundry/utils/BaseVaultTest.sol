@@ -74,7 +74,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     // ERC4626 buffer limits.
     uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
-    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e3;
+    // Minimum wrap amount the deployed Vaults report on every chain (a Vault constructor argument).
+    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
 
     // Applies to Weighted Pools.
     uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
@@ -269,6 +270,22 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             permit2.approve(address(bpt), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
+
+            vm.stopPrank();
+        }
+    }
+
+    /// @dev Grants every user the `approveForSender` approvals for a wrapper created after `setUp` ran them.
+    function approveForWrapper(IERC4626 wrapper, IERC20 underlying) internal virtual {
+        for (uint256 i = 0; i < users.length; ++i) {
+            vm.startPrank(users[i]);
+
+            underlying.approve(address(wrapper), type(uint256).max);
+            IERC20(address(wrapper)).approve(address(permit2), type(uint256).max);
+            permit2.approve(address(wrapper), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(wrapper), address(bufferRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(wrapper), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(wrapper), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
             vm.stopPrank();
         }
